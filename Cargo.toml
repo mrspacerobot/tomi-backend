@@ -24,3 +24,22 @@ http-body-util = "0.1"
 p256 = { version = "0.13", features = ["jwk", "pem", "pkcs8"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 tower = { version = "0.5", features = ["util"] }
+
+# Readability limits live in clippy.toml. CI turns every warning into an
+# error, so these are rules, not suggestions. See AGENTS.md.
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+cognitive_complexity = "warn"
+dbg_macro = "warn"
+expect_used = "warn"
+panic = "warn"
+print_stderr = "warn"
+print_stdout = "warn"
+todo = "warn"
+too_many_lines = "warn"
+unimplemented = "warn"
+unwrap_used = "warn"

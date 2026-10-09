@@ -104,7 +104,7 @@ curl -s "$SUPABASE_URL/auth/v1/token?grant_type=password" \
 TOKEN=<access token>
 curl -s localhost:8080/v1/profile -H "authorization: Bearer $TOKEN"
 curl -s -X PATCH localhost:8080/v1/profile -H "authorization: Bearer $TOKEN" \
-  -H "content-type: application/json" -d '{"version":0,"avoid":["fact/peanuts"]}'
+  -H "content-type: application/json" -d '{"version":0,"avoid":["nuts"]}'
 ```
 
 Delete the test user and turn email sign-up back off when you are done, if

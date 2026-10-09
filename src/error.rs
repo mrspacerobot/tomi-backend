@@ -1,7 +1,7 @@
 //! One error shape for every route: `{"error": {"code", "message", ...}}`.
 //!
-//! Messages never echo a request body, so no ingredient or restriction a
-//! cook sent ends up in an error or a log.
+//! Messages never echo a request body, so nothing a cook sent ends up in
+//! an error log.
 
 use crate::auth::AuthError;
 use axum::http::StatusCode;
@@ -19,7 +19,7 @@ pub enum AppError {
     Invalid(Vec<String>),
     #[error("the profile changed since version {expected}")]
     VersionConflict { expected: i64, current: Value },
-    #[error("this change removes restrictions; send allow_weaker_restrictions to confirm")]
+    #[error("this change removes restrictions; send allowWeakerRestrictions to confirm")]
     WeakensRestrictions { removed: Vec<String> },
     #[error("the database failed")]
     Database(#[from] sqlx::Error),
@@ -28,22 +28,30 @@ pub enum AppError {
 }
 
 impl AppError {
-    fn status_and_code(&self) -> (StatusCode, &'static str) {
+    /// The code the app acts on. Codes are permanent once released.
+    fn code(&self) -> &'static str {
         match self {
-            AppError::Auth(AuthError::KeysUnavailable) => {
-                (StatusCode::SERVICE_UNAVAILABLE, "auth_unavailable")
-            }
-            AppError::Auth(AuthError::Anonymous) => {
-                (StatusCode::FORBIDDEN, "anonymous_not_allowed")
-            }
-            AppError::Auth(_) => (StatusCode::UNAUTHORIZED, "unauthenticated"),
-            AppError::AccountDeleted => (StatusCode::FORBIDDEN, "account_deleted"),
-            AppError::Invalid(_) => (StatusCode::UNPROCESSABLE_ENTITY, "invalid_request"),
-            AppError::VersionConflict { .. } => (StatusCode::CONFLICT, "version_conflict"),
-            AppError::WeakensRestrictions { .. } => (StatusCode::CONFLICT, "weakens_restrictions"),
-            AppError::Database(_) | AppError::Corrupt(_) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, "internal")
-            }
+            AppError::Auth(AuthError::KeysUnavailable) => "auth_unavailable",
+            AppError::Auth(AuthError::Anonymous) => "anonymous_not_allowed",
+            AppError::Auth(_) => "unauthenticated",
+            AppError::AccountDeleted => "account_deleted",
+            AppError::Invalid(_) => "invalid_request",
+            AppError::VersionConflict { .. } => "version_conflict",
+            AppError::WeakensRestrictions { .. } => "weakens_restrictions",
+            AppError::Database(_) | AppError::Corrupt(_) => "internal",
+        }
+    }
+
+    fn status(&self) -> StatusCode {
+        match self {
+            AppError::Auth(AuthError::KeysUnavailable) => StatusCode::SERVICE_UNAVAILABLE,
+            AppError::Auth(AuthError::Anonymous) => StatusCode::FORBIDDEN,
+            AppError::Auth(_) => StatusCode::UNAUTHORIZED,
+            AppError::AccountDeleted => StatusCode::FORBIDDEN,
+            AppError::Invalid(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            AppError::VersionConflict { .. } => StatusCode::CONFLICT,
+            AppError::WeakensRestrictions { .. } => StatusCode::CONFLICT,
+            AppError::Database(_) | AppError::Corrupt(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 
@@ -55,19 +63,33 @@ impl AppError {
             _ => None,
         }
     }
+
+    fn body(&self) -> Value {
+        let mut error = json!({ "code": self.code(), "message": self.to_string() });
+        if let Some(details) = self.details() {
+            error["details"] = details;
+        }
+        json!({ "error": error })
+    }
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, code) = self.status_and_code();
+        let status = self.status();
         if status.is_server_error() {
-            // The error text is ours, never the cook's data.
-            tracing::error!(error = %self, code, "request failed");
+            self.log();
         }
-        let mut error = json!({ "code": code, "message": self.to_string() });
-        if let Some(details) = self.details() {
-            error["details"] = details;
-        }
-        (status, Json(json!({ "error": error }))).into_response()
+        (status, Json(self.body())).into_response()
+    }
+}
+
+impl AppError {
+    /// The error text is ours, never the cook's data.
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "tracing's macro expands into branches no reader sees"
+    )]
+    fn log(&self) {
+        tracing::error!(error = %self, code = self.code(), "request failed");
     }
 }

@@ -1,0 +1,16 @@
+# Size limits that keep every function readable at a glance.
+# Raising one needs the owner's approval in a pull request that also
+# changes AGENTS.md. Never silence a lint inline to get past one.
+
+# Lines of code in a function body, not counting blanks and comments.
+too-many-lines-threshold = 15
+# More than three parameters means a missing type.
+too-many-arguments-threshold = 3
+# Branching and nesting a reader has to hold in mind.
+cognitive-complexity-threshold = 7
+excessive-nesting-threshold = 4
+
+# Tests may unwrap: a failure there is a failed test, not a crash.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true

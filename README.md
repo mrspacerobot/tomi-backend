@@ -19,29 +19,39 @@ Sign-in is Supabase Auth. The app sends the Supabase access token as
 audience and expiry, refuses anonymous sessions, and creates its own user
 row the first time it sees a cook.
 
-### Changing the profile
+### The profile
+
+The fields and their JSON names are those of Tomi's `SavedProfile`:
+`diet`, `avoid`, `cuisinesLoved`, `cuisinesToTry`, `cuisinesNever`,
+`cupboardStaples`, `equipment`, `experience` (`never`, `basics`,
+`comfortable`), `servings`, `units` (`metric`, `cups`), `weeklyGoal` (1 to
+7), `focusSkill` and `onboardingDone`. Ids are Tomi's own, such as `nuts`,
+`vegetarian` or `olive-oil`.
 
 ```json
-{ "version": 3, "avoid": ["fact/peanuts", "fact/sesame"], "servings": 4 }
+{ "version": 3, "diet": "vegetarian", "avoid": ["nuts", "sesame"], "servings": 4 }
 ```
 
 - `version` is the version the app last read. If someone changed the
   profile since, the answer is `409 version_conflict` with the current
   profile, and the app tries again from that.
-- A field that is present replaces the stored one. `null` clears
-  `experience` or `focus_skill`.
-- Removing a diet or an avoided fact is refused with `409
-  weakens_restrictions` unless the request also says
-  `"allow_weaker_restrictions": true`. The app sends that only after the
-  cook confirmed the removal on screen.
-- Ids are typed: `diets` holds `diet/...`, `avoid` holds `fact/...` (the
-  cooking graph's safety facts, such as `fact/peanuts`), `cuisines` holds
-  `cuisine/...`, `pantry` holds `ingredient/...`, `equipment` holds
-  `equipment/...`, `focus_skill` is a `skill/...`. Unknown fields are
-  refused.
+- A field that is present replaces the stored one. `null` clears `diet`,
+  `equipment` ("not answered"), `units` or `focusSkill`.
+- Removing an avoid item, or clearing or changing the diet, is refused with
+  `409 weakens_restrictions` unless the request also says
+  `"allowWeakerRestrictions": true`. The app sends that only after the cook
+  confirmed the change on screen.
+- A cuisine in two lists, an id of the wrong shape, an unknown field or a
+  number out of range is refused with `422 invalid_request`.
 
 Errors always look like
 `{"error": {"code": "...", "message": "...", "details": {...}}}`.
+
+## Layout and rules
+
+`AGENTS.md` has the layout and the coding rules, with examples. In short:
+pure rules in `src/domain`, one file per feature in `src/routes` and
+`src/db`, API tests as one binary in `tests/api`.
 
 ## Running it
 
@@ -55,18 +65,15 @@ cargo run
 
 ## Checks
 
-`./scripts/test.sh` runs formatting, lints and all tests. The tests need a
+`./scripts/check.sh` runs formatting, lints and all tests. The tests need a
 Postgres they can create databases in (see the script). CI runs the same
 script on every pull request.
 
 ## Not built yet, and doubts
 
-- **Ids are checked for shape and kind, not existence.** The spec wants an
+- **Ids are checked for shape, not existence.** The spec wants an
   unknown id refused. That needs the reviewed library and safety snapshot,
   which do not exist yet.
-- **Field names are a guess.** They must be matched to Tomi's `SavedProfile`
-  before the backend becomes canonical; the spec says saved names stay
-  stable. `skill/...` and `diet/...` as id kinds are also my guess.
 - **"Conflicting restrictions merge toward the stricter result"** is handled
   here by refusing a stale write and by refusing silent removals. The merge
   of an imported SwiftData profile is not built.

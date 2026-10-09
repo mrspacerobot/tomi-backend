@@ -22,6 +22,6 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - run: ./scripts/test.sh
+      - run: ./scripts/check.sh
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
