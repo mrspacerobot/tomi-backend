@@ -38,11 +38,7 @@ impl Profile {
     /// that offers it least, but a write should never create the doubt.
     fn check_cuisines(&self, problems: &mut Vec<String>) {
         let mut seen: BTreeSet<&SavedId> = BTreeSet::new();
-        let all = self
-            .cuisines_loved
-            .iter()
-            .chain(&self.cuisines_to_try)
-            .chain(&self.cuisines_never);
+        let all = self.cuisines_loved.iter().chain(&self.cuisines_to_try).chain(&self.cuisines_never);
         for cuisine in all {
             let is_new = seen.insert(cuisine);
             if !is_new {

@@ -1,18 +1,24 @@
 //! The Tomi API: the one public service the iPhone app talks to.
 
+pub mod ai;
 pub mod auth;
 pub mod config;
 pub mod db;
 pub mod domain;
 pub mod error;
+pub mod library_files;
 pub mod routes;
+pub mod storage;
 
+use ai::Ai;
 use auth::Verifier;
 use axum::extract::DefaultBodyLimit;
 use axum::http::HeaderName;
 use axum::Router;
+use domain::library::Library;
 use sqlx::PgPool;
 use std::sync::Arc;
+use storage::PhotoStore;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
 
@@ -26,6 +32,9 @@ pub struct AppState {
     pub db: PgPool,
     pub verifier: Arc<Verifier>,
     pub min_app_version: String,
+    pub library: Arc<Library>,
+    pub ai: Arc<dyn Ai>,
+    pub photos: Arc<dyn PhotoStore>,
 }
 
 pub fn app(state: AppState) -> Router {

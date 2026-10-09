@@ -26,7 +26,9 @@ Report honestly: if a check fails or you skipped a step, say so.
 
 ```
 src/
-  domain/       pure rules, one module per domain (ids, profile, later game, cook_log)
+  domain/       pure rules, one module per domain (ids, profile, library, special, fridge, photo, consent)
+  ai/           the model behind one interface: Gemini, and a fake in tests
+  storage.rs    the private photo bucket behind one interface
   routes/       one file per feature, each with its own router(), merged in routes.rs
   db/           queries, one file per feature
   auth/         Supabase token checks
@@ -54,9 +56,9 @@ A person should understand any function without scrolling and any file without a
 | Branching | cognitive complexity 7 | `clippy::cognitive_complexity` |
 | Nesting | 4 blocks | `clippy::excessive_nesting` |
 | File | 200 lines, tests included | `tests/architecture.rs` |
-| Line | 100 characters | `rustfmt` default |
+| Line | 120 characters | `rustfmt.toml` |
 
-Rust's formatter spreads a struct literal or a long call over several lines, so the function limit is 15 lines here instead of Tomi's 10.
+Rust's formatter spreads a struct literal or a long call over several lines, so the function limit is 15 lines here instead of Tomi's 10. `rustfmt.toml` keeps short literals and calls on one line.
 
 - **One function, one job, one level of detail.** If you need "and" to describe it, split it. If you want a comment to label a block, that block is a function and the comment is its name.
 - **When a limit is hit, extract and name.** Never raise a limit to get past it, and never silence a lint to get past a limit. A flat `match` that maps every case to a value may be long.
@@ -105,7 +107,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 
 - **No `unwrap`, `expect`, `panic!`, `todo!` or `unimplemented!` in service code.** Return a `Result` and let `?` carry it. Tests may unwrap: a failed unwrap there is a failed test.
 - **Errors are enums with `thiserror`,** one per boundary (`AuthError`, `PatchError`, `AppError`), converted with `From` and `?` where a conversion is always the same, and `map_err` only where the call site decides. `AppError` decides the HTTP status and the stable `code` the app acts on. Codes are permanent once released.
-- **A lint override uses `#[expect(lint, reason = "...")]`, never `#[allow]`.** `expect` fails when the lint no longer fires, so stale overrides cannot pile up. Clippy refuses `#[allow]` here. The one accepted reason so far: `tracing`'s macros expand into branches that inflate `cognitive_complexity`, so each log line sits in its own small function.
+- **A lint override uses `#[expect(lint, reason = "...")]`, never `#[allow]`.** `expect` fails when the lint no longer fires, so stale overrides cannot pile up. Clippy refuses `#[allow]` here. The accepted reasons so far: `tracing`'s macros expand into branches that inflate `cognitive_complexity`, so each log line sits in its own small function; and a flat `match` from each case to its value may pass `too_many_lines`.
 - **Logs are structured `tracing` events, never `println!`.** They hold status, latency, versions, ids and counts. Never a request body, a photo, chat text, an ingredient or a restriction.
 - **No `unsafe`.** The crate forbids it.
 
@@ -123,8 +125,11 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 - **The cook log is the source of truth.** XP, rank, streak and mastery are computed from it on demand. A stored total is a bug. XP is never accepted from the app.
 - **No result depends on arrival order.** The same event id twice counts once. Two copies of one id that disagree are resolved by a fixed rule, the same one the app uses.
 - **Week and day arithmetic uses the cook's calendar,** passed in as a time zone and first weekday, never the server's clock or seven times 24 hours.
-- **No Rust file names a specific skill, diet, avoid item, ingredient, equipment or cuisine.** Those come from the library data. Game numbers live in one module.
-- **Photos, voice and chat never reach this service.**
+- **No Rust file names a specific skill, diet, avoid item, ingredient, equipment or cuisine.** Those come from the library data in `library/`, a copy of Tomi's reviewed library that is never edited here (`library/SOURCE.md`). Game numbers live in one module.
+- **Code decides what may be offered; a model only reorders it.** A special is filtered by diet, avoid list, cuisine and kitchen, uses only the swaps a lesson lists, and is checked again as a whole dish before it is ranked.
+- **AI runs on this server, behind the `Ai` interface** (`src/ai.rs`), with a fake in every test. A model only reads and ranks: it may name only ids from closed lists, it never adds an ingredient, diet, lesson or fact, and `domain` checks its answer before anyone sees it. Without a model, the scan says so and specials rank by what the cook has.
+- **A fridge photo is sent to the model only with the `photo-scan` consent,** and is kept only with the separate `photo-dataset` consent, off by default. A kept photo loses its metadata first. Withdrawing the dataset consent deletes every kept photo. Never log a photo, never keep one without that consent, and never let the app reach the bucket.
+- **Voice and chat do not reach this service yet.** Adding them needs the same kind of consent and a change to this file.
 
 ## Saved data and ids
 

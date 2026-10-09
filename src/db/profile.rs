@@ -24,15 +24,9 @@ pub struct StoredProfile {
 }
 
 pub async fn read(pool: &PgPool, user_id: Uuid) -> Result<StoredProfile, AppError> {
-    let row: Option<(i64, serde_json::Value)> = sqlx::query_as(READ)
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await?;
+    let row: Option<(i64, serde_json::Value)> = sqlx::query_as(READ).bind(user_id).fetch_optional(pool).await?;
     let Some((version, data)) = row else {
-        return Ok(StoredProfile {
-            version: 0,
-            profile: Profile::default(),
-        });
+        return Ok(StoredProfile { version: 0, profile: Profile::default() });
     };
     let profile = serde_json::from_value(data)?;
     Ok(StoredProfile { version, profile })

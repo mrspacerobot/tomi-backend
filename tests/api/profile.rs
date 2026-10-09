@@ -46,25 +46,14 @@ async fn a_stale_version_is_refused_with_the_current_profile(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn restrictions_are_never_dropped_silently(pool: PgPool) {
     let (app, cook) = (server(pool), new_cook());
-    patch_profile(
-        &app,
-        &cook,
-        json!({"version": 0, "avoid": ["nuts", "sesame"]}),
-    )
-    .await;
+    patch_profile(&app, &cook, json!({"version": 0, "avoid": ["nuts", "sesame"]})).await;
 
     let reply = patch_profile(&app, &cook, json!({"version": 1, "avoid": ["sesame"]})).await;
     assert_eq!(reply.status, StatusCode::CONFLICT);
     assert_eq!(reply.body["error"]["code"], "weakens_restrictions");
-    assert_eq!(
-        reply.body["error"]["details"]["removed"],
-        json!(["avoid: nuts"])
-    );
+    assert_eq!(reply.body["error"]["details"]["removed"], json!(["avoid: nuts"]));
     let unchanged = get(&app, "/v1/profile", Some(&cook)).await;
-    assert_eq!(
-        unchanged.body["profile"]["avoid"],
-        json!(["nuts", "sesame"])
-    );
+    assert_eq!(unchanged.body["profile"]["avoid"], json!(["nuts", "sesame"]));
 
     let confirmed = json!({"version": 1, "avoid": ["sesame"], "allowWeakerRestrictions": true});
     let reply = patch_profile(&app, &cook, confirmed).await;

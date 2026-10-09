@@ -13,6 +13,25 @@ pub struct Config {
     /// Only for projects still on the legacy shared secret.
     pub supabase_jwt_secret: Option<String>,
     pub min_app_version: String,
+    /// The folder holding Tomi's library files.
+    pub library_dir: String,
+    pub ai: AiConfig,
+    pub photos: PhotoConfig,
+}
+
+/// Without a key, the scan is unavailable and specials rank without AI.
+#[derive(Debug, Clone)]
+pub struct AiConfig {
+    pub gemini_api_key: Option<String>,
+    pub gemini_model: String,
+}
+
+/// Without a secret key, no photo can be kept for the dataset.
+#[derive(Debug, Clone)]
+pub struct PhotoConfig {
+    /// Supabase's secret (service role) key. Server only, never the app.
+    pub supabase_secret_key: Option<String>,
+    pub bucket: String,
 }
 
 impl Config {
@@ -25,7 +44,25 @@ impl Config {
             supabase_url: required("SUPABASE_URL")?,
             supabase_jwt_secret: read("SUPABASE_JWT_SECRET"),
             min_app_version: optional("MIN_APP_VERSION", "1.0.0"),
+            library_dir: optional("LIBRARY_DIR", "library"),
+            ai: AiConfig::from_env(),
+            photos: PhotoConfig::from_env(),
         })
+    }
+}
+
+impl AiConfig {
+    fn from_env() -> Self {
+        AiConfig { gemini_api_key: read("GEMINI_API_KEY"), gemini_model: optional("GEMINI_MODEL", "gemini-3.8-flash") }
+    }
+}
+
+impl PhotoConfig {
+    fn from_env() -> Self {
+        PhotoConfig {
+            supabase_secret_key: read("SUPABASE_SECRET_KEY"),
+            bucket: optional("PHOTO_BUCKET", "fridge-photos"),
+        }
     }
 }
 

@@ -110,7 +110,39 @@ curl -s -X PATCH localhost:8080/v1/profile -H "authorization: Bearer $TOKEN" \
 Delete the test user and turn email sign-up back off when you are done, if
 Tomi will not offer email.
 
-## 8. Deploying to Cloud Run
+## 8. The photo bucket, for the dataset
+
+Only needed if cooks may agree to keep their fridge photos.
+
+1. **Storage → New bucket**, named `fridge-photos`. Leave **Public bucket**
+   off. Set the file size limit to 10 MB and the allowed types to
+   `image/jpeg, image/png`.
+2. Add no storage policies. Only the server writes and reads, with the
+   secret key, which bypasses them; the app's keys can do nothing there.
+3. **Project Settings → API Keys:** copy the secret key (`sb_secret_...`,
+   or the legacy `service_role` key) into `SUPABASE_SECRET_KEY` on the
+   server. It can read and delete everything in the project: never put it
+   in the app, a chat or git.
+
+The server sends the key both as `apikey` and as a bearer token. Check a
+first upload in **Storage → fridge-photos** after a test scan; I could not
+test against a real project.
+
+The free plan has 1 GB of storage. A fridge photo is around 1 to 3 MB, so
+plan to upgrade before the dataset grows.
+
+## 9. Gemini
+
+1. Create a key in Google AI Studio (aistudio.google.com) and put it in
+   `GEMINI_API_KEY` on the server.
+2. `GEMINI_MODEL` defaults to `gemini-3.8-flash`. If Google says the model
+   is not found or not free, pick a current Flash model from Google's model
+   list.
+3. **Use only your own test photos on the free tier.** Google may use what
+   is sent there to improve its models. Switch the project to paid billing
+   before real cooks scan, and before keeping anything you plan to sell.
+
+## 10. Deploying to Cloud Run
 
 Store `DATABASE_URL` in Secret Manager, never as a plain environment
 variable in a script you commit:
@@ -118,7 +150,7 @@ variable in a script you commit:
 ```sh
 gcloud run deploy tomi-api --source . --region europe-west3 \
   --set-env-vars SUPABASE_URL=https://<project-ref>.supabase.co \
-  --set-secrets DATABASE_URL=tomi-database-url:latest \
+  --set-secrets DATABASE_URL=tomi-database-url:latest,GEMINI_API_KEY=tomi-gemini-key:latest,SUPABASE_SECRET_KEY=tomi-supabase-secret:latest \
   --allow-unauthenticated
 ```
 

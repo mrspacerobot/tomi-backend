@@ -1,42 +1,68 @@
-//! A test server, signed tokens and a small client to call it with.
+//! A test server with fakes for the model and the photo store, and tokens.
 
-use axum::body::Body;
-use axum::http::{HeaderMap, Method, Request, StatusCode};
+use crate::fakes::{FakeAi, FakeStore};
 use axum::Router;
-use http_body_util::BodyExt;
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use serde_json::{json, Value};
 use sqlx::PgPool;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tomi_api::ai::Ai;
 use tomi_api::auth::Verifier;
-use tomi_api::{app, AppState};
-use tower::ServiceExt;
+use tomi_api::domain::library::Library;
+use tomi_api::storage::PhotoStore;
+use tomi_api::{app, library_files, AppState};
 use uuid::Uuid;
+
+pub use crate::client::{call, get, patch_profile, Call, Reply};
+use axum::http::Method;
 
 pub const PROJECT: &str = "https://test-project.supabase.co";
 const SECRET: &str = "test-only-shared-secret-not-used-anywhere-else";
 
-/// A server that accepts tokens signed with the test secret.
-pub fn server(pool: PgPool) -> Router {
-    let verifier = Verifier::new(PROJECT, Some(SECRET)).unwrap();
-    server_with(pool, verifier)
+/// What a test server is built from. The default accepts tokens signed
+/// with the test secret and uses a fake model and a fake photo store.
+pub struct Setup {
+    pub verifier: Verifier,
+    pub ai: Arc<dyn Ai>,
+    pub photos: Arc<dyn PhotoStore>,
 }
 
-pub fn server_with(pool: PgPool, verifier: Verifier) -> Router {
+impl Default for Setup {
+    fn default() -> Self {
+        Setup {
+            verifier: Verifier::new(PROJECT, Some(SECRET)).unwrap(),
+            ai: Arc::new(FakeAi::default()),
+            photos: Arc::new(FakeStore::default()),
+        }
+    }
+}
+
+pub fn server(pool: PgPool) -> Router {
+    server_with(pool, Setup::default())
+}
+
+pub fn server_with(pool: PgPool, setup: Setup) -> Router {
     let state = AppState {
         db: pool,
-        verifier: Arc::new(verifier),
+        verifier: Arc::new(setup.verifier),
         min_app_version: "1.2.0".into(),
+        library: Arc::new(shipped_library()),
+        ai: setup.ai,
+        photos: setup.photos,
     };
     app(state)
 }
 
+fn shipped_library() -> Library {
+    let files = library_files::read(Path::new("library")).unwrap();
+    Library::parse(&files).unwrap().0
+}
+
 pub fn now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs()
+    let since_epoch = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    since_epoch.as_secs()
 }
 
 /// The claims Supabase puts on a signed-in user's token.
@@ -61,44 +87,40 @@ pub fn new_cook() -> String {
     token_with(&claims(Uuid::new_v4()))
 }
 
-pub struct Reply {
-    pub status: StatusCode,
-    pub headers: HeaderMap,
-    pub body: Value,
+/// The cook's own id inside Tomi, once they have called the API.
+pub async fn user_id(pool: &PgPool, subject: Uuid) -> Uuid {
+    let query = "select id from tomi.users where auth_subject = $1";
+    sqlx::query_scalar(query).bind(subject).fetch_one(pool).await.unwrap()
 }
 
-pub async fn get(app: &Router, path: &str, token: Option<&str>) -> Reply {
-    let request = builder(Method::GET, path, token)
-        .body(Body::empty())
-        .unwrap();
-    send(app, request).await
+/// The cook agrees to the current text for a purpose, as the app would.
+pub async fn agree(app: &Router, token: &str, purpose: &str) -> Reply {
+    let path = format!("/v1/consents/{purpose}");
+    let body = Some(("application/json", br#"{"version": 1}"#.to_vec()));
+    call(app, Call { method: Method::PUT, path: &path, token: Some(token), body }).await
 }
 
-pub async fn patch_profile(app: &Router, token: &str, body: Value) -> Reply {
-    let builder = builder(Method::PATCH, "/v1/profile", Some(token));
-    let request = builder
-        .header("content-type", "application/json")
-        .body(Body::from(body.to_string()));
-    send(app, request.unwrap()).await
+/// A small JPEG whose EXIF segment holds a location.
+pub fn jpeg_with_location() -> Vec<u8> {
+    let mut bytes = vec![0xFF, 0xD8];
+    bytes.extend([0xFF, 0xE0, 0x00, 0x04, b'J', b'F']);
+    bytes.extend([0xFF, 0xE1, 0x00, 0x07, b'G', b'P', b'S', b'4', b'7']);
+    bytes.extend([0xFF, 0xDA, 0x00, 0x02, 0x11, 0x22, 0xFF, 0xD9]);
+    bytes
 }
 
-fn builder(method: Method, path: &str, token: Option<&str>) -> axum::http::request::Builder {
-    let builder = Request::builder().method(method).uri(path);
-    match token {
-        Some(token) => builder.header("authorization", format!("Bearer {token}")),
-        None => builder,
-    }
+/// The photo the tests scan, with its content type.
+pub fn jpeg() -> (&'static str, Vec<u8>) {
+    ("image/jpeg", jpeg_with_location())
 }
 
-async fn send(app: &Router, request: Request<Body>) -> Reply {
-    let response = app.clone().oneshot(request).await.unwrap();
-    let status = response.status();
-    let headers = response.headers().clone();
-    let bytes = response.into_body().collect().await.unwrap().to_bytes();
-    let body = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
-    Reply {
-        status,
-        headers,
-        body,
-    }
+/// Scans a photo given as content type and bytes.
+pub async fn scan(app: &Router, token: &str, upload: (&str, Vec<u8>)) -> Reply {
+    let body = Some(upload);
+    call(app, Call { method: Method::POST, path: "/v1/scans", token: Some(token), body }).await
+}
+
+pub async fn special(app: &Router, token: &str, body: Value) -> Reply {
+    let body = Some(("application/json", body.to_string().into_bytes()));
+    call(app, Call { method: Method::POST, path: "/v1/specials", token: Some(token), body }).await
 }

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "equipment": [
+    { "id": "stovetop", "name": {"en": "Stovetop"}, "summary": {"en": "Every pan dish"}, "assumed": true },
+    { "id": "oven", "name": {"en": "Oven"}, "summary": {"en": "Roasting and braising"}, "assumed": true },
+    { "id": "microwave", "name": {"en": "Microwave"}, "summary": {"en": "Quick melts and reheats"}, "assumed": true },
+    { "id": "thermometer", "name": {"en": "Thermometer"}, "summary": {"en": "Doneness by number"}, "assumed": false },
+    { "id": "blender", "name": {"en": "Blender"}, "summary": {"en": "Smooth soups and sauces"}, "assumed": false },
+    { "id": "rice-cooker", "name": {"en": "Rice cooker"}, "summary": {"en": "One less pot to watch"}, "assumed": false }
+  ]
+}

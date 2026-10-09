@@ -9,17 +9,7 @@ fn accepts_ids_of_tomis_library() {
 
 #[test]
 fn refuses_ids_of_the_wrong_shape() {
-    let refused = [
-        "",
-        " ",
-        "Nuts",
-        "olive oil",
-        "olive--oil",
-        "-nuts",
-        "nuts-",
-        "fact/nuts",
-        "nüsse",
-    ];
+    let refused = ["", " ", "Nuts", "olive oil", "olive--oil", "-nuts", "nuts-", "fact/nuts", "nüsse"];
     for raw in refused {
         assert!(SavedId::parse(raw).is_err(), "{raw:?}");
     }

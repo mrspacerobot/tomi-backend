@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "facts": [
+    "meat",
+    "pork",
+    "fish",
+    "shellfish",
+    "dairy",
+    "egg",
+    "animalProduct",
+    "slaughterProduct",
+    "alcohol",
+    "nuts",
+    "gluten",
+    "soy",
+    "sesame"
+  ],
+  "avoidItems": [
+    { "id": "nuts", "name": {"en": "Nuts"}, "triggeredBy": ["nuts"] },
+    { "id": "dairy", "name": {"en": "Dairy"}, "triggeredBy": ["dairy"] },
+    { "id": "gluten", "name": {"en": "Gluten"}, "triggeredBy": ["gluten"] },
+    { "id": "eggs", "name": {"en": "Eggs"}, "triggeredBy": ["egg"] },
+    { "id": "shellfish", "name": {"en": "Shellfish"}, "triggeredBy": ["shellfish"] },
+    { "id": "fish", "name": {"en": "Fish"}, "triggeredBy": ["fish"] },
+    { "id": "soy", "name": {"en": "Soy"}, "triggeredBy": ["soy"] },
+    { "id": "sesame", "name": {"en": "Sesame"}, "triggeredBy": ["sesame"] },
+    { "id": "pork", "name": {"en": "Pork"}, "triggeredBy": ["pork"] },
+    { "id": "alcohol", "name": {"en": "Alcohol"}, "triggeredBy": ["alcohol"] }
+  ],
+  "diets": [
+    { "id": "vegetarian", "name": {"en": "Vegetarian"}, "summary": {"en": "No meat or fish"}, "excludes": ["meat", "pork", "slaughterProduct", "fish", "shellfish"] },
+    { "id": "vegan", "name": {"en": "Vegan"}, "summary": {"en": "Plants only"}, "excludes": ["meat", "pork", "slaughterProduct", "fish", "shellfish", "dairy", "egg", "animalProduct"] },
+    { "id": "pescatarian", "name": {"en": "Pescatarian"}, "summary": {"en": "Fish, but no meat"}, "excludes": ["meat", "pork", "slaughterProduct"] }
+  ],
+  "ingredients": [
+    { "id": "olive-oil", "name": {"en": "Olive oil"}, "contains": [] },
+    { "id": "sunflower-oil", "name": {"en": "Sunflower oil"}, "contains": [] },
+    { "id": "salt", "name": {"en": "Salt"}, "contains": [] },
+    { "id": "black-pepper", "name": {"en": "Black pepper"}, "contains": [] },
+    { "id": "chili-flakes", "name": {"en": "Chili flakes"}, "contains": [] },
+    { "id": "rice", "name": {"en": "Rice"}, "contains": [] },
+    { "id": "pasta", "name": {"en": "Pasta"}, "contains": ["gluten", "egg"] },
+    { "id": "flour", "name": {"en": "Flour"}, "contains": ["gluten"] },
+    { "id": "garlic", "name": {"en": "Garlic"}, "contains": [] },
+    { "id": "onion", "name": {"en": "Onion"}, "contains": [] },
+    { "id": "lemon", "name": {"en": "Lemon"}, "contains": [] },
+    { "id": "spinach", "name": {"en": "Spinach"}, "contains": [] },
+    { "id": "tinned-tomatoes", "name": {"en": "Tinned tomatoes"}, "contains": [] },
+    { "id": "soy-sauce", "name": {"en": "Soy sauce"}, "contains": ["soy", "gluten"] },
+    { "id": "stock", "name": {"en": "Stock"}, "contains": ["meat", "gluten"] },
+    { "id": "chicken-stock", "name": {"en": "Chicken stock"}, "contains": ["meat", "gluten"] },
+    { "id": "vegetable-stock", "name": {"en": "Vegetable stock"}, "contains": ["gluten"] },
+    { "id": "white-wine", "name": {"en": "White wine"}, "contains": ["alcohol", "slaughterProduct"] },
+    { "id": "butter", "name": {"en": "Butter"}, "contains": ["dairy"] },
+    { "id": "egg", "name": {"en": "Egg"}, "contains": ["egg"] },
+    { "id": "parmesan", "name": {"en": "Parmesan"}, "contains": ["dairy", "slaughterProduct"] },
+    { "id": "vegetarian-hard-cheese", "name": {"en": "Vegetarian hard cheese"}, "contains": ["dairy"] },
+    { "id": "chicken-thigh", "name": {"en": "Chicken thigh"}, "contains": ["meat"] }
+  ]
+}

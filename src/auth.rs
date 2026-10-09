@@ -62,11 +62,7 @@ impl Verifier {
     /// For tests: a verifier that knows its keys and never fetches.
     pub fn with_keys(project_url: &str, jwks: &JwkSet) -> Self {
         let base = project_url.trim_end_matches('/');
-        Verifier {
-            issuer: format!("{base}/auth/v1"),
-            shared_secret: None,
-            keys: KeySet::fixed(jwks),
-        }
+        Verifier { issuer: format!("{base}/auth/v1"), shared_secret: None, keys: KeySet::fixed(jwks) }
     }
 
     /// Returns the Supabase user id of a valid token.
@@ -96,10 +92,7 @@ impl Verifier {
             return Err(AuthError::Invalid);
         };
         let key = secret.clone();
-        Ok(VerifyingKey {
-            key,
-            algorithm: Algorithm::HS256,
-        })
+        Ok(VerifyingKey { key, algorithm: Algorithm::HS256 })
     }
 
     fn decode_claims(&self, token: &str, key: &VerifyingKey) -> Result<Claims, AuthError> {
@@ -107,8 +100,7 @@ impl Verifier {
         validation.set_audience(&[SIGNED_IN]);
         validation.set_issuer(&[&self.issuer]);
         validation.set_required_spec_claims(&["exp", "sub", "aud", "iss"]);
-        let data =
-            decode::<Claims>(token, &key.key, &validation).map_err(|_| AuthError::Invalid)?;
+        let data = decode::<Claims>(token, &key.key, &validation).map_err(|_| AuthError::Invalid)?;
         Ok(data.claims)
     }
 }

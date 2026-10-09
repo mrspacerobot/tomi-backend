@@ -1,9 +1,6 @@
 //! The rules of AGENTS.md that a test can check, so they are not hopes.
 
-#![expect(
-    clippy::unwrap_used,
-    reason = "a failed unwrap in a test is a failed test, not a crash"
-)]
+#![expect(clippy::unwrap_used, reason = "a failed unwrap in a test is a failed test, not a crash")]
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -13,25 +10,13 @@ const MAX_FILE_LINES: usize = 200;
 
 /// Words that mean a file in `src/domain` reaches for the web, the
 /// database or the clock. Rules take what they need as arguments.
-const FORBIDDEN_IN_DOMAIN: [&str; 9] = [
-    "axum",
-    "sqlx",
-    "reqwest",
-    "tokio",
-    "tower",
-    "SystemTime::now",
-    "Instant::now",
-    "Utc::now",
-    "Local::now",
-];
+const FORBIDDEN_IN_DOMAIN: [&str; 9] =
+    ["axum", "sqlx", "reqwest", "tokio", "tower", "SystemTime::now", "Instant::now", "Utc::now", "Local::now"];
 
 #[test]
 fn no_file_is_longer_than_the_limit() {
     let mut too_long = Vec::new();
-    for file in rust_files(Path::new("src"))
-        .into_iter()
-        .chain(rust_files(Path::new("tests")))
-    {
+    for file in rust_files(Path::new("src")).into_iter().chain(rust_files(Path::new("tests"))) {
         let lines = read(&file).lines().count();
         if lines > MAX_FILE_LINES {
             too_long.push(format!("{} has {lines} lines", file.display()));
@@ -45,10 +30,7 @@ fn domain_rules_need_no_web_database_or_clock() {
     let mut found = Vec::new();
     for file in rust_files(Path::new("src/domain")) {
         let text = read(&file);
-        for word in FORBIDDEN_IN_DOMAIN
-            .iter()
-            .filter(|word| text.contains(*word))
-        {
+        for word in FORBIDDEN_IN_DOMAIN.iter().filter(|word| text.contains(*word)) {
             found.push(format!("{} uses {word}", file.display()));
         }
     }

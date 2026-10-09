@@ -1,11 +1,15 @@
 //! Starts the Tomi API: reads settings, connects, migrates, serves.
 
 use sqlx::PgPool;
+use std::path::Path;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+use tomi_api::ai::{Ai, Gemini, NoAi};
 use tomi_api::auth::Verifier;
-use tomi_api::config::Config;
-use tomi_api::{app, db, AppState};
+use tomi_api::config::{AiConfig, Config, PhotoConfig};
+use tomi_api::domain::library::Library;
+use tomi_api::storage::{NoStore, PhotoStore, SupabaseStore};
+use tomi_api::{app, db, library_files, AppState};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -23,10 +27,7 @@ fn start_logging() {
         Ok(filter) => filter,
         Err(_) => EnvFilter::new("info"),
     };
-    tracing_subscriber::fmt()
-        .json()
-        .with_env_filter(filter)
-        .init();
+    tracing_subscriber::fmt().json().with_env_filter(filter).init();
 }
 
 async fn run() -> Result<(), String> {
@@ -40,18 +41,12 @@ async fn run() -> Result<(), String> {
     server.await.map_err(|error| error.to_string())
 }
 
-#[expect(
-    clippy::cognitive_complexity,
-    reason = "tracing's macro expands into branches no reader sees"
-)]
+#[expect(clippy::cognitive_complexity, reason = "tracing's macro expands into branches no reader sees")]
 fn log_start_failure(error: &str) {
     tracing::error!(%error, "could not start");
 }
 
-#[expect(
-    clippy::cognitive_complexity,
-    reason = "tracing's macro expands into branches no reader sees"
-)]
+#[expect(clippy::cognitive_complexity, reason = "tracing's macro expands into branches no reader sees")]
 fn log_listening(port: u16) {
     tracing::info!(port, "listening");
 }
@@ -74,7 +69,44 @@ fn state(config: &Config, pool: PgPool) -> Result<AppState, String> {
         db: pool,
         verifier: Arc::new(verifier),
         min_app_version: config.min_app_version.clone(),
+        library: Arc::new(library(&config.library_dir)?),
+        ai: ai(&config.ai)?,
+        photos: photos(config.supabase_url.as_str(), &config.photos)?,
     })
+}
+
+/// The library, or no start at all: without it nothing can be offered.
+fn library(folder: &str) -> Result<Library, String> {
+    let files = library_files::read(Path::new(folder));
+    let files = files.map_err(|error| format!("library in {folder}: {error}"))?;
+    let (library, left_out) = Library::parse(&files).map_err(|error| format!("library: {error}"))?;
+    for reason in &left_out {
+        log_lesson_left_out(reason);
+    }
+    Ok(library)
+}
+
+fn ai(config: &AiConfig) -> Result<Arc<dyn Ai>, String> {
+    let Some(key) = &config.gemini_api_key else {
+        return Ok(Arc::new(NoAi));
+    };
+    let gemini = Gemini::new(key.clone(), config.gemini_model.clone());
+    let gemini = gemini.map_err(|error| format!("ai: {error}"))?;
+    Ok(Arc::new(gemini))
+}
+
+fn photos(project_url: &str, config: &PhotoConfig) -> Result<Arc<dyn PhotoStore>, String> {
+    let Some(key) = &config.supabase_secret_key else {
+        return Ok(Arc::new(NoStore));
+    };
+    let store = SupabaseStore::new(project_url, &config.bucket, key.clone());
+    let store = store.map_err(|error| format!("photo storage: {error}"))?;
+    Ok(Arc::new(store))
+}
+
+#[expect(clippy::cognitive_complexity, reason = "tracing's macro expands into branches no reader sees")]
+fn log_lesson_left_out(reason: &str) {
+    tracing::warn!(reason, "a lesson was left out of the library");
 }
 
 /// Cloud Run sends SIGTERM before stopping an instance; Ctrl-C locally.

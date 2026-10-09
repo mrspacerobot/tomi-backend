@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "libraryVersion": 1,
+  "courses": [
+    { "id": "foundations", "title": { "en": "Foundations" } },
+    { "id": "heat", "title": { "en": "Heat control" } },
+    { "id": "sauces", "title": { "en": "Sauces" } },
+    { "id": "together", "title": { "en": "Putting it together" } }
+  ],
+  "skills": [
+    {
+      "id": "knife-cuts",
+      "course": "foundations",
+      "name": { "en": "Knife cuts" },
+      "summary": { "en": "Even pieces cook evenly" },
+      "prerequisites": [],
+      "levels": [
+        { "number": 1, "name": { "en": "Mirepoix" } },
+        { "number": 2, "name": { "en": "Brunoise" } },
+        { "number": 3, "name": { "en": "Julienne" } }
+      ]
+    },
+    {
+      "id": "eggs",
+      "course": "foundations",
+      "name": { "en": "Eggs" },
+      "summary": { "en": "Low heat, gentle hands" },
+      "prerequisites": [],
+      "levels": [
+        { "number": 1, "name": { "en": "Soft scramble" } },
+        { "number": 2, "name": { "en": "Poached egg" } },
+        { "number": 3, "name": { "en": "Rolled omelette" } }
+      ]
+    },
+    {
+      "id": "stocks",
+      "course": "foundations",
+      "name": { "en": "Stocks" },
+      "summary": { "en": "Mirepoix, bones and a slow simmer" },
+      "prerequisites": ["knife-cuts"],
+      "levels": [
+        { "number": 1, "name": { "en": "Vegetable stock" } },
+        { "number": 2, "name": { "en": "White chicken stock" } },
+        { "number": 3, "name": { "en": "Brown stock" } }
+      ]
+    },
+    {
+      "id": "saute",
+      "course": "heat",
+      "name": { "en": "Sauté" },
+      "summary": { "en": "From a gentle sweat to deep color" },
+      "prerequisites": ["knife-cuts"],
+      "levels": [
+        { "number": 1, "name": { "en": "Sweat without color" } },
+        { "number": 2, "name": { "en": "Sauté in a hot pan" } },
+        { "number": 3, "name": { "en": "Caramelized onions" } }
+      ]
+    },
+    {
+      "id": "sear",
+      "course": "heat",
+      "name": { "en": "Sear" },
+      "summary": { "en": "Dry surface, hot pan, hands off" },
+      "prerequisites": ["saute"],
+      "levels": [
+        { "number": 1, "name": { "en": "Chicken thighs, skin down" } },
+        { "number": 2, "name": { "en": "Steak to temperature" } },
+        { "number": 3, "name": { "en": "Crisp fish skin" } }
+      ]
+    },
+    {
+      "id": "poach",
+      "course": "heat",
+      "name": { "en": "Poach" },
+      "summary": { "en": "Barely trembling, never boiling" },
+      "prerequisites": ["stocks"],
+      "levels": [
+        { "number": 1, "name": { "en": "Chicken in stock" } },
+        { "number": 2, "name": { "en": "Fish in court-bouillon" } },
+        { "number": 3, "name": { "en": "Pears in syrup" } }
+      ]
+    },
+    {
+      "id": "roux",
+      "course": "sauces",
+      "name": { "en": "Roux" },
+      "summary": { "en": "Butter and flour, cooked to a color" },
+      "prerequisites": ["stocks"],
+      "levels": [
+        { "number": 1, "name": { "en": "White roux for béchamel" } },
+        { "number": 2, "name": { "en": "Blond roux for velouté" } },
+        { "number": 3, "name": { "en": "Brown roux" } }
+      ]
+    },
+    {
+      "id": "pan-sauce",
+      "course": "sauces",
+      "name": { "en": "Pan sauces" },
+      "summary": { "en": "Deglaze, reduce, monter au beurre" },
+      "prerequisites": ["sear"],
+      "levels": [
+        { "number": 1, "name": { "en": "Deglaze the fond" } },
+        { "number": 2, "name": { "en": "Reduce to coat a spoon" } },
+        { "number": 3, "name": { "en": "Monter au beurre" } }
+      ]
+    },
+    {
+      "id": "emulsions",
+      "course": "sauces",
+      "name": { "en": "Emulsions" },
+      "summary": { "en": "Oil and water, made to hold" },
+      "prerequisites": ["eggs"],
+      "levels": [
+        { "number": 1, "name": { "en": "Vinaigrette" } },
+        { "number": 2, "name": { "en": "Mayonnaise" } },
+        { "number": 3, "name": { "en": "Hollandaise" } },
+        { "number": 4, "name": { "en": "Beurre blanc" } }
+      ]
+    },
+    {
+      "id": "braise",
+      "course": "together",
+      "name": { "en": "Braise" },
+      "summary": { "en": "Sear, deglaze, then low and slow" },
+      "prerequisites": ["stocks", "pan-sauce"],
+      "levels": [
+        { "number": 1, "name": { "en": "Braised leeks" } },
+        { "number": 2, "name": { "en": "Chicken in wine" } },
+        { "number": 3, "name": { "en": "Beef in red wine" } }
+      ]
+    },
+    {
+      "id": "roast",
+      "course": "together",
+      "name": { "en": "Roast" },
+      "summary": { "en": "Dry heat, basting and a jus" },
+      "prerequisites": ["sear"],
+      "levels": [
+        { "number": 1, "name": { "en": "Roasted roots" } },
+        { "number": 2, "name": { "en": "Roast chicken and jus" } },
+        { "number": 3, "name": { "en": "Butter-basted pork chop" } }
+      ]
+    },
+    {
+      "id": "gratin",
+      "course": "together",
+      "name": { "en": "Gratin" },
+      "summary": { "en": "A creamy bake with a golden crust" },
+      "prerequisites": ["knife-cuts", "roux"],
+      "levels": [
+        { "number": 1, "name": { "en": "Potato gratin" } },
+        { "number": 2, "name": { "en": "Cauliflower in béchamel" } },
+        { "number": 3, "name": { "en": "Crumb crust" } }
+      ]
+    }
+  ]
+}

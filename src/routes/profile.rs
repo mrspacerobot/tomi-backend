@@ -1,6 +1,6 @@
 //! `GET` and `PATCH /v1/profile`: the cook's profile and its version.
 
-use super::CurrentUser;
+use super::{json_body, CurrentUser};
 use crate::db::profile::{self as store, ProfileWrite, StoredProfile};
 use crate::domain::profile::{self, PatchError, Profile, ProfilePatch, PROFILE_SCHEMA_VERSION};
 use crate::error::AppError;
@@ -25,11 +25,7 @@ struct ProfileResponse {
 
 impl From<StoredProfile> for ProfileResponse {
     fn from(stored: StoredProfile) -> Self {
-        ProfileResponse {
-            version: stored.version,
-            schema_version: PROFILE_SCHEMA_VERSION,
-            profile: stored.profile,
-        }
+        ProfileResponse { version: stored.version, schema_version: PROFILE_SCHEMA_VERSION, profile: stored.profile }
     }
 }
 
@@ -46,15 +42,11 @@ async fn change(
     CurrentUser(user_id): CurrentUser,
     body: Result<Json<ProfilePatch>, JsonRejection>,
 ) -> Result<Json<ProfileResponse>, AppError> {
-    let patch = readable(body)?;
+    let patch = json_body(body)?;
     let expected_version = patch.version;
     let stored = store::read(&state.db, user_id).await?;
     let profile = changed(stored, patch)?;
-    let write = ProfileWrite {
-        user_id,
-        expected_version,
-        profile,
-    };
+    let write = ProfileWrite { user_id, expected_version, profile };
     let saved = save(&state, write).await?;
     Ok(Json(saved.into()))
 }
@@ -73,20 +65,10 @@ fn changed(stored: StoredProfile, patch: ProfilePatch) -> Result<Profile, AppErr
 async fn save(state: &AppState, write: ProfileWrite) -> Result<StoredProfile, AppError> {
     if store::write(&state.db, &write).await? {
         let version = write.expected_version + 1;
-        return Ok(StoredProfile {
-            version,
-            profile: write.profile,
-        });
+        return Ok(StoredProfile { version, profile: write.profile });
     }
     let latest = store::read(&state.db, write.user_id).await?;
     Err(conflict(write.expected_version, latest))
-}
-
-fn readable(body: Result<Json<ProfilePatch>, JsonRejection>) -> Result<ProfilePatch, AppError> {
-    match body {
-        Ok(Json(patch)) => Ok(patch),
-        Err(rejection) => Err(AppError::Invalid(vec![rejection.body_text()])),
-    }
 }
 
 fn refusal(error: PatchError) -> AppError {
@@ -98,8 +80,5 @@ fn refusal(error: PatchError) -> AppError {
 
 fn conflict(expected: i64, stored: StoredProfile) -> AppError {
     let current = serde_json::to_value(ProfileResponse::from(stored));
-    AppError::VersionConflict {
-        expected,
-        current: current.unwrap_or_default(),
-    }
+    AppError::VersionConflict { expected, current: current.unwrap_or_default() }
 }

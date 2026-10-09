@@ -10,30 +10,19 @@ fn patch(value: serde_json::Value) -> ProfilePatch {
 }
 
 fn vegetarian_without_nuts() -> Profile {
-    Profile {
-        diet: Some(id("vegetarian")),
-        avoid: [id("nuts")].into(),
-        ..Profile::default()
-    }
+    Profile { diet: Some(id("vegetarian")), avoid: [id("nuts")].into(), ..Profile::default() }
 }
 
 #[test]
 fn adding_a_restriction_is_allowed() {
     let start = vegetarian_without_nuts();
-    let next = apply(
-        &start,
-        patch(json!({"version": 1, "avoid": ["nuts", "sesame"]})),
-    )
-    .unwrap();
+    let next = apply(&start, patch(json!({"version": 1, "avoid": ["nuts", "sesame"]}))).unwrap();
     assert!(next.avoid.contains(&id("sesame")));
 }
 
 #[test]
 fn dropping_an_avoid_item_silently_is_refused() {
-    let result = apply(
-        &vegetarian_without_nuts(),
-        patch(json!({"version": 1, "avoid": []})),
-    );
+    let result = apply(&vegetarian_without_nuts(), patch(json!({"version": 1, "avoid": []})));
     let removed = vec!["avoid: nuts".to_string()];
     assert_eq!(result, Err(PatchError::WeakensRestrictions { removed }));
 }
@@ -41,10 +30,7 @@ fn dropping_an_avoid_item_silently_is_refused() {
 #[test]
 fn clearing_or_changing_the_diet_silently_is_refused() {
     for diet in [json!(null), json!("pescatarian")] {
-        let result = apply(
-            &vegetarian_without_nuts(),
-            patch(json!({"version": 1, "diet": diet})),
-        );
+        let result = apply(&vegetarian_without_nuts(), patch(json!({"version": 1, "diet": diet})));
         let removed = vec!["diet: vegetarian".to_string()];
         assert_eq!(result, Err(PatchError::WeakensRestrictions { removed }));
     }
@@ -69,10 +55,7 @@ fn a_patch_without_restrictions_leaves_them_alone() {
 
 #[test]
 fn null_clears_a_field_and_absence_keeps_it() {
-    let start = Profile {
-        equipment: Some([id("wok")].into()),
-        ..Profile::default()
-    };
+    let start = Profile { equipment: Some([id("wok")].into()), ..Profile::default() };
     let cleared = apply(&start, patch(json!({"version": 1, "equipment": null}))).unwrap();
     assert_eq!(cleared.equipment, None);
     let kept = apply(&start, patch(json!({"version": 1}))).unwrap();

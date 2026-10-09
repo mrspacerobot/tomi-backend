@@ -12,10 +12,7 @@ const FIND_OR_CREATE: &str = "
 
 /// Finds or creates the Tomi user for a Supabase user, and returns our own id.
 pub async fn for_subject(pool: &PgPool, subject: Uuid) -> Result<Uuid, AppError> {
-    let (id, deleted): (Uuid, bool) = sqlx::query_as(FIND_OR_CREATE)
-        .bind(subject)
-        .fetch_one(pool)
-        .await?;
+    let (id, deleted): (Uuid, bool) = sqlx::query_as(FIND_OR_CREATE).bind(subject).fetch_one(pool).await?;
     if deleted {
         return Err(AppError::AccountDeleted);
     }

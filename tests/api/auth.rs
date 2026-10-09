@@ -1,4 +1,4 @@
-use crate::helpers::{claims, get, now, server, server_with, token_with, PROJECT};
+use crate::helpers::{claims, get, now, server, server_with, token_with, Setup, PROJECT};
 use axum::http::StatusCode;
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use p256::pkcs8::EncodePrivateKey;
@@ -54,7 +54,7 @@ async fn asymmetric_tokens_are_checked_against_the_key_set(pool: PgPool) {
     jwk["kid"] = json!("key-1");
     jwk["alg"] = json!("ES256");
     let jwks = serde_json::from_value(json!({ "keys": [jwk] })).unwrap();
-    let app = server_with(pool, Verifier::with_keys(PROJECT, &jwks));
+    let app = server_with(pool, Setup { verifier: Verifier::with_keys(PROJECT, &jwks), ..Setup::default() });
     let signing = EncodingKey::from_ec_der(secret.to_pkcs8_der().unwrap().as_bytes());
     let sign = |kid: &str| {
         let mut header = Header::new(Algorithm::ES256);
@@ -73,17 +73,10 @@ async fn a_deleted_account_is_refused(pool: PgPool) {
     let app = server(pool.clone());
     let subject = Uuid::new_v4();
     let token = token_with(&claims(subject));
-    assert_eq!(
-        get(&app, "/v1/profile", Some(&token)).await.status,
-        StatusCode::OK
-    );
+    assert_eq!(get(&app, "/v1/profile", Some(&token)).await.status, StatusCode::OK);
 
     let delete = "update tomi.users set deleted_at = now() where auth_subject = $1";
-    sqlx::query(delete)
-        .bind(subject)
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query(delete).bind(subject).execute(&pool).await.unwrap();
     let reply = get(&app, "/v1/profile", Some(&token)).await;
     assert_eq!(reply.status, StatusCode::FORBIDDEN);
     assert_eq!(reply.body["error"]["code"], "account_deleted");
