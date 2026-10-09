@@ -1,6 +1,7 @@
 use super::*;
 use crate::domain::library::tests::shipped_files;
 use crate::domain::library::Library;
+use crate::domain::progress::OpenLevels;
 
 const OMELETTE: &str = "spinach-hard-cheese-omelette";
 const PAN_SAUCE: &str = "seared-chicken-lemon-butter-pan-sauce";
@@ -17,9 +18,29 @@ fn ids(raw: &[&str]) -> BTreeSet<SavedId> {
     raw.iter().map(|item| id(item)).collect()
 }
 
+/// Every level of every skill open, so tests about food are not about progress.
+fn all_open(library: &Library) -> OpenLevels {
+    let levels = library
+        .catalog
+        .skills
+        .iter()
+        .flat_map(|skill| skill.levels.iter().map(|level| (skill.id.clone(), level.number)));
+    OpenLevels::from_levels(levels)
+}
+
 fn offered(profile: &Profile, available: &[&str]) -> Vec<Candidate> {
-    let tonight = Tonight { profile, available: ids(available) };
-    candidates(&library(), &tonight)
+    let library = library();
+    let open = all_open(&library);
+    let tonight = Tonight { profile, available: ids(available), open: &open };
+    candidates(&library, &tonight)
+}
+
+#[test]
+fn a_lesson_at_a_locked_level_is_never_offered() {
+    let library = library();
+    let open = OpenLevels::from_levels([(id("eggs"), 1)]);
+    let tonight = Tonight { profile: &Profile::default(), available: BTreeSet::new(), open: &open };
+    assert!(candidates(&library, &tonight).is_empty(), "the omelette is eggs level 3");
 }
 
 fn lesson_ids(found: &[Candidate]) -> Vec<String> {
@@ -43,7 +64,7 @@ fn a_listed_swap_makes_a_lesson_safe() {
     let profile = Profile { avoid: ids(&["alcohol"]), ..Profile::default() };
     let pan_sauce = offered(&profile, &[]).remove(0);
     assert_eq!(pan_sauce.lesson_id, id(PAN_SAUCE));
-    let swap = AppliedSwap { replace: id("white-wine"), with: id("chicken-stock") };
+    let swap = AppliedSwap { removed: id("white-wine"), added: id("chicken-stock") };
     assert_eq!(pan_sauce.swaps, vec![swap]);
     assert!(!pan_sauce.ingredients.contains(&id("white-wine")));
 }
@@ -58,7 +79,7 @@ fn a_lesson_with_no_safe_swap_is_left_out() {
 #[test]
 fn a_swap_at_hand_is_used_for_a_missing_ingredient() {
     let omelette = offered(&Profile::default(), &["olive-oil", "egg"]).remove(1);
-    let swap = AppliedSwap { replace: id("butter"), with: id("olive-oil") };
+    let swap = AppliedSwap { removed: id("butter"), added: id("olive-oil") };
     assert_eq!(omelette.swaps, vec![swap]);
     assert!(!omelette.missing.contains(&id("olive-oil")));
 }

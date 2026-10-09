@@ -5,18 +5,22 @@
 
 use crate::auth::{bearer, AuthError};
 use crate::db;
+use crate::domain::language::Language;
 use crate::error::AppError;
 use crate::AppState;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::FromRequestParts;
-use axum::http::header::AUTHORIZATION;
+use axum::http::header::{ACCEPT_LANGUAGE, AUTHORIZATION};
 use axum::http::request::Parts;
 use axum::{Json, Router};
+use std::convert::Infallible;
 use uuid::Uuid;
 
 mod bootstrap;
 mod consents;
 mod health;
+mod ingredients;
+mod options;
 mod profile;
 mod scans;
 mod specials;
@@ -25,6 +29,8 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .merge(health::router())
         .merge(bootstrap::router())
+        .merge(options::router())
+        .merge(ingredients::router())
         .merge(profile::router())
         .merge(consents::router())
         .merge(scans::router())
@@ -67,6 +73,18 @@ impl FromRequestParts<AppState> for Caller {
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, AppError> {
         let CurrentUser(user_id) = CurrentUser::from_request_parts(parts, state).await?;
         Ok(Caller { state: state.clone(), user_id })
+    }
+}
+
+/// The language the app asks for, English when it asks for none.
+pub struct CookLanguage(pub Language);
+
+impl<S: Send + Sync> FromRequestParts<S> for CookLanguage {
+    type Rejection = Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Infallible> {
+        let header = parts.headers.get(ACCEPT_LANGUAGE).and_then(|value| value.to_str().ok());
+        Ok(CookLanguage(Language::from_accept_language(header)))
     }
 }
 

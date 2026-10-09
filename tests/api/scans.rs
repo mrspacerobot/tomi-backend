@@ -22,7 +22,7 @@ async fn a_scan_returns_known_ingredients_and_plain_labels(pool: PgPool) {
     let reply = scan(&app, &cook, jpeg()).await;
     assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
     let items = &reply.body["items"];
-    assert_eq!(items[0], json!({"label": "eggs", "ingredient": "egg", "confidence": 0.9}));
+    assert_eq!(items[0], json!({"label": "eggs", "ingredient": {"id": "egg", "name": "Egg"}, "confidence": 0.9}));
     assert_eq!(items[1]["ingredient"], Value::Null);
     assert_eq!(reply.body["kept"], false);
 }

@@ -9,16 +9,20 @@ use crate::domain::ids::SavedId;
 use std::collections::BTreeMap;
 
 mod catalog;
+mod choices;
+mod equipment;
 mod lesson;
 mod table;
 #[cfg(test)]
 pub(crate) mod tests;
 mod text;
 
-pub use catalog::{Catalog, EquipmentList};
+pub use catalog::{Catalog, Course, Level, Skill};
+pub use choices::Choices;
+pub use equipment::{Equipment, EquipmentList};
 pub use lesson::{Lesson, LessonIngredient, Swap};
-pub use table::{IngredientTable, Refusal, Restrictions};
-pub use text::LocalizedText;
+pub use table::{IngredientTable, Listed, Refusal, Restrictions};
+pub use text::{Choice, LocalizedText};
 
 /// The library's files as text. Reading them from disk is the caller's job,
 /// so the rules here stay free of I/O.
@@ -26,6 +30,8 @@ pub struct LibraryFiles {
     pub catalog: String,
     pub ingredients: String,
     pub equipment: String,
+    /// The server's own `choices.json`: cuisines, experience and units.
+    pub choices: String,
     /// File name and text of every lesson file.
     pub lessons: Vec<(String, String)>,
 }
@@ -35,6 +41,7 @@ pub struct Library {
     pub table: IngredientTable,
     pub equipment: EquipmentList,
     pub catalog: Catalog,
+    pub choices: Choices,
     pub lessons: BTreeMap<SavedId, Lesson>,
 }
 
@@ -51,8 +58,9 @@ impl Library {
         let table = IngredientTable::parse(&files.ingredients).map_err(in_file("ingredients.json"))?;
         let equipment = EquipmentList::parse(&files.equipment).map_err(in_file("equipment.json"))?;
         let catalog = Catalog::parse(&files.catalog).map_err(in_file("catalog.json"))?;
-        let mut library =
-            Library { version: catalog.library_version, table, equipment, catalog, lessons: BTreeMap::new() };
+        let choices = Choices::parse(&files.choices).map_err(in_file("choices.json"))?;
+        let version = catalog.library_version;
+        let mut library = Library { version, table, equipment, catalog, choices, lessons: BTreeMap::new() };
         let left_out = library.add_lessons(&files.lessons);
         Ok((library, left_out))
     }

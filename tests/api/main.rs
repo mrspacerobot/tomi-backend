@@ -11,6 +11,8 @@ mod consents;
 mod fakes;
 mod health;
 mod helpers;
+mod ingredients;
+mod options;
 mod profile;
 mod scans;
 mod specials;

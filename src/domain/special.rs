@@ -1,21 +1,24 @@
 //! Tonight's special: which lessons this cook may make with what they have.
 //!
 //! Code decides what may be offered; a model may only reorder that list.
-//! The steps follow Tomi's plan: filter by cuisine, kitchen, diet and avoid
-//! list, apply only the swaps a lesson lists, check the final dish again,
-//! then rank.
+//! The steps follow Tomi's plan: filter by open skill level, cuisine,
+//! kitchen, diet and avoid list, apply only the swaps a lesson lists, check
+//! the final dish again, then rank.
 
 use crate::domain::ids::SavedId;
 use crate::domain::library::{Lesson, Library, Restrictions};
 use crate::domain::profile::Profile;
+use crate::domain::progress::OpenLevels;
 use serde::Serialize;
 use std::collections::BTreeSet;
 
+mod offer;
 mod plan;
 mod ranking;
 #[cfg(test)]
 mod tests;
 
+pub use offer::{Offer, OfferContext};
 pub use ranking::{overlap_order, ranked, Ranked, MODEL_SHORT_LIST};
 
 /// One lesson the cook may make, as it would be cooked tonight.
@@ -35,10 +38,11 @@ pub struct Candidate {
     pub missing: Vec<SavedId>,
 }
 
+/// A listed swap applied tonight, named as in the app's `AppliedSwap`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AppliedSwap {
-    pub replace: SavedId,
-    pub with: SavedId,
+    pub removed: SavedId,
+    pub added: SavedId,
 }
 
 /// What the cook brings tonight.
@@ -46,6 +50,8 @@ pub struct Tonight<'a> {
     pub profile: &'a Profile,
     /// Confirmed from the scan or typed, plus the cupboard staples.
     pub available: BTreeSet<SavedId>,
+    /// The skill levels the cook has reached; nothing locked is offered.
+    pub open: &'a OpenLevels,
 }
 
 /// Every lesson this cook may be offered tonight, in the library's order.
@@ -53,7 +59,8 @@ pub struct Tonight<'a> {
 pub fn candidates(library: &Library, tonight: &Tonight) -> Vec<Candidate> {
     let mut found = Vec::new();
     for lesson in library.lessons.values() {
-        if !fits_kitchen_and_taste(library, lesson, tonight.profile) {
+        let is_open = tonight.open.contains(&lesson.skill, lesson.level);
+        if !is_open || !fits_kitchen_and_taste(library, lesson, tonight.profile) {
             continue;
         }
         if let Some(candidate) = plan::cook(library, lesson, tonight) {

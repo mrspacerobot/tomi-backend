@@ -14,6 +14,7 @@ pub fn read(folder: &Path) -> io::Result<LibraryFiles> {
         catalog: fs::read_to_string(folder.join("catalog.json"))?,
         ingredients: fs::read_to_string(folder.join("ingredients.json"))?,
         equipment: fs::read_to_string(folder.join("equipment.json"))?,
+        choices: fs::read_to_string(folder.join("choices.json"))?,
         lessons: read_lessons(&folder.join("lessons"))?,
     })
 }

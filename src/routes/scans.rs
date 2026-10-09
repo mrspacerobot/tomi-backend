@@ -3,16 +3,17 @@
 //! The photo goes to the model and is then dropped, unless the cook agreed
 //! to the dataset: then a copy without metadata is kept with what was seen.
 
-use super::CurrentUser;
+use super::{Caller, CookLanguage};
 use crate::ai::FridgeQuestion;
 use crate::db::consents;
 use crate::domain::consent::Purpose;
-use crate::domain::fridge::{self, SeenItem};
+use crate::domain::display::Namer;
+use crate::domain::fridge::{self, SeenItem, ShownItem};
 use crate::domain::photo::{Photo, PhotoError, MAX_PHOTO_BYTES};
 use crate::error::AppError;
 use crate::AppState;
 use axum::body::Bytes;
-use axum::extract::{DefaultBodyLimit, FromRequest, Request, State};
+use axum::extract::{DefaultBodyLimit, FromRequest, Request};
 use axum::http::header::CONTENT_TYPE;
 use axum::http::StatusCode;
 use axum::routing::post;
@@ -34,7 +35,7 @@ struct ScanResponse {
     scan_id: Uuid,
     /// Whether the photo was kept for the dataset.
     kept: bool,
-    items: Vec<SeenItem>,
+    items: Vec<ShownItem>,
 }
 
 /// The request body read as a photo, typed by its `Content-Type`.
@@ -58,10 +59,11 @@ impl FromRequest<AppState> for PhotoUpload {
 }
 
 async fn scan(
-    State(state): State<AppState>,
-    CurrentUser(user_id): CurrentUser,
+    caller: Caller,
+    CookLanguage(language): CookLanguage,
     PhotoUpload(photo): PhotoUpload,
 ) -> Result<Json<ScanResponse>, AppError> {
+    let Caller { state, user_id } = caller;
     if !consents::is_current(&state.db, user_id, Purpose::PhotoScan).await? {
         return Err(AppError::ConsentRequired(Purpose::PhotoScan));
     }
@@ -69,6 +71,8 @@ async fn scan(
     let scan_id = Uuid::new_v4();
     let scan = keep::Scan { user_id, scan_id, photo: &photo, items: &items };
     let kept = keep::if_agreed(&state, &scan).await?;
+    let namer = Namer { library: &state.library, language: &language };
+    let items = items.iter().map(|item| item.shown(&namer)).collect();
     Ok(Json(ScanResponse { scan_id, kept, items }))
 }
 

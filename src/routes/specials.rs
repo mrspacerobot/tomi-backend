@@ -3,17 +3,21 @@
 //! Code decides what may be offered. The model only reorders the short
 //! list; without it, or when it fails, the order is by what the cook has.
 
-use super::{json_body, CurrentUser};
+use super::{json_body, Caller, CookLanguage};
 use crate::ai::RankQuestion;
 use crate::db::fridge_photos::{self, Confirmation};
 use crate::db::profile as store;
+use crate::domain::display::Namer;
 use crate::domain::ids::SavedId;
+use crate::domain::language::Language;
 use crate::domain::profile::Profile;
-use crate::domain::special::{self, overlap_order, ranked, Candidate, Ranked, Tonight, MODEL_SHORT_LIST};
+use crate::domain::progress::{open_levels, CookCounts};
+use crate::domain::special::{
+    self, overlap_order, ranked, Candidate, Offer, OfferContext, Ranked, Tonight, MODEL_SHORT_LIST,
+};
 use crate::error::AppError;
 use crate::AppState;
 use axum::extract::rejection::JsonRejection;
-use axum::extract::State;
 use axum::routing::post;
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
@@ -47,28 +51,30 @@ struct SpecialResponse {
     alternatives: Vec<Offer>,
 }
 
-#[derive(Serialize)]
-struct Offer {
-    #[serde(flatten)]
-    candidate: Candidate,
-    reason: Option<String>,
-}
-
 async fn special(
-    State(state): State<AppState>,
-    CurrentUser(user_id): CurrentUser,
+    caller: Caller,
+    CookLanguage(language): CookLanguage,
     body: Result<Json<SpecialRequest>, JsonRejection>,
 ) -> Result<Json<SpecialResponse>, AppError> {
+    let Caller { state, user_id } = caller;
     let request = json_body(body)?;
     if request.ingredients.len() > MAX_INGREDIENTS {
         return Err(AppError::Invalid(vec![format!("send at most {MAX_INGREDIENTS} ingredients")]));
     }
     confirm_scan(&state, user_id, &request).await?;
     let profile = store::read(&state.db, user_id).await?.profile;
-    let tonight = Tonight { profile: &profile, available: available(&request, &profile) };
-    let by_overlap = overlap_order(special::candidates(&state.library, &tonight));
+    let by_overlap = candidates(&state, &request, &profile);
     let (model, ranked_by) = model_order(&state, &by_overlap, &profile).await;
-    Ok(Json(response(&state, ranked(by_overlap, &model), ranked_by)))
+    let order = ranked(by_overlap, &model);
+    Ok(Json(response(&state, order, Answer { ranked_by, profile: &profile, language: &language })))
+}
+
+/// Every lesson the cook may make tonight, fewest to buy first. Until the
+/// server keeps the cook log, only experience grants open levels.
+fn candidates(state: &AppState, request: &SpecialRequest, profile: &Profile) -> Vec<Candidate> {
+    let open = open_levels(&state.library.catalog, profile.experience, &CookCounts::default());
+    let tonight = Tonight { profile, available: available(request, profile), open: &open };
+    overlap_order(special::candidates(&state.library, &tonight))
 }
 
 /// A kept photo learns which ingredients the cook confirmed for it.
@@ -100,11 +106,21 @@ async fn model_order(state: &AppState, by_overlap: &[Candidate], profile: &Profi
     }
 }
 
-fn response(state: &AppState, order: Vec<(Candidate, Option<String>)>, ranked_by: &'static str) -> SpecialResponse {
-    let mut offers = order.into_iter().take(OFFERS).map(|(candidate, reason)| Offer { candidate, reason });
+/// How the answer was made, and for whom.
+struct Answer<'a> {
+    ranked_by: &'static str,
+    profile: &'a Profile,
+    language: &'a Language,
+}
+
+fn response(state: &AppState, order: Vec<(Candidate, Option<String>)>, answer: Answer) -> SpecialResponse {
+    let namer = Namer { library: &state.library, language: answer.language };
+    let context = OfferContext { namer, profile: answer.profile };
+    let to_offer = |(candidate, reason): (Candidate, Option<String>)| Offer::new(candidate, reason, &context);
+    let mut offers = order.into_iter().take(OFFERS).map(to_offer);
     SpecialResponse {
         library_version: state.library.version,
-        ranked_by,
+        ranked_by: answer.ranked_by,
         special: offers.next(),
         alternatives: offers.collect(),
     }

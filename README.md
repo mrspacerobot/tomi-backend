@@ -13,6 +13,8 @@ profile, then the AI functions (fridge scan and tonight's special).
 | `GET /v1/bootstrap` | no | API versions, minimum app version. Library, safety and graph versions are `null`: none is published yet |
 | `GET /v1/profile` | yes | The cook's profile and its version. A new cook gets the defaults at version 0 |
 | `PATCH /v1/profile` | yes | Changes fields of the profile. See below |
+| `GET /v1/options` | no | Every list the app offers (diets, things to avoid, cuisines, equipment, experience, units, ingredients, the skill menu) with names in the cook's language |
+| `POST /v1/ingredients/resolve` | yes | Typed text to ingredients: `exact`, `ambiguous` (the cook chooses) or `none` |
 | `GET /v1/consents` | yes | Each purpose, its current text version, and whether the cook agreed |
 | `PUT /v1/consents/{purpose}` | yes | Agree to `photo-scan` or `photo-dataset`, sending `{"version": 1}` |
 | `DELETE /v1/consents/{purpose}` | yes | Withdraw. For `photo-dataset`, every kept photo is deleted |
@@ -82,6 +84,19 @@ or when it fails, the order is by fewest ingredients to buy
 swaps used and what is missing. With a `scanId` of a kept photo, the
 confirmed ingredients are recorded with it as the dataset's labels.
 
+### The app holds no lists
+
+The app shows what the server sends and sends back ids. Names come in the
+language of the `Accept-Language` header, English when a text has none.
+Every offer carries `checked: {diet, avoid}`, the restrictions the server
+checked it against: the app hides an offer checked against less than the
+cook's own restrictions. Scan items name their ingredient as `{id, name}`;
+swaps read `{removed, added}`, as in the app's `AppliedSwap`.
+
+Specials offer only lessons at skill levels the cook has reached, by
+Tomi's `ProgressRules`. The server has no cook log yet, so for now only the
+onboarding answer counts: "comfortable" opens the whole first course.
+
 Errors always look like
 `{"error": {"code": "...", "message": "...", "details": {...}}}`.
 
@@ -112,8 +127,10 @@ script on every pull request.
 - **The AI was not tried against the real Gemini API** from the session
   that wrote it (no key). Request and answer shapes follow Google's
   documentation and are unit tested; the first real scan will tell.
-- **Skill unlocking is not applied to specials yet,** because the server has
-  no cook log. Every lesson whose skill exists is offered.
+- **Progress counts no cooks yet,** because the server has no cook log. With
+  the two shipped lessons (eggs level 3, pan sauce level 1 behind searing),
+  a new cook is offered nothing and a "comfortable" cook only the omelette.
+  Cook events, or more level-1 lessons, will change that.
 - **Serving sizes are not scaled:** lessons have no base serving count yet.
 - **Ids are checked for shape, not existence.** The spec wants an
   unknown id refused. That needs the reviewed library and safety snapshot,

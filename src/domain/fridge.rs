@@ -3,6 +3,7 @@
 //! The model may only name ingredients from the table. Anything else stays
 //! a plain label for the cook to confirm, type differently, or skip.
 
+use crate::domain::display::{Named, Namer};
 use crate::domain::ids::SavedId;
 use crate::domain::library::IngredientTable;
 use serde::{Deserialize, Serialize};
@@ -30,6 +31,21 @@ pub struct SeenItem {
     pub ingredient: Option<SavedId>,
     /// From 0 to 1.
     pub confidence: f64,
+}
+
+/// One item as the app shows it, with the ingredient's name.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ShownItem {
+    pub label: String,
+    pub ingredient: Option<Named>,
+    pub confidence: f64,
+}
+
+impl SeenItem {
+    pub fn shown(&self, namer: &Namer) -> ShownItem {
+        let ingredient = self.ingredient.as_ref().map(|id| namer.ingredient(id));
+        ShownItem { label: self.label.clone(), ingredient, confidence: self.confidence }
+    }
 }
 
 pub fn checked(items: Vec<ModelItem>, table: &IngredientTable) -> Vec<SeenItem> {

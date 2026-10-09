@@ -63,6 +63,9 @@ impl Lesson {
         if !library.catalog.has_level(&self.skill, self.level) {
             return Err(format!("skill `{}` has no level {}", self.skill, self.level));
         }
+        if !library.choices.has_cuisine(&self.cuisine) {
+            return Err(format!("unknown cuisine `{}`", self.cuisine));
+        }
         self.check_ingredients(library)?;
         self.check_swaps(library)?;
         match self.equipment.iter().find(|item| !library.equipment.knows(item)) {

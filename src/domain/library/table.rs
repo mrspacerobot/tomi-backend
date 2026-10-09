@@ -4,10 +4,12 @@
 //! This is the only source of allergen and diet answers. Anything it does
 //! not list refuses, never passes.
 
-use super::LocalizedText;
+use super::{Choice, LocalizedText};
 use crate::domain::ids::SavedId;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
+
+mod validation;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -23,8 +25,7 @@ struct TableFile {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AvoidItem {
     id: SavedId,
-    #[serde(rename = "name")]
-    _name: LocalizedText,
+    name: LocalizedText,
     triggered_by: BTreeSet<String>,
 }
 
@@ -32,10 +33,8 @@ struct AvoidItem {
 #[serde(deny_unknown_fields)]
 struct Diet {
     id: SavedId,
-    #[serde(rename = "name")]
-    _name: LocalizedText,
-    #[serde(rename = "summary")]
-    _summary: LocalizedText,
+    name: LocalizedText,
+    summary: LocalizedText,
     excludes: BTreeSet<String>,
 }
 
@@ -48,10 +47,19 @@ struct Ingredient {
 }
 
 pub struct IngredientTable {
+    /// What the app shows, in the file's order.
+    pub listed: Listed,
     names: BTreeMap<SavedId, String>,
     contains: BTreeMap<SavedId, BTreeSet<String>>,
     avoid_items: BTreeMap<SavedId, BTreeSet<String>>,
     diets: BTreeMap<SavedId, BTreeSet<String>>,
+}
+
+/// The diets, avoid items and ingredients with their names, for display.
+pub struct Listed {
+    pub diets: Vec<Choice>,
+    pub avoid_items: Vec<Choice>,
+    pub ingredients: Vec<Choice>,
 }
 
 /// What the cook may not eat, from their profile.
@@ -78,7 +86,7 @@ impl IngredientTable {
         if file.schema_version != SCHEMA_VERSION {
             return Err(format!("schema version {} is not {SCHEMA_VERSION}", file.schema_version));
         }
-        check_declared(&file)?;
+        validation::check_declared(&file)?;
         Ok(IngredientTable::from(file))
     }
 
@@ -135,56 +143,27 @@ struct Food<'a> {
 
 impl From<TableFile> for IngredientTable {
     fn from(file: TableFile) -> Self {
-        let mut names = BTreeMap::new();
-        let mut contains = BTreeMap::new();
-        for item in file.ingredients {
-            names.insert(item.id.clone(), item.name.english().to_string());
-            contains.insert(item.id, item.contains);
-        }
         IngredientTable {
-            names,
-            contains,
+            listed: Listed::from(&file),
+            names: file.ingredients.iter().map(|item| (item.id.clone(), item.name.english().to_string())).collect(),
+            contains: file.ingredients.into_iter().map(|item| (item.id, item.contains)).collect(),
             avoid_items: file.avoid_items.into_iter().map(|item| (item.id, item.triggered_by)).collect(),
             diets: file.diets.into_iter().map(|diet| (diet.id, diet.excludes)).collect(),
         }
     }
 }
 
-/// Every fact named anywhere must be declared, every avoid item and diet
-/// must rule something out, and no id may appear twice, as in Tomi's own
-/// validator.
-fn check_declared(file: &TableFile) -> Result<(), String> {
-    let mut seen = BTreeSet::new();
-    for item in &file.ingredients {
-        check_new(&item.id, &mut seen)?;
-        check_known(&item.id, &item.contains, &file.facts)?;
+impl From<&TableFile> for Listed {
+    fn from(file: &TableFile) -> Self {
+        let diets = file.diets.iter().map(|diet| Choice::described(&diet.id, &diet.name, &diet.summary));
+        let avoid_items = file.avoid_items.iter().map(|item| Choice::named(&item.id, &item.name));
+        let ingredients = file.ingredients.iter().map(|item| Choice::named(&item.id, &item.name));
+        Listed { diets: diets.collect(), avoid_items: avoid_items.collect(), ingredients: ingredients.collect() }
     }
-    for item in &file.avoid_items {
-        check_rule(&item.id, &item.triggered_by, &file.facts)?;
-    }
-    for diet in &file.diets {
-        check_rule(&diet.id, &diet.excludes, &file.facts)?;
-    }
-    Ok(())
 }
 
-fn check_new<'a>(id: &'a SavedId, seen: &mut BTreeSet<&'a SavedId>) -> Result<(), String> {
-    if seen.insert(id) {
-        return Ok(());
-    }
-    Err(format!("`{id}` appears twice"))
-}
-
-fn check_rule(id: &SavedId, facts: &BTreeSet<String>, declared: &BTreeSet<String>) -> Result<(), String> {
-    if facts.is_empty() {
-        return Err(format!("`{id}` rules nothing out"));
-    }
-    check_known(id, facts, declared)
-}
-
-fn check_known(id: &SavedId, facts: &BTreeSet<String>, declared: &BTreeSet<String>) -> Result<(), String> {
-    match facts.difference(declared).next() {
-        Some(fact) => Err(format!("`{id}` names the undeclared fact `{fact}`")),
-        None => Ok(()),
+impl Listed {
+    pub fn ingredient(&self, id: &SavedId) -> Option<&Choice> {
+        self.ingredients.iter().find(|choice| &choice.id == id)
     }
 }

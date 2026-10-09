@@ -1,9 +1,8 @@
-//! The skill catalog and the equipment list.
+//! The skill catalog: courses, skills, their prerequisites and levels.
 
 use super::LocalizedText;
 use crate::domain::ids::SavedId;
 use serde::Deserialize;
-use std::collections::{BTreeMap, BTreeSet};
 
 const SCHEMA_VERSION: i64 = 1;
 
@@ -12,115 +11,69 @@ const SCHEMA_VERSION: i64 = 1;
 struct CatalogFile {
     schema_version: i64,
     library_version: i64,
-    #[serde(rename = "courses")]
-    _courses: Vec<Course>,
+    courses: Vec<Course>,
     skills: Vec<Skill>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Course {
-    #[serde(rename = "id")]
-    _id: SavedId,
-    #[serde(rename = "title")]
-    _title: LocalizedText,
+pub struct Course {
+    pub id: SavedId,
+    pub title: LocalizedText,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Skill {
-    id: SavedId,
-    #[serde(rename = "course")]
-    _course: SavedId,
-    #[serde(rename = "name")]
-    _name: LocalizedText,
-    #[serde(rename = "summary")]
-    _summary: LocalizedText,
-    #[serde(rename = "prerequisites")]
-    _prerequisites: Vec<SavedId>,
-    levels: Vec<Level>,
+pub struct Skill {
+    pub id: SavedId,
+    pub course: SavedId,
+    pub name: LocalizedText,
+    pub summary: LocalizedText,
+    pub prerequisites: Vec<SavedId>,
+    pub levels: Vec<Level>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Level {
-    #[serde(rename = "number")]
-    _number: u8,
-    #[serde(rename = "name")]
-    _name: LocalizedText,
+pub struct Level {
+    pub number: u8,
+    pub name: LocalizedText,
 }
 
-/// The skills and how many levels each has.
+/// The menu, in the order the app shows it.
 pub struct Catalog {
     pub library_version: i64,
-    levels: BTreeMap<SavedId, u8>,
+    pub courses: Vec<Course>,
+    pub skills: Vec<Skill>,
 }
 
 impl Catalog {
     pub fn parse(text: &str) -> Result<Self, String> {
         let file: CatalogFile = serde_json::from_str(text).map_err(|error| error.to_string())?;
         check_schema(file.schema_version)?;
-        let mut levels = BTreeMap::new();
-        for skill in file.skills {
-            let count = u8::try_from(skill.levels.len()).unwrap_or(u8::MAX);
-            levels.insert(skill.id, count);
-        }
-        Ok(Catalog { library_version: file.library_version, levels })
+        Ok(Catalog { library_version: file.library_version, courses: file.courses, skills: file.skills })
     }
 
-    /// Whether the catalog has this skill at this level, counting from 1.
-    pub fn has_level(&self, skill: &SavedId, level: u8) -> bool {
-        match self.levels.get(skill) {
-            Some(count) => (1..=*count).contains(&level),
+    pub fn skill(&self, id: &SavedId) -> Option<&Skill> {
+        self.skills.iter().find(|skill| &skill.id == id)
+    }
+
+    /// Whether the catalog has this skill at this level.
+    pub fn has_level(&self, skill: &SavedId, number: u8) -> bool {
+        match self.skill(skill) {
+            Some(skill) => skill.level(number).is_some(),
             None => false,
         }
     }
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct EquipmentFile {
-    schema_version: i64,
-    equipment: Vec<Equipment>,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Equipment {
-    id: SavedId,
-    #[serde(rename = "name")]
-    _name: LocalizedText,
-    #[serde(rename = "summary")]
-    _summary: LocalizedText,
-    assumed: bool,
-}
-
-/// Everything a lesson may ask a kitchen to have.
-pub struct EquipmentList {
-    known: BTreeSet<SavedId>,
-    /// What a kitchen is taken to have until the cook answers.
-    pub standard_kitchen: BTreeSet<SavedId>,
-}
-
-impl EquipmentList {
-    pub fn parse(text: &str) -> Result<Self, String> {
-        let file: EquipmentFile = serde_json::from_str(text).map_err(|error| error.to_string())?;
-        check_schema(file.schema_version)?;
-        let known = file.equipment.iter().map(|item| item.id.clone()).collect();
-        let assumed = file.equipment.into_iter().filter(|item| item.assumed);
-        let standard_kitchen: BTreeSet<SavedId> = assumed.map(|item| item.id).collect();
-        if standard_kitchen.is_empty() {
-            return Err("nothing is assumed, so no kitchen has anything".to_string());
-        }
-        Ok(EquipmentList { known, standard_kitchen })
-    }
-
-    pub fn knows(&self, equipment: &SavedId) -> bool {
-        self.known.contains(equipment)
+impl Skill {
+    pub fn level(&self, number: u8) -> Option<&Level> {
+        self.levels.iter().find(|level| level.number == number)
     }
 }
 
-fn check_schema(version: i64) -> Result<(), String> {
+pub fn check_schema(version: i64) -> Result<(), String> {
     if version == SCHEMA_VERSION {
         return Ok(());
     }

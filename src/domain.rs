@@ -5,9 +5,15 @@
 //! folder reaches for the web framework, the database or the current time.
 
 pub mod consent;
+pub mod display;
 pub mod fridge;
+pub mod game;
 pub mod ids;
+pub mod language;
 pub mod library;
+pub mod options;
 pub mod photo;
 pub mod profile;
+pub mod progress;
+pub mod resolve;
 pub mod special;

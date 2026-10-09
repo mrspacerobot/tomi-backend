@@ -33,7 +33,12 @@ pub async fn patch_profile(app: &Router, token: &str, body: Value) -> Reply {
 }
 
 pub async fn call(app: &Router, call: Call<'_>) -> Reply {
-    let mut builder = Request::builder().method(call.method).uri(call.path);
+    call_in(app, call, "en").await
+}
+
+/// A call from an app set to this `Accept-Language`.
+pub async fn call_in(app: &Router, call: Call<'_>, language: &str) -> Reply {
+    let mut builder = Request::builder().method(call.method).uri(call.path).header("accept-language", language);
     if let Some(token) = call.token {
         builder = builder.header("authorization", format!("Bearer {token}"));
     }

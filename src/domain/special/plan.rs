@@ -70,7 +70,7 @@ struct Planned {
 impl Planned {
     fn add(&mut self, original: &SavedId, chosen: SavedId) {
         if &chosen != original {
-            self.swaps.push(AppliedSwap { replace: original.clone(), with: chosen.clone() });
+            self.swaps.push(AppliedSwap { removed: original.clone(), added: chosen.clone() });
         }
         self.ingredients.push(chosen);
     }
