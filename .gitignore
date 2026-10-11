@@ -25,3 +25,7 @@ rustc-ice-*.txt
 
 # Local settings with secrets
 .env
+
+# The graph artifact is fetched or built by scripts/fetch-graph.sh, never committed.
+graph/*
+!graph/.gitkeep

@@ -26,7 +26,7 @@ Report honestly: if a check fails or you skipped a step, say so.
 
 ```
 src/
-  domain/       pure rules, one module per domain (ids, profile, library, special, fridge, photo, consent)
+  domain/       pure rules, one module per domain (ids, profile, library, graph, special, fridge, photo, consent)
   ai/           the model behind one interface: Gemini, and a fake in tests
   storage.rs    the private photo bucket behind one interface
   routes/       one file per feature, each with its own router(), merged in routes.rs
@@ -131,6 +131,8 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 - **AI runs on this server, behind the `Ai` interface** (`src/ai.rs`), with a fake in every test. A model only reads and ranks: it may name only ids from closed lists, it never adds an ingredient, diet, lesson or fact, and `domain` checks its answer before anyone sees it. Without a model, the scan says so and specials rank by what the cook has.
 - **A fridge photo is sent to the model only with the `photo-scan` consent,** and is kept only with the separate `photo-dataset` consent, off by default. A kept photo loses its metadata first. Withdrawing the dataset consent deletes every kept photo. Never log a photo, never keep one without that consent, and never let the app reach the bucket.
 - **Voice and chat do not reach this service yet.** Adding them needs the same kind of consent and a change to this file.
+
+- **The cooking graph is one pinned artifact.** `graph.lock` names the version and sha256 this build serves, the image carries it, and start-up refuses anything else: an unknown schema version, a changed file, another version, an unknown channel, a manifest that disagrees with its artifact about the channel, or a draft without `GRAPH_ALLOW_DRAFT`. A lock that names a graph the server cannot load stops the start. Every answer that uses the graph must carry its version and channel. A graph match alone is never a reason to show a dish: ids and allergen facts are checked against the library again.
 
 ## Saved data and ids
 

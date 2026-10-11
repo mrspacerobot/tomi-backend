@@ -9,6 +9,7 @@ mod auth;
 mod client;
 mod consents;
 mod fakes;
+mod graph;
 mod health;
 mod helpers;
 mod ingredients;

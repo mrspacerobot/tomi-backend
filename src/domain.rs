@@ -8,6 +8,7 @@ pub mod consent;
 pub mod display;
 pub mod fridge;
 pub mod game;
+pub mod graph;
 pub mod ids;
 pub mod language;
 pub mod library;

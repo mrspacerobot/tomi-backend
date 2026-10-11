@@ -10,7 +10,7 @@ profile, then the AI functions (fridge scan and tonight's special).
 |---|---|---|
 | `GET /healthz` | no | The process is up |
 | `GET /readyz` | no | The database answers |
-| `GET /v1/bootstrap` | no | API versions, minimum app version. Library, safety and graph versions are `null`: none is published yet |
+| `GET /v1/bootstrap` | no | API versions, minimum app version, and the graph version and channel (`graphArtifactVersion`, `graphChannel`). Library and safety versions are `null`: none is published yet. Both graph fields are `null` while `graph.lock` pins no graph |
 | `GET /v1/profile` | yes | The cook's profile and its version. A new cook gets the defaults at version 0 |
 | `PATCH /v1/profile` | yes | Changes fields of the profile. See below |
 | `GET /v1/options` | no | Every list the app offers (diets, things to avoid, cuisines, equipment, experience, units, ingredients, the skill menu) with names in the cook's language |
@@ -99,6 +99,20 @@ onboarding answer counts: "comfortable" opens the whole first course.
 
 Errors always look like
 `{"error": {"code": "...", "message": "...", "details": {...}}}`.
+
+## The cooking graph
+
+The `cooking-graph` repository builds a versioned, checksummed artifact (`./release` there). This repository
+pins exactly one version of it in `graph.lock` (a version and a sha256, or `none`), and the image carries that
+artifact in `/graph`. Graph version and image move together, so rolling the image back rolls the graph back.
+
+At start the API reads `GRAPH_DIR`, checks the artifact against its manifest and against the pin, refuses it
+unless the schema version, the checksum, the pinned version and the channel all agree, and loads every thing
+into memory. A pin that cannot be loaded stops the start. With no pin the API starts without graph features.
+A `draft` graph is refused unless `GRAPH_ALLOW_DRAFT=true`; the graph repository can build nothing else yet.
+`scripts/fetch-graph.sh` fetches the pinned release, or with `--from <checkout>` builds and pins one locally.
+
+No route uses the graph yet. See `docs/local-development.md` to run it.
 
 ## Layout and rules
 

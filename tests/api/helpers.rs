@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tomi_api::ai::Ai;
 use tomi_api::auth::Verifier;
+use tomi_api::domain::graph::Graph;
 use tomi_api::domain::library::Library;
 use tomi_api::storage::PhotoStore;
 use tomi_api::{app, library_files, AppState};
@@ -28,6 +29,7 @@ pub struct Setup {
     pub ai: Arc<dyn Ai>,
     pub photos: Arc<dyn PhotoStore>,
     pub library: Library,
+    pub graph: Option<Graph>,
 }
 
 impl Default for Setup {
@@ -37,6 +39,7 @@ impl Default for Setup {
             ai: Arc::new(FakeAi::default()),
             photos: Arc::new(FakeStore::default()),
             library: shipped_library(),
+            graph: None,
         }
     }
 }
@@ -51,6 +54,7 @@ pub fn server_with(pool: PgPool, setup: Setup) -> Router {
         verifier: Arc::new(setup.verifier),
         min_app_version: "1.2.0".into(),
         library: Arc::new(setup.library),
+        graph: setup.graph.map(Arc::new),
         ai: setup.ai,
         photos: setup.photos,
     };

@@ -11,16 +11,26 @@ pub fn router() -> Router<AppState> {
     Router::new().route("/v1/bootstrap", get(bootstrap))
 }
 
-/// No reviewed library, safety snapshot or graph artifact exists yet, so
-/// those are null. The app must read null as "nothing to offer", never as
-/// "no restrictions apply".
+/// No reviewed library or safety snapshot exists yet, and a build that pins
+/// no graph has none, so those are null. The app must read null as "nothing
+/// to offer", never as "no restrictions apply".
 async fn bootstrap(State(state): State<AppState>) -> Json<Value> {
+    let (graph_version, graph_channel) = graph_labels(&state);
     Json(json!({
         "apiVersions": ["v1"],
         "profileSchemaVersion": PROFILE_SCHEMA_VERSION,
         "minAppVersion": state.min_app_version,
         "libraryVersion": null,
         "safetyVersion": null,
-        "graphArtifactVersion": null,
+        "graphArtifactVersion": graph_version,
+        "graphChannel": graph_channel,
     }))
+}
+
+/// The loaded graph's version and channel, both null without a graph.
+fn graph_labels(state: &AppState) -> (Value, Value) {
+    match &state.graph {
+        Some(graph) => (json!(graph.version), json!(graph.channel.as_str())),
+        None => (Value::Null, Value::Null),
+    }
 }

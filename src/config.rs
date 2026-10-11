@@ -17,6 +17,15 @@ pub struct Config {
     pub library_dir: String,
     pub ai: AiConfig,
     pub photos: PhotoConfig,
+    pub graph: GraphConfig,
+}
+
+/// Where the pinned cooking graph is, and whether a draft one may be served.
+#[derive(Debug, Clone)]
+pub struct GraphConfig {
+    /// Without a folder, a build that pins a graph does not start.
+    pub dir: Option<String>,
+    pub allow_draft: bool,
 }
 
 /// Without a key, the scan is unavailable and specials rank without AI.
@@ -47,6 +56,7 @@ impl Config {
             library_dir: optional("LIBRARY_DIR", "library"),
             ai: AiConfig::from_env(),
             photos: PhotoConfig::from_env(),
+            graph: GraphConfig::from_env(),
         })
     }
 }
@@ -54,6 +64,12 @@ impl Config {
 impl AiConfig {
     fn from_env() -> Self {
         AiConfig { gemini_api_key: read("GEMINI_API_KEY"), gemini_model: optional("GEMINI_MODEL", "gemini-3.8-flash") }
+    }
+}
+
+impl GraphConfig {
+    fn from_env() -> Self {
+        GraphConfig { dir: read("GRAPH_DIR"), allow_draft: optional("GRAPH_ALLOW_DRAFT", "false") == "true" }
     }
 }
 

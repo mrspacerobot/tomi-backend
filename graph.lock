@@ -1,0 +1,3 @@
+# The graph this build serves. `none` pins no graph.
+# scripts/fetch-graph.sh writes a version and a sha256 line here. A change is a reviewed change.
+none

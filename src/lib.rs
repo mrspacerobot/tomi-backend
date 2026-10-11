@@ -6,6 +6,7 @@ pub mod config;
 pub mod db;
 pub mod domain;
 pub mod error;
+pub mod graph_files;
 pub mod library_files;
 pub mod routes;
 pub mod storage;
@@ -15,6 +16,7 @@ use auth::Verifier;
 use axum::extract::DefaultBodyLimit;
 use axum::http::HeaderName;
 use axum::Router;
+use domain::graph::Graph;
 use domain::library::Library;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -33,6 +35,8 @@ pub struct AppState {
     pub verifier: Arc<Verifier>,
     pub min_app_version: String,
     pub library: Arc<Library>,
+    /// The pinned cooking graph, or none when this build pins none.
+    pub graph: Option<Arc<Graph>>,
     pub ai: Arc<dyn Ai>,
     pub photos: Arc<dyn PhotoStore>,
 }
