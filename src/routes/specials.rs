@@ -1,4 +1,4 @@
-//! `POST /v1/specials`: tonight's special and up to two alternatives.
+//! `POST /v1/lessons/suggest`: tonight's special and up to two alternatives.
 //!
 //! Code decides what may be offered. The model only reorders the short
 //! list; without it, or when it fails, the order is by what the cook has.
@@ -29,7 +29,7 @@ const OFFERS: usize = 3;
 const MAX_INGREDIENTS: usize = 200;
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/v1/specials", post(special))
+    Router::new().route("/v1/lessons/suggest", post(special))
 }
 
 #[derive(Deserialize)]

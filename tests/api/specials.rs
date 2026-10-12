@@ -117,3 +117,13 @@ async fn a_kept_photo_learns_what_the_cook_confirmed(pool: PgPool) {
         sqlx::query_scalar("select confirmed from tomi.fridge_photos").fetch_one(&pool).await.unwrap();
     assert_eq!(confirmed, json!(["egg", "spinach"]));
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn the_old_specials_path_is_gone(pool: PgPool) {
+    let app = open_server(pool, FakeAi::default());
+    let token = new_cook();
+    let body = Some(("application/json", json!({ "ingredients": ["egg"] }).to_string().into_bytes()));
+    let reply =
+        call(&app, Call { method: axum::http::Method::POST, path: "/v1/specials", token: Some(&token), body }).await;
+    assert_eq!(reply.status, StatusCode::NOT_FOUND);
+}

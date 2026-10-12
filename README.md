@@ -19,7 +19,7 @@ profile, then the AI functions (fridge scan and tonight's special).
 | `PUT /v1/consents/{purpose}` | yes | Agree to `photo-scan` or `photo-dataset`, sending `{"version": 1}` |
 | `DELETE /v1/consents/{purpose}` | yes | Withdraw. For `photo-dataset`, every kept photo is deleted |
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
-| `POST /v1/specials` | yes | Confirmed ingredients in, tonight's special and up to two alternatives out |
+| `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, tonight's special and up to two alternatives out |
 
 Sign-in is Supabase Auth. The app sends the Supabase access token as
 `Authorization: Bearer <token>`. The API checks the signature, issuer,
