@@ -25,3 +25,25 @@ jobs:
       - run: ./scripts/check.sh
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+
+  # Fetches the graph release that graph.lock pins and builds the image with it.
+  # The token is read-only and sees only the graph repository. While graph.lock
+  # says none, the fetch does nothing and the image builds without a graph.
+  graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The token can see the graph repository
+        env:
+          GH_TOKEN: ${{ secrets.GRAPH_READ_TOKEN }}
+        run: |
+          if ! gh api repos/mrspacerobot/cooking-graph --jq .full_name; then
+            echo "GRAPH_READ_TOKEN cannot read mrspacerobot/cooking-graph. It may have expired: create a new fine-grained token with read-only Contents access to that repository and run gh secret set GRAPH_READ_TOKEN." >&2
+            exit 1
+          fi
+      - name: Fetch the pinned graph and check its checksum
+        env:
+          GH_TOKEN: ${{ secrets.GRAPH_READ_TOKEN }}
+        run: ./scripts/fetch-graph.sh
+      - name: Build the image
+        run: docker build -t tomi-api .
