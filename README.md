@@ -16,7 +16,7 @@ profile, then the AI functions (fridge scan and tonight's special).
 | `GET /v1/options` | no | Every list the app offers (diets, things to avoid, cuisines, equipment, experience, units, ingredients, the skill menu) with names in the cook's language |
 | `POST /v1/ingredients/resolve` | yes | Typed text to ingredients: `exact`, `ambiguous` (the cook chooses) or `none` |
 | `GET /v1/consents` | yes | Each purpose, its current text version, and whether the cook agreed |
-| `PUT /v1/consents/{purpose}` | yes | Agree to `photo-scan` or `photo-dataset`, sending `{"version": 1}` |
+| `PUT /v1/consents/{purpose}` | yes | Agree to `photo-scan` or `photo-dataset`, sending the `currentVersion` that `GET /v1/consents` lists (now 1 and 2). An older text is refused |
 | `DELETE /v1/consents/{purpose}` | yes | Withdraw. For `photo-dataset`, every kept photo is deleted |
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
 | `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, tonight's special and up to two alternatives out |

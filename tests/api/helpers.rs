@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tomi_api::ai::Ai;
 use tomi_api::auth::Verifier;
+use tomi_api::domain::consent::Purpose;
 use tomi_api::domain::graph::Graph;
 use tomi_api::domain::library::Library;
 use tomi_api::storage::PhotoStore;
@@ -115,7 +116,8 @@ pub async fn user_id(pool: &PgPool, subject: Uuid) -> Uuid {
 /// The cook agrees to the current text for a purpose, as the app would.
 pub async fn agree(app: &Router, token: &str, purpose: &str) -> Reply {
     let path = format!("/v1/consents/{purpose}");
-    let body = Some(("application/json", br#"{"version": 1}"#.to_vec()));
+    let version = Purpose::parse(purpose).map_or(1, Purpose::current_version);
+    let body = Some(("application/json", format!(r#"{{"version": {version}}}"#).into_bytes()));
     call(app, Call { method: Method::PUT, path: &path, token: Some(token), body }).await
 }
 

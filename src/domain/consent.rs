@@ -31,11 +31,13 @@ impl Purpose {
     }
 
     /// The version of the text the app must show. Raise it when the text
-    /// changes in substance, so every cook is asked again.
+    /// changes in substance, so every cook is asked again. Each purpose has
+    /// its own: the dataset text is version 2 since a kept photo keeps its
+    /// metadata, location and time included. Version 1 promised it did not.
     pub fn current_version(self) -> i32 {
         match self {
             Purpose::PhotoScan => 1,
-            Purpose::PhotoDataset => 1,
+            Purpose::PhotoDataset => 2,
         }
     }
 }
