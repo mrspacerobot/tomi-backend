@@ -1,7 +1,7 @@
 //! `POST /v1/scans`: a fridge photo in, what the model saw out.
 //!
 //! The photo goes to the model and is then dropped, unless the cook agreed
-//! to the dataset: then a copy without metadata is kept with what was seen.
+//! to the dataset: then it is kept as it arrived, with what was seen.
 
 use super::{Caller, CookLanguage};
 use crate::ai::FridgeQuestion;

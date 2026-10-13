@@ -52,10 +52,7 @@ async fn keep(state: &AppState, scan: &Scan<'_>) -> Result<(), &'static str> {
 }
 
 async fn store(state: &AppState, scan: &Scan<'_>, path: &str) -> Result<(), &'static str> {
-    let Ok(bytes) = scan.photo.without_metadata() else {
-        return Err("the photo could not be read for storing");
-    };
-    let file = StoredFile { path, bytes, mime_type: scan.photo.kind.mime_type() };
+    let file = StoredFile { path, bytes: scan.photo.bytes.clone(), mime_type: scan.photo.kind.mime_type() };
     state.photos.put(file).await.map_err(|_| "the photo storage refused it")
 }
 

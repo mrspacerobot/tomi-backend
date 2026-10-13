@@ -1,15 +1,18 @@
-//! A fridge photo as it arrives, and the copy of it that may be stored.
+//! A fridge photo as it arrives.
 //!
 //! Only JPEG and PNG are taken: the app converts other formats before
-//! sending. A stored copy never carries the photo's metadata, which can
-//! hold where and when it was taken and on which phone.
+//! sending. A kept photo is stored as it arrived, metadata included: what
+//! the app sends is the app's decision, and the consent text says what is kept.
 
 use serde::Serialize;
 
-mod jpeg;
-mod png;
 #[cfg(test)]
 mod tests;
+
+/// The first bytes of a JPEG.
+const JPEG_START: [u8; 2] = [0xFF, 0xD8];
+/// The first bytes of a PNG.
+const PNG_SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
 
 /// Larger than any phone photo the app sends after resizing.
 pub const MAX_PHOTO_BYTES: usize = 10 * 1024 * 1024;
@@ -76,15 +79,6 @@ impl Photo {
         }
         Ok(Photo { kind, bytes })
     }
-
-    /// The same picture without its metadata, for storing.
-    pub fn without_metadata(&self) -> Result<Vec<u8>, PhotoError> {
-        let stripped = match self.kind {
-            ImageKind::Jpeg => jpeg::without_metadata(&self.bytes),
-            ImageKind::Png => png::without_metadata(&self.bytes),
-        };
-        stripped.ok_or(PhotoError::Unreadable)
-    }
 }
 
 fn check_size(bytes: &[u8]) -> Result<(), PhotoError> {
@@ -99,7 +93,7 @@ fn check_size(bytes: &[u8]) -> Result<(), PhotoError> {
 
 fn starts_like(kind: ImageKind, bytes: &[u8]) -> bool {
     match kind {
-        ImageKind::Jpeg => bytes.starts_with(&jpeg::START),
-        ImageKind::Png => bytes.starts_with(&png::SIGNATURE),
+        ImageKind::Jpeg => bytes.starts_with(&JPEG_START),
+        ImageKind::Png => bytes.starts_with(&PNG_SIGNATURE),
     }
 }

@@ -38,21 +38,23 @@ async fn without_the_dataset_consent_nothing_is_kept(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn with_the_dataset_consent_the_photo_is_kept_without_its_location(pool: PgPool) {
+async fn with_the_dataset_consent_the_photo_is_kept_as_it_arrived(pool: PgPool) {
     let store = Arc::new(FakeStore::default());
     let app = server_with(pool.clone(), Setup { photos: store.clone(), ..Setup::default() });
     let subject = Uuid::new_v4();
     let cook = token_with(&claims(subject));
     agree(&app, &cook, "photo-scan").await;
     agree(&app, &cook, "photo-dataset").await;
-    let reply = scan(&app, &cook, jpeg()).await;
+    let upload = jpeg();
+    let sent = upload.1.clone();
+    let reply = scan(&app, &cook, upload).await;
     assert_eq!(reply.body["kept"], true);
 
     let user = user_id(&pool, subject).await;
     let files = store.files.lock().unwrap().clone();
     let (path, bytes) = files.iter().next().unwrap();
     assert_eq!(path, &format!("{user}/{}.jpg", reply.body["scanId"].as_str().unwrap()));
-    assert!(!bytes.windows(3).any(|window| window == b"GPS"));
+    assert_eq!(bytes, &sent);
     let seen: Value = sqlx::query_scalar("select seen from tomi.fridge_photos").fetch_one(&pool).await.unwrap();
     assert_eq!(seen[0]["ingredient"], "egg");
 }

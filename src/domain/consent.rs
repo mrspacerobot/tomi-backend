@@ -11,7 +11,7 @@ use serde::Serialize;
 pub enum Purpose {
     /// The photo is sent to the model to read, then dropped.
     PhotoScan,
-    /// The photo, without metadata, is kept with what was seen in it.
+    /// The photo is kept as it arrived, with what was seen in it.
     PhotoDataset,
 }
 

@@ -64,8 +64,8 @@ Needs the `photo-scan` consent. The body is the photo itself, with its
 
 The model may only name ingredients from Tomi's ingredient table; anything
 else comes back as a plain label for the cook to confirm, type or skip. With
-the separate `photo-dataset` consent, a copy of the photo without its
-metadata is kept in a private bucket with what was seen (`kept: true`).
+the separate `photo-dataset` consent, the photo as it arrived
+is kept in a private bucket with what was seen (`kept: true`).
 Without a model configured the answer is `503 ai_unavailable`, and the app
 falls back to typing.
 
