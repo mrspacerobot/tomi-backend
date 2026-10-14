@@ -16,7 +16,7 @@ Report honestly: if a check fails or you skipped a step, say so.
 
 ## How we work: tests first
 
-1. **Write the failing test first.** For a rule, a unit test next to it in `src/domain`. For an endpoint, an API test in `tests/api` that calls it the way the app would. Watch it fail for the right reason, then write the code.
+1. **Write the failing test first.** For a rule, a unit test next to it, in the feature's folder. For an endpoint, an API test in `tests/api` that calls it the way the app would. Watch it fail for the right reason, then write the code.
 2. **Prefer API tests for behaviour.** A flow is proven by calling the routes in order (sign in, save a profile, read it back), not by testing a handler's internals. Unit tests are for rules.
 3. **Bug fixes start with a reproduction:** an API test that fails the way the app saw it, then the fix.
 4. **Tests never depend on the real clock, time zone, network or a model.** Pass the time in. A flaky test is a bug: fix it, never retry or skip it.
@@ -26,23 +26,29 @@ Report honestly: if a check fails or you skipped a step, say so.
 
 ```
 src/
-  domain/       pure rules, one module per domain (ids, profile, library, graph, special, fridge, photo)
+  profile.rs  scans.rs  special.rs  options.rs  ingredients.rs  library.rs  graph.rs   one folder per feature
+  profile/      routes.rs (HTTP handlers), db.rs (queries), the pure rules, and their tests
+  scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
+  special/      routes.rs, the lesson rules, progress.rs and game.rs
+  library/      the reviewed library: its rules, and files.rs (reads it from disk)
+  graph/        the graph artifact: its rules, and files.rs (reads it from disk)
+  kernel/       the vocabulary several features share: ids, language, display names
+  meta/         health and bootstrap routes
+  http.rs       the shared HTTP pieces (CurrentUser, CookLanguage) and the router that merges every feature
   ai/           the model behind one interface: Gemini, and a fake in tests
   storage.rs    the private photo bucket behind one interface
-  routes/       one file per feature, each with its own router(), merged in routes.rs
-  db/           queries, one file per feature
-  auth/         Supabase token checks
-  config.rs  error.rs  lib.rs  main.rs
+  auth/         Supabase token checks, and the lookup of the cook's own user id
+  db.rs  config.rs  error.rs  lib.rs  main.rs
 tests/
   api/          one test binary: main.rs, helpers.rs, one file per feature
   architecture.rs
 migrations/     SQL, additive only
 ```
 
-- **Three layers.** Routes translate HTTP into calls and shape the answer. `domain` decides. `db` stores. A handler never decides a rule, and `domain` never touches I/O.
-- **`src/domain` needs no web, database or clock.** It takes the time and the data it needs as arguments. `tests/architecture.rs` fails when a file there names `axum`, `sqlx`, `reqwest`, `tokio`, `tower` or reads the current time.
-- **Group by domain, not by kind.** A new feature adds `domain/<feature>.rs`, `routes/<feature>.rs` and `db/<feature>.rs`, and its tests in `tests/api/<feature>.rs`.
-- **Unit tests sit beside the code in their own file:** `src/domain/profile.rs` declares `#[cfg(test)] mod tests;` and the tests live in `src/domain/profile/tests.rs`. That keeps the code file short.
+- **Three layers inside every feature.** `routes.rs` translates HTTP into calls and shapes the answer. The rules decide. `db.rs` stores. A handler never decides a rule, and a rule never touches I/O.
+- **The rules of a feature need no web, database or clock.** Every file of a feature except `routes.rs`, `db.rs`, `files.rs` and `keep.rs` takes the time and the data it needs as arguments. `tests/architecture.rs` fails when one of them names `axum`, `sqlx`, `reqwest`, `tokio`, `tower` or reads the current time, and when a new folder under `src` is not listed there as a feature or as plumbing.
+- **Group by feature, not by kind.** A new feature is a root file `src/<feature>.rs` and a folder `src/<feature>/` with `routes.rs`, `db.rs` and its rules, and its API tests in `tests/api/<feature>.rs`. Add it to `FEATURES` in `tests/architecture.rs`. What two features share goes in `kernel`; do not reach into another feature's `routes.rs` or `db.rs` except through its `pub` items.
+- **Unit tests sit beside the code in their own file:** `src/profile.rs` declares `#[cfg(test)] mod tests;` and the tests live in `src/profile/tests.rs`. That keeps the code file short.
 - **API tests are one binary** (`tests/api/main.rs` declares the other files), so they compile once. Shared setup lives in `tests/api/helpers.rs`.
 
 ## Code style: small enough to read at a glance
@@ -114,7 +120,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 ## Async and the server
 
 - **async/await only,** on Tokio. Never block inside an async function (no `std::thread::sleep`, no blocking file or network calls). Use `tokio::time::sleep` and async clients.
-- **Handlers only translate.** They take extractors (`State`, `CurrentUser`, `Json`) and call `domain` and `db`. A handler that takes `CurrentUser` can only be reached with a valid token.
+- **Handlers only translate.** They take extractors (`State`, `CurrentUser`, `Json`) and call the feature's rules and `db.rs`. A handler that takes `CurrentUser` can only be reached with a valid token.
 - **State is cheap to clone.** `AppState` holds a pool and `Arc`s, nothing that needs a lock on every request.
 - **Every request body is limited** (`DefaultBodyLimit`), and every reply carries an `x-request-id`.
 
@@ -176,4 +182,4 @@ A reviewer never merges and never pushes to `main`.
 - [Clippy lint configuration](https://doc.rust-lang.org/clippy/lint_configuration.html) for the thresholds.
 - [Comprehensive Rust: parse, don't validate](https://google.github.io/comprehensive-rust/idiomatic/leveraging-the-type-system/newtype-pattern/parse-don-t-validate.html).
 - [RFC 3137: let-else](https://rust-lang.github.io/rfcs/3137-let-else.html), for early returns.
-- [Zero to Production in Rust](https://github.com/LukeMathWalker/zero-to-production) for the `domain`/`routes` split and the single API test binary.
+- [Zero to Production in Rust](https://github.com/LukeMathWalker/zero-to-production) for the split between pure rules and handlers, and the single API test binary.

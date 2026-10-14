@@ -13,6 +13,7 @@ use uuid::Uuid;
 mod keys;
 #[cfg(test)]
 mod tests;
+pub mod users;
 
 use keys::{KeySet, VerifyingKey};
 

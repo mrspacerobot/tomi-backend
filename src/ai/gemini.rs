@@ -4,9 +4,9 @@
 //! access log. A photo is sent in the request body and never logged.
 
 use super::{prompts, Ai, AiError, AiFuture, FridgeQuestion, RankQuestion};
-use crate::domain::fridge::ModelItem;
-use crate::domain::ids::SavedId;
-use crate::domain::special::Ranked;
+use crate::kernel::ids::SavedId;
+use crate::scans::fridge::ModelItem;
+use crate::special::Ranked;
 use serde::Deserialize;
 use serde_json::Value;
 use std::time::Duration;

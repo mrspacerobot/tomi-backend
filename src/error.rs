@@ -4,8 +4,8 @@
 //! an error log.
 
 use crate::auth::AuthError;
-use crate::domain::photo::PhotoError;
-use crate::domain::profile::StoredProfileError;
+use crate::profile::StoredProfileError;
+use crate::scans::photo::PhotoError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;

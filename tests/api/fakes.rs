@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 use tomi_api::ai::{Ai, AiError, AiFuture, FridgeQuestion, RankQuestion};
-use tomi_api::domain::fridge::ModelItem;
-use tomi_api::domain::special::Ranked;
+use tomi_api::scans::fridge::ModelItem;
+use tomi_api::special::Ranked;
 use tomi_api::storage::{PhotoStore, StoreFuture, StoredFile};
 
 /// Sees what it is told to see, and ranks as it is told. A ranking of

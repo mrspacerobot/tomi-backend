@@ -5,8 +5,8 @@ use axum::Router;
 use serde_json::{json, Value};
 use sqlx::PgPool;
 use std::sync::Arc;
-use tomi_api::domain::ids::SavedId;
-use tomi_api::domain::special::Ranked;
+use tomi_api::kernel::ids::SavedId;
+use tomi_api::special::Ranked;
 
 const OMELETTE: &str = "spinach-hard-cheese-omelette";
 const PAN_SAUCE: &str = "seared-chicken-lemon-butter-pan-sauce";

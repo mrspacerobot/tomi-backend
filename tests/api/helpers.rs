@@ -10,10 +10,10 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tomi_api::ai::Ai;
 use tomi_api::auth::Verifier;
-use tomi_api::domain::graph::Graph;
-use tomi_api::domain::library::Library;
+use tomi_api::graph::Graph;
+use tomi_api::library::Library;
 use tomi_api::storage::PhotoStore;
-use tomi_api::{app, library_files, AppState};
+use tomi_api::{app, AppState};
 use uuid::Uuid;
 
 pub use crate::client::{call, call_in, get, patch_profile, Call, Reply};
@@ -62,7 +62,7 @@ pub fn server_with(pool: PgPool, setup: Setup) -> Router {
 }
 
 fn shipped_library() -> Library {
-    let files = library_files::read(Path::new("library")).unwrap();
+    let files = tomi_api::library::files::read(Path::new("library")).unwrap();
     Library::parse(&files).unwrap().0
 }
 
@@ -70,7 +70,7 @@ fn shipped_library() -> Library {
 /// cook can reach every lesson. Tests about food use it; tests about
 /// progress use the shipped one.
 pub fn library_without_prerequisites() -> Library {
-    let mut files = library_files::read(Path::new("library")).unwrap();
+    let mut files = tomi_api::library::files::read(Path::new("library")).unwrap();
     let mut catalog: Value = serde_json::from_str(&files.catalog).unwrap();
     for skill in catalog["skills"].as_array_mut().unwrap() {
         skill["prerequisites"] = json!([]);

@@ -3,11 +3,11 @@
 //! A model only ever reads and ranks. It never adds an ingredient, a diet
 //! or a lesson, and its answer is checked by `domain` before anyone sees it.
 
-use crate::domain::fridge::ModelItem;
-use crate::domain::ids::SavedId;
-use crate::domain::photo::Photo;
-use crate::domain::profile::Profile;
-use crate::domain::special::{Candidate, Ranked};
+use crate::kernel::ids::SavedId;
+use crate::profile::Profile;
+use crate::scans::fridge::ModelItem;
+use crate::scans::photo::Photo;
+use crate::special::{Candidate, Ranked};
 use std::collections::BTreeMap;
 use std::future::Future;
 use std::pin::Pin;

@@ -1,7 +1,7 @@
 use super::gemini::{answer_text, parse_ranking};
 use super::prompts::{fridge_request, rank_request};
 use super::*;
-use crate::domain::photo::Photo;
+use crate::scans::photo::Photo;
 use serde_json::json;
 
 fn id(raw: &str) -> SavedId {

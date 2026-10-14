@@ -4,11 +4,17 @@ pub mod ai;
 pub mod auth;
 pub mod config;
 pub mod db;
-pub mod domain;
 pub mod error;
-pub mod graph_files;
-pub mod library_files;
-pub mod routes;
+pub mod graph;
+pub mod http;
+pub mod ingredients;
+pub mod kernel;
+pub mod library;
+pub mod meta;
+pub mod options;
+pub mod profile;
+pub mod scans;
+pub mod special;
 pub mod storage;
 
 use ai::Ai;
@@ -16,8 +22,8 @@ use auth::Verifier;
 use axum::extract::DefaultBodyLimit;
 use axum::http::HeaderName;
 use axum::Router;
-use domain::graph::Graph;
-use domain::library::Library;
+use graph::Graph;
+use library::Library;
 use sqlx::PgPool;
 use std::sync::Arc;
 use storage::PhotoStore;
@@ -42,7 +48,7 @@ pub struct AppState {
 }
 
 pub fn app(state: AppState) -> Router {
-    routes::router()
+    http::router()
         .with_state(state)
         .layer(DefaultBodyLimit::max(BODY_LIMIT_BYTES))
         // The default trace logs method, path, status and latency. It never

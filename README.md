@@ -114,8 +114,9 @@ No route uses the graph yet. See `docs/local-development.md` to run it.
 ## Layout and rules
 
 `AGENTS.md` has the layout and the coding rules, with examples. In short:
-pure rules in `src/domain`, one file per feature in `src/routes` and
-`src/db`, API tests as one binary in `tests/api`.
+one folder per feature (`src/profile`, `src/scans`, `src/special` and so on), each with its
+`routes.rs`, `db.rs` and pure rules, shared HTTP pieces in `src/http.rs`, API tests as one
+binary in `tests/api`.
 
 ## Running it
 

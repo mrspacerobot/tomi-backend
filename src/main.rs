@@ -7,9 +7,9 @@ use tokio::net::TcpListener;
 use tomi_api::ai::{Ai, Gemini, NoAi};
 use tomi_api::auth::Verifier;
 use tomi_api::config::{AiConfig, Config, PhotoConfig};
-use tomi_api::domain::library::Library;
+use tomi_api::library::Library;
 use tomi_api::storage::{NoStore, PhotoStore, SupabaseStore};
-use tomi_api::{app, db, graph_files, library_files, AppState};
+use tomi_api::{app, db, graph, library, AppState};
 use tracing_subscriber::EnvFilter;
 
 /// The graph this build is pinned to, written by `scripts/fetch-graph.sh`.
@@ -73,7 +73,7 @@ fn state(config: &Config, pool: PgPool) -> Result<AppState, String> {
         verifier: Arc::new(verifier),
         min_app_version: config.min_app_version.clone(),
         library: Arc::new(library(&config.library_dir)?),
-        graph: graph_files::start(GRAPH_LOCK, &config.graph)?.map(Arc::new),
+        graph: graph::files::start(GRAPH_LOCK, &config.graph)?.map(Arc::new),
         ai: ai(&config.ai)?,
         photos: photos(config.supabase_url.as_str(), &config.photos)?,
     })
@@ -81,7 +81,7 @@ fn state(config: &Config, pool: PgPool) -> Result<AppState, String> {
 
 /// The library, or no start at all: without it nothing can be offered.
 fn library(folder: &str) -> Result<Library, String> {
-    let files = library_files::read(Path::new(folder));
+    let files = library::files::read(Path::new(folder));
     let files = files.map_err(|error| format!("library in {folder}: {error}"))?;
     let (library, left_out) = Library::parse(&files).map_err(|error| format!("library: {error}"))?;
     for reason in &left_out {

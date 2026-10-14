@@ -4,7 +4,7 @@
 //! ingredient or a lesson that does not exist. `domain` checks again.
 
 use super::{FridgeQuestion, RankQuestion};
-use crate::domain::special::Candidate;
+use crate::special::Candidate;
 use base64::Engine;
 use serde_json::{json, Value};
 

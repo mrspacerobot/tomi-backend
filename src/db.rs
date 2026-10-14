@@ -1,14 +1,11 @@
-//! The database: connecting, migrating, and one module of queries per domain.
+//! The database: connecting and migrating.
 //!
-//! Queries are plain SQL with every table named in full, so they work
-//! whatever the connection's search path is.
+//! The queries live with their feature, in `<feature>/db.rs`. They are plain SQL
+//! with every table named in full, so they work whatever the connection's search
+//! path is.
 
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Executor, PgPool};
-
-pub mod fridge_photos;
-pub mod profile;
-pub mod users;
 
 pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
