@@ -3,10 +3,11 @@
 //! `fridge` and `photo` are pure rules. `routes` is the HTTP handler, `db` the
 //! queries and `keep` the storage step.
 
-pub mod db;
+mod db;
 pub mod fridge;
 mod keep;
 pub mod photo;
 mod routes;
 
+pub use db::{confirm, Confirmation};
 pub use routes::router;

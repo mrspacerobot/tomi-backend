@@ -1,8 +1,8 @@
 //! `GET` and `PATCH /v1/profile`: the cook's profile and its version.
 
+use super::db::{self as store, ProfileWrite, StoredProfile};
 use crate::error::AppError;
 use crate::http::{json_body, CurrentUser};
-use crate::profile::db::{self as store, ProfileWrite, StoredProfile};
 use crate::profile::{self, PatchError, Profile, ProfilePatch, PROFILE_SCHEMA_VERSION};
 use crate::AppState;
 use axum::extract::rejection::JsonRejection;

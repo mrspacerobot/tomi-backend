@@ -9,9 +9,8 @@ use crate::http::{json_body, Caller, CookLanguage};
 use crate::kernel::display::Namer;
 use crate::kernel::ids::SavedId;
 use crate::kernel::language::Language;
-use crate::profile::db as store;
-use crate::profile::Profile;
-use crate::scans::db::{self as fridge_photos, Confirmation};
+use crate::profile::{read as read_profile, Profile};
+use crate::scans::{self, Confirmation};
 use crate::special::progress::{open_levels, CookCounts};
 use crate::special::{self, overlap_order, ranked, Candidate, Offer, OfferContext, Ranked, Tonight, MODEL_SHORT_LIST};
 use crate::AppState;
@@ -60,7 +59,7 @@ async fn special(
         return Err(AppError::Invalid(vec![format!("send at most {MAX_INGREDIENTS} ingredients")]));
     }
     confirm_scan(&state, user_id, &request).await?;
-    let profile = store::read(&state.db, user_id).await?.profile;
+    let profile = read_profile(&state.db, user_id).await?.profile;
     let by_overlap = candidates(&state, &request, &profile);
     let (model, ranked_by) = model_order(&state, &by_overlap, &profile).await;
     let order = ranked(by_overlap, &model);
@@ -82,7 +81,7 @@ async fn confirm_scan(state: &AppState, user_id: Uuid, request: &SpecialRequest)
     };
     let ingredients: Vec<SavedId> = request.ingredients.iter().cloned().collect();
     let confirmation = Confirmation { user_id, scan_id, ingredients: &ingredients };
-    fridge_photos::confirm(&state.db, &confirmation).await
+    scans::confirm(&state.db, &confirmation).await
 }
 
 fn available(request: &SpecialRequest, profile: &Profile) -> BTreeSet<SavedId> {

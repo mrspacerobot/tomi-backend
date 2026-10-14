@@ -7,7 +7,7 @@ use crate::kernel::ids::SavedId;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
-pub mod db;
+mod db;
 mod patch;
 mod problems;
 mod routes;
@@ -17,6 +17,7 @@ mod tests;
 
 pub use routes::router;
 
+pub use db::{read, StoredProfile};
 pub use patch::{apply, PatchError, ProfilePatch};
 pub use stored::{from_stored, StoredProfileError};
 
