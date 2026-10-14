@@ -4,7 +4,6 @@
 //! be tested on its own. `tests/architecture.rs` fails when a file in this
 //! folder reaches for the web framework, the database or the current time.
 
-pub mod consent;
 pub mod display;
 pub mod fridge;
 pub mod game;

@@ -1,12 +1,10 @@
 //! `POST /v1/scans`: a fridge photo in, what the model saw out.
 //!
-//! The photo goes to the model and is then dropped, unless the cook agreed
-//! to the dataset: then it is kept as it arrived, with what was seen.
+//! The photo goes to the model and is kept as it arrived, with what was seen,
+//! when photo storage is set up. Proof of concept: there is no consent step yet.
 
 use super::{Caller, CookLanguage};
 use crate::ai::FridgeQuestion;
-use crate::db::consents;
-use crate::domain::consent::Purpose;
 use crate::domain::display::Namer;
 use crate::domain::fridge::{self, SeenItem, ShownItem};
 use crate::domain::photo::{Photo, PhotoError, MAX_PHOTO_BYTES};
@@ -33,7 +31,7 @@ pub fn router() -> Router<AppState> {
 struct ScanResponse {
     /// Send it back with the confirmed ingredients when asking for a special.
     scan_id: Uuid,
-    /// Whether the photo was kept for the dataset.
+    /// Whether the photo was kept: it is whenever photo storage is set up.
     kept: bool,
     items: Vec<ShownItem>,
 }
@@ -64,13 +62,10 @@ async fn scan(
     PhotoUpload(photo): PhotoUpload,
 ) -> Result<Json<ScanResponse>, AppError> {
     let Caller { state, user_id } = caller;
-    if !consents::is_current(&state.db, user_id, Purpose::PhotoScan).await? {
-        return Err(AppError::ConsentRequired(Purpose::PhotoScan));
-    }
     let items = read_fridge(&state, &photo).await?;
     let scan_id = Uuid::new_v4();
     let scan = keep::Scan { user_id, scan_id, photo: &photo, items: &items };
-    let kept = keep::if_agreed(&state, &scan).await?;
+    let kept = keep::photo(&state, &scan).await;
     let namer = Namer { library: &state.library, language: &language };
     let items = items.iter().map(|item| item.shown(&namer)).collect();
     Ok(Json(ScanResponse { scan_id, kept, items }))

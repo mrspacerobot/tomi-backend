@@ -30,7 +30,7 @@ pub struct StoredFile<'a> {
     pub mime_type: &'a str,
 }
 
-/// No bucket configured: the dataset consent cannot be given.
+/// No bucket configured: scanned photos are not kept.
 pub struct NoStore;
 
 impl PhotoStore for NoStore {

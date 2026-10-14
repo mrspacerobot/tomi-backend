@@ -35,7 +35,7 @@ pub struct AiConfig {
     pub gemini_model: String,
 }
 
-/// Without a secret key, no photo can be kept for the dataset.
+/// Without a secret key, scans still work but no photo is kept for the dataset.
 #[derive(Debug, Clone)]
 pub struct PhotoConfig {
     /// Supabase's secret (service role) key. Server only, never the app.

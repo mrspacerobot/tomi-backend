@@ -92,3 +92,32 @@ fn unknown_fields_and_values_are_refused() {
         assert!(result.is_err(), "{body}");
     }
 }
+
+#[test]
+fn a_row_saved_before_fields_were_added_reads_with_their_defaults() {
+    let stored = json!({"diet": "vegan", "avoid": ["nuts"]});
+    let profile = from_stored(PROFILE_SCHEMA_VERSION, stored).unwrap();
+    assert_eq!(profile.diet, Some(id("vegan")));
+    assert_eq!(profile.avoid, [id("nuts")].into());
+    assert_eq!(profile.servings, 2);
+    assert_eq!(profile.weekly_goal, 3);
+    assert!(!profile.onboarding_done);
+}
+
+#[test]
+fn a_row_saved_by_a_newer_server_is_refused_not_read_without_what_it_added() {
+    let newer = PROFILE_SCHEMA_VERSION + 1;
+    let stored = json!({"diet": "vegan", "someNewRestriction": ["x"]});
+    assert_eq!(from_stored(newer, stored).unwrap_err(), StoredProfileError::NewerThanThisServer(newer));
+}
+
+#[test]
+fn a_row_with_an_unknown_field_at_this_version_is_refused() {
+    let stored = json!({"diet": "vegan", "someNewRestriction": ["x"]});
+    assert_eq!(from_stored(PROFILE_SCHEMA_VERSION, stored).unwrap_err(), StoredProfileError::Unreadable);
+}
+
+#[test]
+fn a_row_with_a_version_below_one_is_unreadable() {
+    assert_eq!(from_stored(0, json!({})).unwrap_err(), StoredProfileError::Unreadable);
+}

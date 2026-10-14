@@ -11,11 +11,11 @@ async fn health_checks_need_no_sign_in(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn bootstrap_offers_no_content_until_some_is_published(pool: PgPool) {
+async fn bootstrap_names_the_library_it_serves(pool: PgPool) {
     let reply = get(&server(pool), "/v1/bootstrap", None).await;
     assert_eq!(reply.status, StatusCode::OK);
     assert_eq!(reply.body["minAppVersion"], "1.2.0");
-    assert_eq!(reply.body["libraryVersion"], Value::Null);
+    assert_eq!(reply.body["libraryVersion"], 1);
     assert_eq!(reply.body["safetyVersion"], Value::Null);
 }
 

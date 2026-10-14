@@ -17,7 +17,6 @@ use std::convert::Infallible;
 use uuid::Uuid;
 
 mod bootstrap;
-mod consents;
 mod health;
 mod ingredients;
 mod options;
@@ -32,7 +31,6 @@ pub fn router() -> Router<AppState> {
         .merge(options::router())
         .merge(ingredients::router())
         .merge(profile::router())
-        .merge(consents::router())
         .merge(scans::router())
         .merge(specials::router())
 }

@@ -87,3 +87,48 @@ async fn cooks_see_only_their_own_profile(pool: PgPool) {
     assert_eq!(reply.body["version"], 0);
     assert_eq!(reply.body["profile"]["avoid"], json!([]));
 }
+
+/// A profile row as another version of the server would have saved it.
+struct Row {
+    subject: uuid::Uuid,
+    schema_version: i32,
+    data: Value,
+}
+
+/// Saves the row for a cook who has called the API once.
+async fn store_row(pool: &PgPool, row: Row) {
+    let user = crate::helpers::user_id(pool, row.subject).await;
+    let query = "insert into tomi.profiles (user_id, version, schema_version, data) values ($1, 1, $2, $3)";
+    sqlx::query(query).bind(user).bind(row.schema_version).bind(row.data).execute(pool).await.unwrap();
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn a_profile_saved_before_fields_were_added_reads_with_their_defaults(pool: PgPool) {
+    let app = server(pool.clone());
+    let subject = uuid::Uuid::new_v4();
+    let cook = crate::helpers::token_with(&crate::helpers::claims(subject));
+    get(&app, "/v1/profile", Some(&cook)).await;
+    store_row(&pool, Row { subject, schema_version: 1, data: json!({"diet": "vegan"}) }).await;
+    let read = get(&app, "/v1/profile", Some(&cook)).await;
+    assert_eq!(read.status, StatusCode::OK, "{}", read.body);
+    assert_eq!(read.body["profile"]["diet"], "vegan");
+    assert_eq!(read.body["profile"]["servings"], 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn a_profile_saved_by_a_newer_server_is_refused_and_never_overwritten(pool: PgPool) {
+    let app = server(pool.clone());
+    let subject = uuid::Uuid::new_v4();
+    let cook = crate::helpers::token_with(&crate::helpers::claims(subject));
+    get(&app, "/v1/profile", Some(&cook)).await;
+    let data = json!({"diet": "vegan", "someNewRestriction": ["x"]});
+    store_row(&pool, Row { subject, schema_version: 2, data }).await;
+
+    let read = get(&app, "/v1/profile", Some(&cook)).await;
+    assert_eq!(read.status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(read.body["error"]["code"], "profile_too_new");
+    let write = patch_profile(&app, &cook, json!({"version": 1, "avoid": ["nuts"]})).await;
+    assert_eq!(write.status, StatusCode::SERVICE_UNAVAILABLE);
+    let data: Value = sqlx::query_scalar("select data from tomi.profiles").fetch_one(&pool).await.unwrap();
+    assert_eq!(data["someNewRestriction"], json!(["x"]));
+}

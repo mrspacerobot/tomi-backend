@@ -4,8 +4,8 @@
 //! an error log.
 
 use crate::auth::AuthError;
-use crate::domain::consent::Purpose;
 use crate::domain::photo::PhotoError;
+use crate::domain::profile::StoredProfileError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -25,26 +25,31 @@ pub enum AppError {
     VersionConflict { expected: i64, current: Value },
     #[error("this change removes restrictions; send allowWeakerRestrictions to confirm")]
     WeakensRestrictions { removed: Vec<String> },
-    #[error("the cook has not agreed to the current text for {}", .0.slug())]
-    ConsentRequired(Purpose),
     #[error(transparent)]
     Photo(#[from] PhotoError),
     #[error("the AI model is unavailable; the cook can type what they have")]
     AiUnavailable,
-    #[error("photo storage is unavailable")]
-    StorageUnavailable,
     #[error("the database failed")]
     Database(#[from] sqlx::Error),
     #[error("stored data could not be read")]
     Corrupt(#[from] serde_json::Error),
+    #[error("the stored profile could not be read")]
+    StoredProfileUnreadable,
+    #[error("the profile was saved by a newer version of Tomi's server; try again shortly")]
+    ProfileTooNew,
+}
+
+impl From<StoredProfileError> for AppError {
+    fn from(error: StoredProfileError) -> Self {
+        match error {
+            StoredProfileError::NewerThanThisServer(_) => AppError::ProfileTooNew,
+            StoredProfileError::Unreadable => AppError::StoredProfileUnreadable,
+        }
+    }
 }
 
 impl AppError {
     /// The code the app acts on. Codes are permanent once released.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "a flat match from each error to its value, the long shape AGENTS.md allows"
-    )]
     fn code(&self) -> &'static str {
         match self {
             AppError::Auth(AuthError::KeysUnavailable) => "auth_unavailable",
@@ -55,12 +60,11 @@ impl AppError {
             AppError::NotFound => "not_found",
             AppError::VersionConflict { .. } => "version_conflict",
             AppError::WeakensRestrictions { .. } => "weakens_restrictions",
-            AppError::ConsentRequired(_) => "consent_required",
             AppError::Photo(PhotoError::TooLarge) => "photo_too_large",
             AppError::Photo(_) => "photo_unreadable",
             AppError::AiUnavailable => "ai_unavailable",
-            AppError::StorageUnavailable => "storage_unavailable",
-            AppError::Database(_) | AppError::Corrupt(_) => "internal",
+            AppError::ProfileTooNew => "profile_too_new",
+            AppError::Database(_) | AppError::Corrupt(_) | AppError::StoredProfileUnreadable => "internal",
         }
     }
 
@@ -78,12 +82,13 @@ impl AppError {
             AppError::NotFound => StatusCode::NOT_FOUND,
             AppError::VersionConflict { .. } => StatusCode::CONFLICT,
             AppError::WeakensRestrictions { .. } => StatusCode::CONFLICT,
-            AppError::ConsentRequired(_) => StatusCode::FORBIDDEN,
             AppError::Photo(PhotoError::TooLarge) => StatusCode::PAYLOAD_TOO_LARGE,
             AppError::Photo(PhotoError::UnsupportedType) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             AppError::Photo(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            AppError::AiUnavailable | AppError::StorageUnavailable => StatusCode::SERVICE_UNAVAILABLE,
-            AppError::Database(_) | AppError::Corrupt(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::AiUnavailable | AppError::ProfileTooNew => StatusCode::SERVICE_UNAVAILABLE,
+            AppError::Database(_) | AppError::Corrupt(_) | AppError::StoredProfileUnreadable => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
         }
     }
 
@@ -92,7 +97,6 @@ impl AppError {
             AppError::Invalid(problems) => Some(json!({ "problems": problems })),
             AppError::VersionConflict { current, .. } => Some(json!({ "current": current })),
             AppError::WeakensRestrictions { removed } => Some(json!({ "removed": removed })),
-            AppError::ConsentRequired(purpose) => Some(consent_details(*purpose)),
             _ => None,
         }
     }
@@ -110,10 +114,6 @@ impl AppError {
     fn log(&self) {
         tracing::error!(error = %self, code = self.code(), "request failed");
     }
-}
-
-fn consent_details(purpose: Purpose) -> Value {
-    json!({ "purpose": purpose.slug(), "version": purpose.current_version() })
 }
 
 impl IntoResponse for AppError {

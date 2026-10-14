@@ -1,11 +1,11 @@
 //! Reading and saving the cook's profile, with a version for each save.
 
-use crate::domain::profile::{Profile, PROFILE_SCHEMA_VERSION};
+use crate::domain::profile::{from_stored, Profile, PROFILE_SCHEMA_VERSION};
 use crate::error::AppError;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-const READ: &str = "select version, data from tomi.profiles where user_id = $1";
+const READ: &str = "select version, schema_version, data from tomi.profiles where user_id = $1";
 
 const INSERT_FIRST: &str = "
     insert into tomi.profiles (user_id, version, schema_version, data)
@@ -24,11 +24,11 @@ pub struct StoredProfile {
 }
 
 pub async fn read(pool: &PgPool, user_id: Uuid) -> Result<StoredProfile, AppError> {
-    let row: Option<(i64, serde_json::Value)> = sqlx::query_as(READ).bind(user_id).fetch_optional(pool).await?;
-    let Some((version, data)) = row else {
+    let row: Option<(i64, i32, serde_json::Value)> = sqlx::query_as(READ).bind(user_id).fetch_optional(pool).await?;
+    let Some((version, schema_version, data)) = row else {
         return Ok(StoredProfile { version: 0, profile: Profile::default() });
     };
-    let profile = serde_json::from_value(data)?;
+    let profile = from_stored(schema_version, data)?;
     Ok(StoredProfile { version, profile })
 }
 

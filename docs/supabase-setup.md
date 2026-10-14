@@ -112,7 +112,7 @@ Tomi will not offer email.
 
 ## 8. The photo bucket, for the dataset
 
-Only needed if cooks may agree to keep their fridge photos.
+Needed for the photos every scan keeps (proof of concept: there is no consent step yet). Without it, scans still work and nothing is kept.
 
 1. **Storage → New bucket**, named `fridge-photos`. Leave **Public bucket**
    off. Set the file size limit to 10 MB and the allowed types to

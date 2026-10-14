@@ -104,12 +104,10 @@ async fn an_unknown_restriction_offers_nothing(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn a_kept_photo_learns_what_the_cook_confirmed(pool: PgPool) {
+async fn a_scanned_photo_learns_what_the_cook_confirmed(pool: PgPool) {
     let store = Arc::new(FakeStore::default());
     let app = server_with(pool.clone(), Setup { photos: store, ..Setup::default() });
     let cook = new_cook();
-    agree(&app, &cook, "photo-scan").await;
-    agree(&app, &cook, "photo-dataset").await;
     let scanned = scan(&app, &cook, jpeg()).await;
     let body = json!({"ingredients": ["egg", "spinach"], "scanId": scanned.body["scanId"]});
     special(&app, &cook, body).await;

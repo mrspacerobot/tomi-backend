@@ -112,14 +112,6 @@ pub async fn user_id(pool: &PgPool, subject: Uuid) -> Uuid {
     sqlx::query_scalar(query).bind(subject).fetch_one(pool).await.unwrap()
 }
 
-/// The cook agrees to the current text for a purpose, as the app would.
-pub async fn agree(app: &Router, token: &str, purpose: &str) -> Reply {
-    let path = format!("/v1/consents/{purpose}");
-    let body = Some(("application/json", br#"{"version": 1}"#.to_vec()));
-    call(app, Call { method: Method::PUT, path: &path, token: Some(token), body }).await
-}
-
-/// A small JPEG whose EXIF segment holds a location.
 pub fn jpeg_with_location() -> Vec<u8> {
     let mut bytes = vec![0xFF, 0xD8];
     bytes.extend([0xFF, 0xE0, 0x00, 0x04, b'J', b'F']);

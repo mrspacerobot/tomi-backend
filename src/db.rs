@@ -6,7 +6,6 @@
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Executor, PgPool};
 
-pub mod consents;
 pub mod fridge_photos;
 pub mod profile;
 pub mod users;

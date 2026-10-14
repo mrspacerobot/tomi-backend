@@ -2,7 +2,7 @@
 //!
 //! Only JPEG and PNG are taken: the app converts other formats before
 //! sending. A kept photo is stored as it arrived, metadata included: what
-//! the app sends is the app's decision, and the consent text says what is kept.
+//! the app sends is the app's decision.
 
 use serde::Serialize;
 

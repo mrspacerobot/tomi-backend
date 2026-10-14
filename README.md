@@ -15,9 +15,6 @@ profile, then the AI functions (fridge scan and tonight's special).
 | `PATCH /v1/profile` | yes | Changes fields of the profile. See below |
 | `GET /v1/options` | no | Every list the app offers (diets, things to avoid, cuisines, equipment, experience, units, ingredients, the skill menu) with names in the cook's language |
 | `POST /v1/ingredients/resolve` | yes | Typed text to ingredients: `exact`, `ambiguous` (the cook chooses) or `none` |
-| `GET /v1/consents` | yes | Each purpose, its current text version, and whether the cook agreed |
-| `PUT /v1/consents/{purpose}` | yes | Agree to `photo-scan` or `photo-dataset`, sending `{"version": 1}` |
-| `DELETE /v1/consents/{purpose}` | yes | Withdraw. For `photo-dataset`, every kept photo is deleted |
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
 | `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, tonight's special and up to two alternatives out |
 
@@ -53,19 +50,19 @@ The fields and their JSON names are those of Tomi's `SavedProfile`:
 
 ### The fridge scan
 
-Needs the `photo-scan` consent. The body is the photo itself, with its
-`Content-Type`. The answer:
+The body is the photo itself, with its `Content-Type`. The answer:
 
 ```json
-{ "scanId": "…", "kept": false,
+{ "scanId": "…", "kept": true,
   "items": [ { "label": "eggs", "ingredient": "egg", "confidence": 0.9 },
              { "label": "a jar of pesto", "ingredient": null, "confidence": 0.7 } ] }
 ```
 
 The model may only name ingredients from Tomi's ingredient table; anything
-else comes back as a plain label for the cook to confirm, type or skip. With
-the separate `photo-dataset` consent, the photo as it arrived
-is kept in a private bucket with what was seen (`kept: true`).
+else comes back as a plain label for the cook to confirm, type or skip.
+**Proof of concept: every scanned photo is kept**, as it arrived and with what was seen, in a
+private bucket (`kept: true`), when photo storage is set up (`SUPABASE_SECRET_KEY`).
+Nothing asks the cook yet. A consent step must come before real cooks use it.
 Without a model configured the answer is `503 ai_unavailable`, and the app
 falls back to typing.
 
@@ -152,7 +149,7 @@ script on every pull request.
 - **"Conflicting restrictions merge toward the stricter result"** is handled
   here by refusing a stale write and by refusing silent removals. The merge
   of an imported SwiftData profile is not built.
-- **Consent** has columns but no route yet.
+- **Consent:** none. Every scanned photo is kept (see "The fridge scan"). Build it before real cooks.
 - **No rate limits yet.** Cloud Run limits concurrency per instance; real
   limits come with the next slice.
 - **The Docker image was not built here** (no Docker daemon in the session

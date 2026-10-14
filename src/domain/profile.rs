@@ -9,12 +9,14 @@ use std::collections::BTreeSet;
 
 mod patch;
 mod problems;
+mod stored;
 #[cfg(test)]
 mod tests;
 
 pub use patch::{apply, PatchError, ProfilePatch};
+pub use stored::{from_stored, StoredProfileError};
 
-/// Bumped when the stored JSON shape changes, so old rows can be migrated.
+/// Bumped whenever the profile gains a field or the stored JSON shape changes. See `stored.rs`.
 pub const PROFILE_SCHEMA_VERSION: i32 = 1;
 
 /// How much the cook already cooks. The raw values are saved by the app.
@@ -36,7 +38,7 @@ pub enum Units {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
 pub struct Profile {
     /// The diet the cook keeps, or none when they eat everything.
     pub diet: Option<SavedId>,

@@ -8,9 +8,13 @@ use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
 /// A token with an unknown key id triggers a refetch, but not more often
-/// than this, so forged tokens cannot make us hammer Supabase.
+/// than this, counted from the last attempt whether or not it worked, so
+/// forged tokens cannot make us hammer Supabase or queue everyone behind it.
 const REFETCH_GAP: Duration = Duration::from_secs(60);
 const FETCH_TIMEOUT: Duration = Duration::from_secs(5);
+
+#[cfg(test)]
+mod tests;
 
 type KeysById = HashMap<String, VerifyingKey>;
 
@@ -34,7 +38,8 @@ struct Source {
 #[derive(Default)]
 struct Cache {
     keys: KeysById,
-    fetched_at: Option<Instant>,
+    last_attempt: Option<Instant>,
+    last_attempt_failed: bool,
 }
 
 impl KeySet {
@@ -45,7 +50,7 @@ impl KeySet {
     }
 
     pub fn fixed(jwks: &JwkSet) -> Self {
-        let cache = Cache { keys: usable_keys(jwks), fetched_at: None };
+        let cache = Cache { keys: usable_keys(jwks), ..Cache::default() };
         KeySet { source: None, cache: RwLock::new(cache) }
     }
 
@@ -66,14 +71,24 @@ impl KeySet {
 }
 
 async fn refresh_if_stale(cache: &mut Cache, source: &Source) -> Result<(), AuthError> {
-    if let Some(fetched_at) = cache.fetched_at {
-        if fetched_at.elapsed() < REFETCH_GAP {
-            return Ok(());
+    if let Some(last_attempt) = cache.last_attempt {
+        if last_attempt.elapsed() < REFETCH_GAP {
+            return recent_outcome(cache);
         }
     }
-    let jwks = fetch(source).await?;
-    cache.keys = usable_keys(&jwks);
-    cache.fetched_at = Some(Instant::now());
+    cache.last_attempt = Some(Instant::now());
+    let fetched = fetch(source).await;
+    cache.last_attempt_failed = fetched.is_err();
+    cache.keys = usable_keys(&fetched?);
+    Ok(())
+}
+
+/// Inside the gap nothing is fetched. A recent failure is still a failure: the
+/// keys are unavailable, which is not the same as the token being invalid.
+fn recent_outcome(cache: &Cache) -> Result<(), AuthError> {
+    if cache.last_attempt_failed {
+        return Err(AuthError::KeysUnavailable);
+    }
     Ok(())
 }
 

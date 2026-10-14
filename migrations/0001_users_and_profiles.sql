@@ -9,11 +9,7 @@ create table tomi.users (
     -- so that changing the sign-in provider does not change a user's id.
     auth_subject uuid not null unique,
     created_at timestamptz not null default now(),
-    deleted_at timestamptz,
-    -- Version of the consent text the cook accepted for sending confirmed
-    -- ingredients and restrictions. Null until a consent endpoint exists.
-    consent_version integer,
-    consent_recorded_at timestamptz
+    deleted_at timestamptz
 );
 
 create table tomi.profiles (

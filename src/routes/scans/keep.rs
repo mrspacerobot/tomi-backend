@@ -1,13 +1,13 @@
-//! Keeping a scanned photo for the dataset, only with the cook's consent.
+//! Keeping every scanned photo for the dataset, as it arrived.
 //!
-//! A failure to keep never fails the scan: the cook still gets their
-//! answer, and the photo is simply not kept.
+//! Proof of concept: nothing asks the cook yet. Before real cooks use this,
+//! a consent step must come first (see AGENTS.md). A failure to keep never
+//! fails the scan: the cook still gets their answer, and the photo is simply
+//! not kept.
 
-use crate::db::{consents, fridge_photos};
-use crate::domain::consent::Purpose;
+use crate::db::fridge_photos;
 use crate::domain::fridge::SeenItem;
 use crate::domain::photo::Photo;
-use crate::error::AppError;
 use crate::storage::StoredFile;
 use crate::AppState;
 use uuid::Uuid;
@@ -26,16 +26,16 @@ impl Scan<'_> {
     }
 }
 
-/// Whether the photo was kept.
-pub async fn if_agreed(state: &AppState, scan: &Scan<'_>) -> Result<bool, AppError> {
-    if !consents::is_current(&state.db, scan.user_id, Purpose::PhotoDataset).await? {
-        return Ok(false);
+/// Whether the photo was kept. Without photo storage it is not, and that is no failure.
+pub async fn photo(state: &AppState, scan: &Scan<'_>) -> bool {
+    if !state.photos.is_configured() {
+        return false;
     }
     match keep(state, scan).await {
-        Ok(()) => Ok(true),
+        Ok(()) => true,
         Err(reason) => {
             log_not_kept(reason);
-            Ok(false)
+            false
         }
     }
 }
@@ -62,7 +62,6 @@ async fn record(state: &AppState, scan: &Scan<'_>, path: &str) -> Result<(), &'s
         user_id: scan.user_id,
         object_path: path,
         mime_type: scan.photo.kind.mime_type(),
-        consent_version: Purpose::PhotoDataset.current_version(),
         model: state.ai.model_name(),
         seen: scan.items,
     };
@@ -72,5 +71,5 @@ async fn record(state: &AppState, scan: &Scan<'_>, path: &str) -> Result<(), &'s
 
 #[expect(clippy::cognitive_complexity, reason = "tracing's macro expands into branches no reader sees")]
 fn log_not_kept(reason: &'static str) {
-    tracing::warn!(reason, "a consented photo was not kept");
+    tracing::warn!(reason, "a photo was not kept");
 }
