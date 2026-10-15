@@ -36,6 +36,9 @@ struct SpecialRequest {
     ingredients: BTreeSet<SavedId>,
     /// The scan these came from, if any, so a kept photo learns the answer.
     scan_id: Option<Uuid>,
+    /// Staples the cook does not have tonight, though they usually do. Never removes something they confirmed.
+    #[serde(default)]
+    staples_left_out: BTreeSet<SavedId>,
 }
 
 #[derive(Serialize)]
@@ -71,7 +74,7 @@ async fn special(
 fn candidates(state: &AppState, request: &SpecialRequest, profile: &Profile) -> Result<Vec<Candidate>, AppError> {
     let graph = state.graph()?;
     let open = open_levels(&state.library.catalog, profile.experience, &CookCounts::default());
-    let tonight = Tonight { profile, available: available(request, profile), open: &open };
+    let tonight = Tonight { profile, available: available(state, request, profile), open: &open };
     Ok(overlap_order(special::candidates(&state.library, graph, &tonight)))
 }
 
@@ -85,9 +88,13 @@ async fn confirm_scan(state: &AppState, user_id: Uuid, request: &SpecialRequest)
     scans::confirm(&state.db, &confirmation).await
 }
 
-fn available(request: &SpecialRequest, profile: &Profile) -> BTreeSet<SavedId> {
-    let staples = profile.cupboard_staples.iter().cloned();
-    request.ingredients.iter().cloned().chain(staples).collect()
+/// What the cook has tonight: what they confirmed, and their staples less any they leave out. Until they answer
+/// the cupboard question the staples a kitchen is taken to have stand in for theirs.
+fn available(state: &AppState, request: &SpecialRequest, profile: &Profile) -> BTreeSet<SavedId> {
+    let usual =
+        if profile.cupboard_answered { profile.cupboard_staples.clone() } else { state.library.staples.assumed() };
+    let at_home = usual.into_iter().filter(|staple| !request.staples_left_out.contains(staple));
+    request.ingredients.iter().cloned().chain(at_home).collect()
 }
 
 /// The model's order over the short list, or none when there is nothing to

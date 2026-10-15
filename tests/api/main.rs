@@ -7,6 +7,7 @@
 
 mod auth;
 mod client;
+mod cupboard;
 mod fakes;
 mod graph;
 mod health;

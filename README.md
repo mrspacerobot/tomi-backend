@@ -27,10 +27,16 @@ row the first time it sees a cook.
 
 The fields and their JSON names are those of Tomi's `SavedProfile`:
 `diet`, `avoid`, `cuisinesLoved`, `cuisinesToTry`, `cuisinesNever`,
-`cupboardStaples`, `equipment`, `experience` (`never`, `basics`,
+`cupboardStaples`, `cupboardAnswered`, `equipment`, `experience` (`never`, `basics`,
 `comfortable`), `servings`, `units` (`metric`, `cups`), `weeklyGoal` (1 to
 7), `focusSkill` and `onboardingDone`. Ids are Tomi's own, such as `nuts`,
 `vegetarian` or `olive-oil`.
+
+`cupboardAnswered` is false until the cook has answered the cupboard question: until then the
+staples a kitchen is taken to have (`assumed` in `GET /v1/options` `staples`) count, and
+`cupboardStaples` is not read. A staple a change adds must be an ingredient the graph knows
+(`422 invalid_request`). `GET /v1/options` also lists the `staples` the cupboard offers, and
+each avoid item says whether it is an `allergen` or a `choice`.
 
 ```json
 { "version": 3, "diet": "vegetarian", "avoid": ["nuts", "sesame"], "servings": 4 }
@@ -69,10 +75,12 @@ falls back to typing. Without a graph it is `503 graph_unavailable`.
 ### Tonight's special
 
 ```json
-{ "ingredients": ["egg", "spinach"], "scanId": "…" }
+{ "ingredients": ["egg", "spinach"], "scanId": "…", "staplesLeftOut": ["flour"] }
 ```
 
-The cook's cupboard staples are added. Code filters the library by "never"
+The cook's cupboard staples are added (the assumed ones until they have answered the cupboard
+question), less any in `staplesLeftOut` for tonight. A staple left out never removes something
+the cook confirmed. Code filters the library by "never"
 cuisines and kitchen, and the cooking graph says whether the lesson's recipe can be made
 safely for the cook's diet and avoid list, with the swaps it allows. Without a graph the
 answer is `503 graph_unavailable`. The model then reorders the short

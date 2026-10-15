@@ -8,11 +8,11 @@ use std::sync::Arc;
 use tomi_api::kernel::ids::SavedId;
 use tomi_api::special::Ranked;
 
-const OMELETTE: &str = "spinach-hard-cheese-omelette";
+pub const OMELETTE: &str = "spinach-hard-cheese-omelette";
 const PAN_SAUCE: &str = "seared-chicken-lemon-butter-pan-sauce";
 
 /// A server where a comfortable cook can reach every lesson, with this model.
-fn open_server(pool: PgPool, ai: FakeAi) -> Router {
+pub fn open_server(pool: PgPool, ai: FakeAi) -> Router {
     server_with(pool, Setup { ai: Arc::new(ai), library: library_without_prerequisites(), ..Setup::default() })
 }
 
@@ -23,7 +23,7 @@ fn ranking_omelette_first() -> FakeAi {
 }
 
 /// A new cook who answered "comfortable", with these other answers.
-async fn comfortable_cook(app: &Router, answers: Value) -> String {
+pub async fn comfortable_cook(app: &Router, answers: Value) -> String {
     let cook = new_cook();
     let mut profile = json!({"version": 0, "experience": "comfortable"});
     profile.as_object_mut().unwrap().extend(answers.as_object().unwrap().clone());
@@ -70,7 +70,8 @@ async fn the_model_orders_the_short_list(pool: PgPool) {
 async fn without_a_model_the_order_follows_what_the_cook_has(pool: PgPool) {
     let app = open_server(pool, FakeAi::default());
     let cook = comfortable_cook(&app, json!({})).await;
-    let reply = special(&app, &cook, json!({"ingredients": ["chicken-thigh", "garlic"]})).await;
+    let pan_sauce = ["chicken-thigh", "garlic", "lemon", "white-wine", "butter", "spinach"];
+    let reply = special(&app, &cook, json!({"ingredients": pan_sauce})).await;
     assert_eq!(reply.body["rankedBy"], "overlap");
     assert_eq!(reply.body["special"]["lessonId"], PAN_SAUCE);
 }
