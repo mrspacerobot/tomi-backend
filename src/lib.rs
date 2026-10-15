@@ -22,10 +22,11 @@ use auth::Verifier;
 use axum::extract::DefaultBodyLimit;
 use axum::http::HeaderName;
 use axum::Router;
-use graph::Graph;
+use error::AppError;
+use graph::{Foods, Graph};
 use library::Library;
 use sqlx::PgPool;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use storage::PhotoStore;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
@@ -45,6 +46,22 @@ pub struct AppState {
     pub graph: Option<Arc<Graph>>,
     pub ai: Arc<dyn Ai>,
     pub photos: Arc<dyn PhotoStore>,
+}
+
+impl AppState {
+    /// The graph, or the error to show when this server runs without one.
+    pub fn graph(&self) -> Result<&Graph, AppError> {
+        self.graph.as_deref().ok_or(AppError::GraphUnavailable)
+    }
+
+    /// Every food the graph knows, none when this server runs without a graph.
+    pub fn foods(&self) -> &Foods {
+        static NONE: LazyLock<Foods> = LazyLock::new(Foods::empty);
+        match &self.graph {
+            Some(graph) => &graph.foods,
+            None => &NONE,
+        }
+    }
 }
 
 pub fn app(state: AppState) -> Router {

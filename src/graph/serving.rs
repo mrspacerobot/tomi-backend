@@ -90,27 +90,42 @@ pub struct RecipePlan {
     pub left_out: Vec<String>,
 }
 
+/// What a cook avoids, in graph facts, and which foods (as graph ids) they have tonight.
+#[derive(Debug, Clone, Default)]
+pub struct CookFacts {
+    pub avoided: BTreeSet<String>,
+    pub at_hand: BTreeSet<String>,
+}
+
+enum Decision<'a> {
+    Keep,
+    Swap(&'a ServedSwap),
+    LeaveOut,
+    Refuse,
+}
+
 impl Serving {
-    /// The recipe made for a cook who avoids these facts, or `None` when a required line has no safe way.
-    pub fn plan(&self, recipe: &str, avoided: &BTreeSet<String>) -> Result<Option<RecipePlan>, ServingError> {
-        if let Some(unknown) = avoided.iter().find(|fact| !self.facts.contains(*fact)) {
+    /// The recipe made for this cook, or `None` when a required line has no safe way.
+    pub fn plan(&self, recipe: &str, cook: &CookFacts) -> Result<Option<RecipePlan>, ServingError> {
+        if let Some(unknown) = cook.avoided.iter().find(|fact| !self.facts.contains(*fact)) {
             return Err(ServingError::UnknownFact(unknown.clone()));
         }
         let Some(served) = self.recipes.get(recipe) else {
             return Err(ServingError::UnknownRecipe(recipe.to_string()));
         };
-        Ok(served.plan(avoided))
+        Ok(served.plan(cook))
     }
 }
 
 impl ServedRecipe {
-    fn plan(&self, avoided: &BTreeSet<String>) -> Option<RecipePlan> {
+    fn plan(&self, cook: &CookFacts) -> Option<RecipePlan> {
         let mut plan = RecipePlan::default();
-        for line in self.lines.iter().filter(|line| !line.is_safe(avoided)) {
-            match line.first_safe_swap(avoided) {
-                Some(swap) => plan.swaps.push(swap.replacing(&line.thing)),
-                None if line.optional => plan.left_out.push(line.part.clone()),
-                None => return None,
+        for line in &self.lines {
+            match line.decide(cook) {
+                Decision::Keep => {}
+                Decision::Swap(swap) => plan.swaps.push(swap.replacing(&line.thing)),
+                Decision::LeaveOut => plan.left_out.push(line.part.clone()),
+                Decision::Refuse => return None,
             }
         }
         plan.left_out.dedup();
@@ -119,12 +134,28 @@ impl ServedRecipe {
 }
 
 impl ServedLine {
-    fn is_safe(&self, avoided: &BTreeSet<String>) -> bool {
-        self.unsafe_for.is_disjoint(avoided)
+    /// A safe original the cook has is kept. Otherwise a safe swap, the one they have first. A safe original
+    /// they lack is replaced only by a swap they have.
+    fn decide(&self, cook: &CookFacts) -> Decision<'_> {
+        let safe = self.unsafe_for.is_disjoint(&cook.avoided);
+        if safe && cook.at_hand.contains(&self.thing) {
+            return Decision::Keep;
+        }
+        match self.best_swap(cook, safe) {
+            Some(swap) => Decision::Swap(swap),
+            None if safe => Decision::Keep,
+            None if self.optional => Decision::LeaveOut,
+            None => Decision::Refuse,
+        }
     }
 
-    fn first_safe_swap(&self, avoided: &BTreeSet<String>) -> Option<&ServedSwap> {
-        self.swaps.iter().find(|swap| swap.unsafe_for.is_disjoint(avoided))
+    fn best_swap(&self, cook: &CookFacts, original_is_safe: bool) -> Option<&ServedSwap> {
+        let mut safe = self.swaps.iter().filter(|swap| swap.unsafe_for.is_disjoint(&cook.avoided));
+        let at_hand = safe.clone().find(|swap| cook.at_hand.contains(&swap.thing));
+        if original_is_safe {
+            return at_hand;
+        }
+        at_hand.or_else(|| safe.next())
     }
 }
 

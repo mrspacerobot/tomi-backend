@@ -51,8 +51,12 @@ fn avoiding(facts: &[&str]) -> BTreeSet<String> {
     facts.iter().map(|fact| fact.to_string()).collect()
 }
 
+fn asks(facts: &[&str]) -> CookFacts {
+    CookFacts { avoided: avoiding(facts), at_hand: BTreeSet::new() }
+}
+
 fn plan(facts: &[&str]) -> Result<Option<RecipePlan>, ServingError> {
-    section().plan("recipe/omelette", &avoiding(facts))
+    section().plan("recipe/omelette", &asks(facts))
 }
 
 #[test]
@@ -76,7 +80,7 @@ fn a_line_whose_only_swap_is_also_unsafe_refuses_the_recipe() {
 fn a_safe_swap_is_used_and_carries_its_ratio_and_caveat() {
     let mut milk_free = section();
     milk_free.recipes.get_mut("recipe/omelette").unwrap().lines.remove(2);
-    let plan = milk_free.plan("recipe/omelette", &avoiding(&["fact/milk"])).unwrap().unwrap();
+    let plan = milk_free.plan("recipe/omelette", &asks(&["fact/milk"])).unwrap().unwrap();
     assert_eq!(plan.swaps.len(), 1);
     assert_eq!(plan.swaps[0].original, "ingredient/butter");
     assert_eq!(plan.swaps[0].instead, "ingredient/olive-oil");
@@ -87,7 +91,7 @@ fn a_safe_swap_is_used_and_carries_its_ratio_and_caveat() {
 fn an_optional_line_with_no_way_is_left_out_and_does_not_refuse_the_recipe() {
     let mut garnish_only = section();
     garnish_only.recipes.get_mut("recipe/omelette").unwrap().lines.retain(|line| line.part == "garnish");
-    let plan = garnish_only.plan("recipe/omelette", &avoiding(&["fact/milk"])).unwrap().unwrap();
+    let plan = garnish_only.plan("recipe/omelette", &asks(&["fact/milk"])).unwrap().unwrap();
     assert_eq!(plan.left_out, vec!["garnish".to_string()]);
 }
 
@@ -99,7 +103,7 @@ fn a_fact_the_graph_does_not_know_is_an_error_never_a_pass() {
 
 #[test]
 fn a_recipe_the_graph_does_not_know_is_an_error() {
-    let error = section().plan("recipe/nope", &avoiding(&[])).unwrap_err();
+    let error = section().plan("recipe/nope", &asks(&[])).unwrap_err();
     assert_eq!(error, ServingError::UnknownRecipe("recipe/nope".to_string()));
 }
 
@@ -107,4 +111,35 @@ fn a_recipe_the_graph_does_not_know_is_an_error() {
 fn a_section_with_a_field_this_build_does_not_know_is_refused() {
     let text = json!({ "facts": [], "recipes": {}, "surprise": 1 }).to_string();
     assert!(serde_json::from_str::<Serving>(&text).is_err());
+}
+
+fn at_hand(foods: &[&str]) -> CookFacts {
+    CookFacts { avoided: BTreeSet::new(), at_hand: avoiding(foods) }
+}
+
+#[test]
+fn a_swap_the_cook_has_replaces_a_safe_original_they_do_not_have() {
+    let cook = at_hand(&["ingredient/olive-oil", "ingredient/egg", "ingredient/cheese"]);
+    let plan = section().plan("recipe/omelette", &cook).unwrap().unwrap();
+    assert_eq!(plan.swaps.len(), 1);
+    assert_eq!(plan.swaps[0].instead, "ingredient/olive-oil");
+}
+
+#[test]
+fn the_original_is_kept_when_the_cook_has_it_even_if_a_swap_is_also_at_hand() {
+    let cook = at_hand(&["ingredient/olive-oil", "ingredient/butter"]);
+    assert!(section().plan("recipe/omelette", &cook).unwrap().unwrap().swaps.is_empty());
+}
+
+#[test]
+fn a_safe_swap_at_hand_is_preferred_to_the_first_safe_swap() {
+    let mut recipe = section();
+    let line = &mut recipe.recipes.get_mut("recipe/omelette").unwrap().lines[1];
+    let mut second = line.swaps[0].clone();
+    second.thing = "ingredient/ghee-free-spread".into();
+    line.swaps.push(second);
+    let cook = CookFacts { avoided: avoiding(&["fact/milk"]), at_hand: avoiding(&["ingredient/ghee-free-spread"]) };
+    recipe.recipes.get_mut("recipe/omelette").unwrap().lines.remove(2);
+    let plan = recipe.plan("recipe/omelette", &cook).unwrap().unwrap();
+    assert_eq!(plan.swaps[0].instead, "ingredient/ghee-free-spread");
 }

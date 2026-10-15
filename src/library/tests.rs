@@ -5,7 +5,7 @@ pub(crate) fn shipped_files() -> LibraryFiles {
     let lesson = |name: &str, text: &str| (name.to_string(), text.to_string());
     LibraryFiles {
         catalog: include_str!("../../library/catalog.json").to_string(),
-        ingredients: include_str!("../../library/ingredients.json").to_string(),
+        restrictions: include_str!("../../library/restrictions.json").to_string(),
         equipment: include_str!("../../library/equipment.json").to_string(),
         choices: include_str!("../../library/choices.json").to_string(),
         lessons: vec![
@@ -26,11 +26,15 @@ fn id(raw: &str) -> SavedId {
     SavedId::parse(raw).unwrap()
 }
 
-fn check(ingredient: &str, diet: Option<&str>, avoid: &[&str]) -> Result<(), Refusal> {
+fn avoided(diet: Option<&str>, avoid: &[&str]) -> Result<BTreeSet<String>, Refusal> {
     let diet = diet.map(id);
     let avoid: BTreeSet<SavedId> = avoid.iter().map(|raw| id(raw)).collect();
     let cook = Restrictions { diet: diet.as_ref(), avoid: &avoid };
-    shipped().table.check(&id(ingredient), &cook)
+    shipped().restrictions.facts_to_avoid(&cook)
+}
+
+fn facts(raw: &[&str]) -> BTreeSet<String> {
+    raw.iter().map(|fact| format!("fact/{fact}")).collect()
 }
 
 #[test]
@@ -41,44 +45,41 @@ fn the_shipped_library_parses_whole() {
 }
 
 #[test]
-fn diets_and_avoid_items_follow_the_table() {
-    assert!(check("chicken-thigh", Some("vegetarian"), &[]).is_err());
-    assert!(check("butter", Some("vegan"), &[]).is_err());
-    assert!(check("parmesan", None, &["dairy"]).is_err());
-    assert!(check("egg", None, &["eggs"]).is_err());
-    assert_eq!(check("spinach", Some("vegan"), &["nuts", "dairy"]), Ok(()));
+fn diets_and_avoid_items_stand_for_the_graph_facts_the_owner_mapped() {
+    assert_eq!(
+        avoided(Some("vegetarian"), &[]),
+        Ok(facts(&["crustaceans", "fish", "meat", "molluscs", "pork", "slaughter-product"]))
+    );
+    assert_eq!(avoided(None, &["dairy"]), Ok(facts(&["milk"])));
+    assert_eq!(avoided(None, &["nuts"]), Ok(facts(&["peanuts", "tree-nuts"])));
+    assert!(avoided(Some("vegan"), &["gluten"]).unwrap().contains("fact/wheat"));
 }
 
 #[test]
-fn anything_the_table_does_not_list_refuses() {
-    assert_eq!(check("unicorn", None, &[]), Err(Refusal::UnknownIngredient(id("unicorn"))));
-    assert_eq!(check("salt", Some("fruitarian"), &[]), Err(Refusal::UnknownDiet(id("fruitarian"))));
-    assert_eq!(check("salt", None, &["mango"]), Err(Refusal::UnknownAvoidItem(id("mango"))));
+fn a_diet_or_avoid_item_the_list_does_not_have_refuses() {
+    assert_eq!(avoided(Some("fruitarian"), &[]), Err(Refusal::UnknownDiet(id("fruitarian"))));
+    assert_eq!(avoided(None, &["mango"]), Err(Refusal::UnknownAvoidItem(id("mango"))));
 }
 
 #[test]
-fn a_broken_table_rejects_the_library() {
-    let table = shipped_files().ingredients;
+fn the_shipped_restrictions_name_only_facts_the_graph_has() {
+    let graph = crate::special::links::tests::fixture_graph();
+    assert_eq!(shipped().restrictions.check_against(&graph.serving.facts), Ok(()));
+}
+
+#[test]
+fn a_broken_restrictions_file_rejects_the_library() {
+    let text = shipped_files().restrictions;
     let broken = [
-        table.replacen("\"contains\": []", "\"contains\": [\"moonDust\"]", 1),
-        table.replacen("\"triggeredBy\": [\"nuts\"]", "\"triggeredBy\": []", 1),
-        table.replacen("\"schemaVersion\": 1", "\"schemaVersion\": 2", 1),
-        table.replacen("\"contains\": []", "\"contains\": [], \"tags\": []", 1),
+        text.replacen("\"fact/milk\"", "\"milk\"", 1),
+        text.replacen("\"schemaVersion\": 1", "\"schemaVersion\": 2", 1),
+        text.replacen("\"avoids\": [", "\"tags\": [], \"avoids\": [", 1),
     ];
-    for text in broken {
-        assert_ne!(text, table, "the test edit did not apply");
-        let files = LibraryFiles { ingredients: text, ..shipped_files() };
+    for broken_text in broken {
+        assert_ne!(broken_text, text, "the test edit did not apply");
+        let files = LibraryFiles { restrictions: broken_text, ..shipped_files() };
         assert!(Library::parse(&files).is_err());
     }
-}
-
-#[test]
-fn a_lesson_naming_an_unknown_ingredient_is_left_out() {
-    let mut files = shipped_files();
-    files.lessons[0].1 = files.lessons[0].1.replacen("\"spinach\"", "\"kale\"", 1);
-    let (library, left_out) = Library::parse(&files).unwrap();
-    assert_eq!(library.lessons.len(), 1);
-    assert!(left_out[0].contains("unknown ingredient `kale`"), "{left_out:?}");
 }
 
 #[test]

@@ -1,12 +1,24 @@
 use super::*;
+use crate::graph::Foods;
 use crate::kernel::language::Language;
 use crate::library::tests::shipped_files;
 use crate::library::Library;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+
+fn foods() -> Foods {
+    let names = ["egg", "olive-oil", "sunflower-oil", "tinned-tomatoes", "stock", "vegetarian-hard-cheese"];
+    let things: HashMap<String, Value> = names
+        .iter()
+        .map(|slug| (format!("ingredient/{slug}"), json!({ "names": { "en": slug.replace('-', " ") } })))
+        .collect();
+    Foods::from_things(&things)
+}
 
 fn resolved(label: &str) -> Resolved {
     let library = Library::parse(&shipped_files()).unwrap().0;
     let language = Language::english();
-    resolve(label, &Namer { library: &library, language: &language })
+    resolve(label, &Namer { library: &library, foods: &foods(), language: &language })
 }
 
 fn candidate_ids(found: &Resolved) -> Vec<String> {

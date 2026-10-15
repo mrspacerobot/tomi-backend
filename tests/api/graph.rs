@@ -11,10 +11,12 @@ use uuid::Uuid;
 const VERSION: &str = "2026.10.11-1102817";
 
 fn files(channel: &str) -> GraphFiles {
-    let artifact = json!({ "artifactSchemaVersion": 1, "channel": channel, "things": { "technique/sear": { "tier": "drafted" } } });
+    let serving = json!({ "facts": [], "recipes": {} });
+    let things = json!({ "technique/sear": { "tier": "drafted" } });
+    let artifact = json!({ "artifactSchemaVersion": 2, "channel": channel, "things": things, "serving": serving });
     let artifact = artifact.to_string();
     let manifest = json!({
-        "artifactSchemaVersion": 1, "graphVersion": VERSION, "sourceCommit": "1102817",
+        "artifactSchemaVersion": 2, "graphVersion": VERSION, "sourceCommit": "1102817",
         "channel": channel, "contentSha256": sha256_hex(&artifact),
     });
     GraphFiles { manifest: manifest.to_string(), artifact }
@@ -49,7 +51,8 @@ async fn bootstrap_names_the_graph_version_and_channel(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn bootstrap_says_null_without_a_graph(pool: PgPool) {
-    let reply = get(&crate::helpers::server(pool), "/v1/bootstrap", None).await;
+    let app = server_with(pool, Setup { graph: None, ..Setup::default() });
+    let reply = get(&app, "/v1/bootstrap", None).await;
     assert_eq!(reply.body["graphArtifactVersion"], Value::Null);
     assert_eq!(reply.body["graphChannel"], Value::Null);
 }

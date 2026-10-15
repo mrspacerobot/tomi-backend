@@ -83,3 +83,11 @@ async fn without_a_model_the_scan_says_so(pool: PgPool) {
     assert_eq!(reply.status, StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(reply.body["error"]["code"], "ai_unavailable");
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn without_a_graph_a_scan_says_so_and_never_guesses(pool: PgPool) {
+    let app = server_with(pool, Setup { graph: None, ..Setup::default() });
+    let reply = scan(&app, &new_cook(), jpeg()).await;
+    assert_eq!(reply.status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(reply.body["error"]["code"], "graph_unavailable");
+}

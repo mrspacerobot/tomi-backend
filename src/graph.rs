@@ -10,14 +10,18 @@ use std::collections::HashMap;
 
 mod checksum;
 pub mod files;
+mod foods;
 mod manifest;
 mod pin;
+mod program;
 pub mod serving;
 #[cfg(test)]
 mod tests;
 
 pub use checksum::sha256_hex;
+pub use foods::Foods;
 pub use pin::{GraphPin, PinError};
+pub use program::Program;
 pub use serving::Serving;
 
 /// The only artifact layout this build can read.
@@ -83,6 +87,10 @@ pub struct Graph {
     pub source_commit: String,
     /// Which facts each recipe, line and swap is unsafe for, worked out by the graph repository.
     pub serving: Serving,
+    /// Every ingredient the graph knows, with its names.
+    pub foods: Foods,
+    /// Which techniques each skill level teaches.
+    pub program: Program,
     things: HashMap<String, Value>,
 }
 
@@ -106,6 +114,8 @@ impl Graph {
             channel,
             source_commit: manifest.source_commit,
             serving: body.serving,
+            foods: Foods::from_things(&body.things),
+            program: Program::from_things(&body.things),
             things: body.things,
         }
     }

@@ -10,7 +10,8 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tomi_api::ai::Ai;
 use tomi_api::auth::Verifier;
-use tomi_api::graph::Graph;
+use tomi_api::config::GraphConfig;
+use tomi_api::graph::{files, Graph};
 use tomi_api::library::Library;
 use tomi_api::storage::PhotoStore;
 use tomi_api::{app, AppState};
@@ -39,7 +40,7 @@ impl Default for Setup {
             ai: Arc::new(FakeAi::default()),
             photos: Arc::new(FakeStore::default()),
             library: shipped_library(),
-            graph: None,
+            graph: Some(fixture_graph()),
         }
     }
 }
@@ -59,6 +60,12 @@ pub fn server_with(pool: PgPool, setup: Setup) -> Router {
         photos: setup.photos,
     };
     app(state)
+}
+
+/// A small excerpt of a real graph release (`scripts/make-graph-fixture.py`), loaded as the server loads one.
+pub fn fixture_graph() -> Graph {
+    let config = GraphConfig { dir: Some("tests/fixtures/graph".to_string()), allow_draft: true };
+    files::start(include_str!("../fixtures/graph/graph.lock"), &config).unwrap().unwrap()
 }
 
 fn shipped_library() -> Library {

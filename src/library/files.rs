@@ -7,12 +7,12 @@ use std::path::Path;
 
 const LESSON_ENDING: &str = ".lesson.json";
 
-/// The catalog, table and equipment list from `folder`, and every
+/// The catalog, restrictions and equipment list from `folder`, and every
 /// `*.lesson.json` in `folder/lessons`, sorted by name.
 pub fn read(folder: &Path) -> io::Result<LibraryFiles> {
     Ok(LibraryFiles {
         catalog: fs::read_to_string(folder.join("catalog.json"))?,
-        ingredients: fs::read_to_string(folder.join("ingredients.json"))?,
+        restrictions: fs::read_to_string(folder.join("restrictions.json"))?,
         equipment: fs::read_to_string(folder.join("equipment.json"))?,
         choices: fs::read_to_string(folder.join("choices.json"))?,
         lessons: read_lessons(&folder.join("lessons"))?,

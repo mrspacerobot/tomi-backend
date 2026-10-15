@@ -29,6 +29,8 @@ pub enum AppError {
     Photo(#[from] PhotoError),
     #[error("the AI model is unavailable; the cook can type what they have")]
     AiUnavailable,
+    #[error("the cooking graph is not loaded on this server")]
+    GraphUnavailable,
     #[error("the database failed")]
     Database(#[from] sqlx::Error),
     #[error("stored data could not be read")]
@@ -50,6 +52,10 @@ impl From<StoredProfileError> for AppError {
 
 impl AppError {
     /// The code the app acts on. Codes are permanent once released.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "a flat match from each error to its value, the long shape AGENTS.md allows"
+    )]
     fn code(&self) -> &'static str {
         match self {
             AppError::Auth(AuthError::KeysUnavailable) => "auth_unavailable",
@@ -63,6 +69,7 @@ impl AppError {
             AppError::Photo(PhotoError::TooLarge) => "photo_too_large",
             AppError::Photo(_) => "photo_unreadable",
             AppError::AiUnavailable => "ai_unavailable",
+            AppError::GraphUnavailable => "graph_unavailable",
             AppError::ProfileTooNew => "profile_too_new",
             AppError::Database(_) | AppError::Corrupt(_) | AppError::StoredProfileUnreadable => "internal",
         }
@@ -85,7 +92,9 @@ impl AppError {
             AppError::Photo(PhotoError::TooLarge) => StatusCode::PAYLOAD_TOO_LARGE,
             AppError::Photo(PhotoError::UnsupportedType) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             AppError::Photo(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            AppError::AiUnavailable | AppError::ProfileTooNew => StatusCode::SERVICE_UNAVAILABLE,
+            AppError::AiUnavailable | AppError::GraphUnavailable | AppError::ProfileTooNew => {
+                StatusCode::SERVICE_UNAVAILABLE
+            }
             AppError::Database(_) | AppError::Corrupt(_) | AppError::StoredProfileUnreadable => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }

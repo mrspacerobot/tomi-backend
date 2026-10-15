@@ -1,11 +1,12 @@
 use super::*;
 use crate::library::tests::shipped_files;
+use crate::special::links::tests::fixture_graph;
 use serde_json::{json, Value};
 
 fn shipped_options(language: &str) -> Value {
     let library = Library::parse(&shipped_files()).unwrap().0;
     let language = Language::from_accept_language(Some(language));
-    serde_json::to_value(options(&library, &language)).unwrap()
+    serde_json::to_value(options(&library, &fixture_graph().foods, &language)).unwrap()
 }
 
 #[test]
@@ -22,7 +23,7 @@ fn kitchen_and_answer_lists_come_with_their_words() {
     assert_eq!(options["equipment"][0]["assumed"], true);
     assert_eq!(options["units"][1]["name"], "Cups");
     assert_eq!(options["experience"].as_array().unwrap().len(), 3);
-    assert_eq!(options["ingredients"].as_array().unwrap().len(), 23);
+    assert_eq!(options["ingredients"].as_array().unwrap().len(), fixture_graph().foods.listed().len());
 }
 
 #[test]

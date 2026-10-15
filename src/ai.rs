@@ -8,7 +8,6 @@ use crate::profile::Profile;
 use crate::scans::fridge::ModelItem;
 use crate::scans::photo::Photo;
 use crate::special::{Candidate, Ranked};
-use std::collections::BTreeMap;
 use std::future::Future;
 use std::pin::Pin;
 
@@ -31,10 +30,10 @@ pub enum AiError {
     Unreadable,
 }
 
-/// A fridge photo and the ingredients the model may name, with their names.
+/// A fridge photo and the ingredient ids the model may name.
 pub struct FridgeQuestion<'a> {
     pub photo: &'a Photo,
-    pub ingredients: &'a BTreeMap<SavedId, String>,
+    pub ingredients: &'a [SavedId],
 }
 
 /// The short list to rank, and what the cook told Tomi about themselves.

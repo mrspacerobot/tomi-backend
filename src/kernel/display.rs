@@ -2,6 +2,7 @@
 //!
 //! The app holds no lists of its own: every name it shows comes from here.
 
+use crate::graph::Foods;
 use crate::kernel::ids::SavedId;
 use crate::kernel::language::Language;
 use crate::library::{Choice, Library};
@@ -37,14 +38,15 @@ impl Shown {
 /// Names ingredients for one cook's language.
 pub struct Namer<'a> {
     pub library: &'a Library,
+    pub foods: &'a Foods,
     pub language: &'a Language,
 }
 
 impl Namer<'_> {
-    /// The ingredient with its name. An id the table does not list keeps
+    /// The ingredient with its name. An id the graph does not list keeps
     /// its id as its name rather than disappearing.
     pub fn ingredient(&self, id: &SavedId) -> Named {
-        let choice = self.library.table.listed.ingredient(id);
+        let choice = self.foods.choice(id);
         let name = match choice {
             Some(choice) => choice.name.text(self.language.as_str()).to_string(),
             None => id.to_string(),

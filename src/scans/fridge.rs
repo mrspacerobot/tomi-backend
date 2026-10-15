@@ -1,11 +1,11 @@
 //! What a model says it saw in a fridge, checked before anyone trusts it.
 //!
-//! The model may only name ingredients from the table. Anything else stays
+//! The model may only name ingredients the graph knows. Anything else stays
 //! a plain label for the cook to confirm, type differently, or skip.
 
+use crate::graph::Foods;
 use crate::kernel::display::{Named, Namer};
 use crate::kernel::ids::SavedId;
-use crate::library::IngredientTable;
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -27,7 +27,7 @@ pub struct ModelItem {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SeenItem {
     pub label: String,
-    /// An ingredient the table knows, or none.
+    /// An ingredient the graph knows, or none.
     pub ingredient: Option<SavedId>,
     /// From 0 to 1.
     pub confidence: f64,
@@ -48,22 +48,22 @@ impl SeenItem {
     }
 }
 
-pub fn checked(items: Vec<ModelItem>, table: &IngredientTable) -> Vec<SeenItem> {
+pub fn checked(items: Vec<ModelItem>, foods: &Foods) -> Vec<SeenItem> {
     let mut seen = Vec::new();
     for item in items.into_iter().take(MAX_ITEMS) {
         let label: String = item.label.trim().chars().take(MAX_LABEL_CHARACTERS).collect();
         if label.is_empty() {
             continue;
         }
-        let ingredient = known_ingredient(item.ingredient.as_deref(), table);
+        let ingredient = known_ingredient(item.ingredient.as_deref(), foods);
         seen.push(SeenItem { label, ingredient, confidence: clamped(item.confidence) });
     }
     seen
 }
 
-fn known_ingredient(raw: Option<&str>, table: &IngredientTable) -> Option<SavedId> {
+fn known_ingredient(raw: Option<&str>, foods: &Foods) -> Option<SavedId> {
     let id = SavedId::parse(raw?).ok()?;
-    if table.knows(&id) {
+    if foods.knows(&id) {
         return Some(id);
     }
     None

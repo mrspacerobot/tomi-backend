@@ -14,5 +14,5 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn list(State(state): State<AppState>, CookLanguage(language): CookLanguage) -> Json<Options> {
-    Json(options(&state.library, &language))
+    Json(options(&state.library, state.foods(), &language))
 }

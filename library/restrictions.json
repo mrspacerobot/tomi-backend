@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "avoidItems": [
+    {
+      "id": "nuts",
+      "name": {
+        "en": "Nuts"
+      },
+      "avoids": [
+        "fact/peanuts",
+        "fact/tree-nuts"
+      ]
+    },
+    {
+      "id": "dairy",
+      "name": {
+        "en": "Dairy"
+      },
+      "avoids": [
+        "fact/milk"
+      ]
+    },
+    {
+      "id": "gluten",
+      "name": {
+        "en": "Gluten"
+      },
+      "avoids": [
+        "fact/gluten",
+        "fact/wheat"
+      ]
+    },
+    {
+      "id": "eggs",
+      "name": {
+        "en": "Eggs"
+      },
+      "avoids": [
+        "fact/egg"
+      ]
+    },
+    {
+      "id": "shellfish",
+      "name": {
+        "en": "Shellfish"
+      },
+      "avoids": [
+        "fact/crustaceans",
+        "fact/molluscs"
+      ]
+    },
+    {
+      "id": "fish",
+      "name": {
+        "en": "Fish"
+      },
+      "avoids": [
+        "fact/fish"
+      ]
+    },
+    {
+      "id": "soy",
+      "name": {
+        "en": "Soy"
+      },
+      "avoids": [
+        "fact/soy"
+      ]
+    },
+    {
+      "id": "sesame",
+      "name": {
+        "en": "Sesame"
+      },
+      "avoids": [
+        "fact/sesame"
+      ]
+    },
+    {
+      "id": "pork",
+      "name": {
+        "en": "Pork"
+      },
+      "avoids": [
+        "fact/pork"
+      ]
+    },
+    {
+      "id": "alcohol",
+      "name": {
+        "en": "Alcohol"
+      },
+      "avoids": [
+        "fact/alcohol"
+      ]
+    }
+  ],
+  "diets": [
+    {
+      "id": "vegetarian",
+      "name": {
+        "en": "Vegetarian"
+      },
+      "summary": {
+        "en": "No meat or fish"
+      },
+      "avoids": [
+        "fact/crustaceans",
+        "fact/fish",
+        "fact/meat",
+        "fact/molluscs",
+        "fact/pork",
+        "fact/slaughter-product"
+      ]
+    },
+    {
+      "id": "vegan",
+      "name": {
+        "en": "Vegan"
+      },
+      "summary": {
+        "en": "Plants only"
+      },
+      "avoids": [
+        "fact/animal-product",
+        "fact/crustaceans",
+        "fact/egg",
+        "fact/fish",
+        "fact/meat",
+        "fact/milk",
+        "fact/molluscs",
+        "fact/pork",
+        "fact/slaughter-product"
+      ]
+    },
+    {
+      "id": "pescatarian",
+      "name": {
+        "en": "Pescatarian"
+      },
+      "summary": {
+        "en": "Fish, but no meat"
+      },
+      "avoids": [
+        "fact/meat",
+        "fact/pork",
+        "fact/slaughter-product"
+      ]
+    }
+  ]
+}

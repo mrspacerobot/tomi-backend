@@ -45,7 +45,7 @@ struct Found<'a> {
 
 fn found<'a>(label: &str, namer: &Namer<'a>) -> Found<'a> {
     let typed = forms(label);
-    let ingredients = &namer.library.table.listed.ingredients;
+    let ingredients = namer.foods.listed();
     let exact: Vec<&Choice> = ingredients.iter().filter(|choice| matches_whole(choice, &typed)).collect();
     match exact.len() {
         1 => return Found { basis: Basis::Exact, choices: exact },

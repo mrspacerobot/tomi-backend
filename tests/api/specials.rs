@@ -125,3 +125,11 @@ async fn the_old_specials_path_is_gone(pool: PgPool) {
         call(&app, Call { method: axum::http::Method::POST, path: "/v1/specials", token: Some(&token), body }).await;
     assert_eq!(reply.status, StatusCode::NOT_FOUND);
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn without_a_graph_a_suggestion_says_so_and_offers_nothing(pool: PgPool) {
+    let app = server_with(pool, Setup { graph: None, ..Setup::default() });
+    let reply = special(&app, &new_cook(), json!({"ingredients": ["egg"]})).await;
+    assert_eq!(reply.status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(reply.body["error"]["code"], "graph_unavailable");
+}

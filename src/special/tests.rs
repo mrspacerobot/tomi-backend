@@ -1,6 +1,7 @@
 use super::*;
 use crate::library::tests::shipped_files;
 use crate::library::Library;
+use crate::special::links::tests::fixture_graph;
 use crate::special::progress::OpenLevels;
 
 const OMELETTE: &str = "spinach-hard-cheese-omelette";
@@ -32,7 +33,7 @@ fn offered(profile: &Profile, available: &[&str]) -> Vec<Candidate> {
     let library = library();
     let open = all_open(&library);
     let tonight = Tonight { profile, available: ids(available), open: &open };
-    candidates(&library, &tonight)
+    candidates(&library, &fixture_graph(), &tonight)
 }
 
 #[test]
@@ -40,7 +41,7 @@ fn a_lesson_at_a_locked_level_is_never_offered() {
     let library = library();
     let open = OpenLevels::from_levels([(id("eggs"), 1)]);
     let tonight = Tonight { profile: &Profile::default(), available: BTreeSet::new(), open: &open };
-    assert!(candidates(&library, &tonight).is_empty(), "the omelette is eggs level 3");
+    assert!(candidates(&library, &fixture_graph(), &tonight).is_empty(), "the omelette is eggs level 3");
 }
 
 fn lesson_ids(found: &[Candidate]) -> Vec<String> {
@@ -60,7 +61,7 @@ fn a_vegetarian_is_never_offered_chicken() {
 }
 
 #[test]
-fn a_listed_swap_makes_a_lesson_safe() {
+fn a_swap_the_graph_allows_makes_a_lesson_safe() {
     let profile = Profile { avoid: ids(&["alcohol"]), ..Profile::default() };
     let pan_sauce = offered(&profile, &[]).remove(0);
     assert_eq!(pan_sauce.lesson_id, id(PAN_SAUCE));
@@ -71,9 +72,30 @@ fn a_listed_swap_makes_a_lesson_safe() {
 
 #[test]
 fn a_lesson_with_no_safe_swap_is_left_out() {
-    // Cheese is dairy and has no listed swap, so the omelette cannot be made dairy-free.
+    // The omelette's cheese is milk and its only swap, parmesan, is milk too. The pan sauce's butter has no swap.
     let profile = Profile { avoid: ids(&["dairy"]), ..Profile::default() };
-    assert!(!lesson_ids(&offered(&profile, &[])).contains(&OMELETTE.to_string()));
+    assert!(offered(&profile, &[]).is_empty());
+}
+
+#[test]
+fn a_lesson_the_graph_cannot_match_to_one_recipe_is_never_offered() {
+    let library = library();
+    let open = all_open(&library);
+    let mut graph = fixture_graph();
+    graph.serving.recipes.clear();
+    let tonight = Tonight { profile: &Profile::default(), available: BTreeSet::new(), open: &open };
+    assert!(candidates(&library, &graph, &tonight).is_empty());
+}
+
+#[test]
+fn a_fact_a_restriction_names_that_the_graph_lacks_offers_nothing() {
+    let library = library();
+    let open = all_open(&library);
+    let mut graph = fixture_graph();
+    graph.serving.facts.remove("fact/milk");
+    let profile = Profile { avoid: ids(&["dairy"]), ..Profile::default() };
+    let tonight = Tonight { profile: &profile, available: BTreeSet::new(), open: &open };
+    assert!(candidates(&library, &graph, &tonight).is_empty());
 }
 
 #[test]

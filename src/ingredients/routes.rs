@@ -36,7 +36,7 @@ async fn resolve_labels(
 ) -> Result<Json<ResolveResponse>, AppError> {
     let request = json_body(body)?;
     check(&request)?;
-    let namer = Namer { library: &caller.state.library, language: &language };
+    let namer = Namer { library: &caller.state.library, foods: caller.state.foods(), language: &language };
     let results = request.labels.iter().map(|label| resolve(label, &namer)).collect();
     Ok(Json(ResolveResponse { results }))
 }

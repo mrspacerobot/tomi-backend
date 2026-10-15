@@ -8,6 +8,7 @@ use serde::Deserialize;
 use std::collections::BTreeSet;
 use std::path::Path;
 use tomi_api::graph::files;
+use tomi_api::graph::serving::CookFacts;
 use tomi_api::graph::{Graph, GraphPin, GraphPolicy};
 
 #[derive(Deserialize)]
@@ -35,13 +36,26 @@ fn graph_vectors_the_server_offers_exactly_what_the_reference_offers() {
     let (graph, vectors) = load();
     assert!(!vectors.cases.is_empty());
     for case in vectors.cases {
+        let cook = CookFacts { avoided: case.avoid.clone(), at_hand: BTreeSet::new() };
         let offered: Vec<String> = graph
             .serving
             .recipes
             .keys()
-            .filter(|recipe| graph.serving.plan(recipe, &case.avoid).unwrap().is_some())
+            .filter(|recipe| graph.serving.plan(recipe, &cook).unwrap().is_some())
             .cloned()
             .collect();
         assert_eq!(offered, case.offered, "avoiding {:?}", case.avoid);
     }
+}
+
+#[test]
+#[ignore = "needs the pinned graph: run scripts/fetch-graph.sh first"]
+fn graph_vectors_the_shipped_library_agrees_with_the_graph() {
+    let (graph, _) = load();
+    let files = tomi_api::library::files::read(Path::new("library")).unwrap();
+    let (library, left_out) = tomi_api::library::Library::parse(&files).unwrap();
+    assert!(left_out.is_empty(), "{left_out:?}");
+    assert_eq!(library.restrictions.check_against(&graph.serving.facts), Ok(()));
+    let unlinked = tomi_api::special::links::unlinked(&library, &graph);
+    assert!(unlinked.is_empty(), "{unlinked:?}");
 }

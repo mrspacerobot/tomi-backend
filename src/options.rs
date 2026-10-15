@@ -1,5 +1,6 @@
 //! Every list the app offers, with its words, for one language.
 
+use crate::graph::Foods;
 use crate::kernel::display::Shown;
 use crate::kernel::ids::SavedId;
 use crate::kernel::language::Language;
@@ -56,18 +57,18 @@ struct ShownLevel {
     name: String,
 }
 
-pub fn options(library: &Library, language: &Language) -> Options {
-    let listed = &library.table.listed;
+pub fn options(library: &Library, foods: &Foods, language: &Language) -> Options {
+    let restrictions = &library.restrictions;
     let choices = &library.choices;
     Options {
         library_version: library.version,
-        diets: Shown::all(&listed.diets, language),
-        avoid_items: Shown::all(&listed.avoid_items, language),
+        diets: Shown::all(&restrictions.diets, language),
+        avoid_items: Shown::all(&restrictions.avoid_items, language),
         cuisines: Shown::all(&choices.cuisines, language),
         equipment: library.equipment.items.iter().map(|item| shown_equipment(item, language)).collect(),
         experience: Shown::all(&choices.experience, language),
         units: Shown::all(&choices.units, language),
-        ingredients: Shown::all(&listed.ingredients, language),
+        ingredients: Shown::all(foods.listed(), language),
         courses: library.catalog.courses.iter().map(|course| shown_course(library, course, language)).collect(),
     }
 }

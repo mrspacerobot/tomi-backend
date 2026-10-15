@@ -60,7 +60,7 @@ async fn special(
     }
     confirm_scan(&state, user_id, &request).await?;
     let profile = read_profile(&state.db, user_id).await?.profile;
-    let by_overlap = candidates(&state, &request, &profile);
+    let by_overlap = candidates(&state, &request, &profile)?;
     let (model, ranked_by) = model_order(&state, &by_overlap, &profile).await;
     let order = ranked(by_overlap, &model);
     Ok(Json(response(&state, order, Answer { ranked_by, profile: &profile, language: &language })))
@@ -68,10 +68,11 @@ async fn special(
 
 /// Every lesson the cook may make tonight, fewest to buy first. Until the
 /// server keeps the cook log, only experience grants open levels.
-fn candidates(state: &AppState, request: &SpecialRequest, profile: &Profile) -> Vec<Candidate> {
+fn candidates(state: &AppState, request: &SpecialRequest, profile: &Profile) -> Result<Vec<Candidate>, AppError> {
+    let graph = state.graph()?;
     let open = open_levels(&state.library.catalog, profile.experience, &CookCounts::default());
     let tonight = Tonight { profile, available: available(request, profile), open: &open };
-    overlap_order(special::candidates(&state.library, &tonight))
+    Ok(overlap_order(special::candidates(&state.library, graph, &tonight)))
 }
 
 /// A kept photo learns which ingredients the cook confirmed for it.
@@ -111,7 +112,7 @@ struct Answer<'a> {
 }
 
 fn response(state: &AppState, order: Vec<(Candidate, Option<String>)>, answer: Answer) -> SpecialResponse {
-    let namer = Namer { library: &state.library, language: answer.language };
+    let namer = Namer { library: &state.library, foods: state.foods(), language: answer.language };
     let context = OfferContext { namer, profile: answer.profile };
     let to_offer = |(candidate, reason): (Candidate, Option<String>)| Offer::new(candidate, reason, &context);
     let mut offers = order.into_iter().take(OFFERS).map(to_offer);

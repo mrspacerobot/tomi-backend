@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 
 const FRIDGE_INSTRUCTIONS: &str = "You look at a photo of the inside of a fridge, a cupboard or a kitchen counter. \
 List each food item you can clearly see. For each item give: a short English label, \
-the matching ingredient id from the list below only if the item is clearly that ingredient (otherwise null), \
+the matching ingredient id, one of the allowed values, only if the item is clearly that ingredient (otherwise null), \
 and how sure you are, from 0 to 1. Do not guess at hidden or unreadable items. \
 Never judge freshness, doneness or whether food is safe to eat.";
 
@@ -21,12 +21,10 @@ For each lesson give a reason of at most 15 words, warm and plain, spoken to the
 Never say a dish is safe, healthy or cooked through. Use only the lesson ids given.";
 
 pub fn fridge_request(question: &FridgeQuestion) -> Value {
-    let list: Vec<String> = question.ingredients.iter().map(|(id, name)| format!("{id}: {name}")).collect();
-    let text = format!("{FRIDGE_INSTRUCTIONS}\n\nIngredient ids:\n{}", list.join("\n"));
-    let ids: Vec<&str> = question.ingredients.keys().map(|id| id.as_str()).collect();
+    let ids: Vec<&str> = question.ingredients.iter().map(|id| id.as_str()).collect();
     let image = base64::engine::general_purpose::STANDARD.encode(&question.photo.bytes);
     let image_part = json!({ "inline_data": { "mime_type": question.photo.kind.mime_type(), "data": image } });
-    request(vec![json!({ "text": text }), image_part], fridge_schema(&ids))
+    request(vec![json!({ "text": FRIDGE_INSTRUCTIONS }), image_part], fridge_schema(&ids))
 }
 
 fn fridge_schema(ingredient_ids: &[&str]) -> Value {

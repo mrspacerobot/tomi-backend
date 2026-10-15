@@ -65,15 +65,16 @@ async fn scan(
     let scan_id = Uuid::new_v4();
     let scan = keep::Scan { user_id, scan_id, photo: &photo, items: &items };
     let kept = keep::photo(&state, &scan).await;
-    let namer = Namer { library: &state.library, language: &language };
+    let namer = Namer { library: &state.library, foods: state.foods(), language: &language };
     let items = items.iter().map(|item| item.shown(&namer)).collect();
     Ok(Json(ScanResponse { scan_id, kept, items }))
 }
 
 async fn read_fridge(state: &AppState, photo: &Photo) -> Result<Vec<SeenItem>, AppError> {
-    let ingredients = state.library.table.names();
-    let question = FridgeQuestion { photo, ingredients };
+    let graph = state.graph()?;
+    let ingredients = graph.foods.ids();
+    let question = FridgeQuestion { photo, ingredients: &ingredients };
     let answer = state.ai.read_fridge(question).await;
     let items = answer.map_err(|_| AppError::AiUnavailable)?;
-    Ok(fridge::checked(items, &state.library.table))
+    Ok(fridge::checked(items, &graph.foods))
 }

@@ -9,16 +9,18 @@ fn id(raw: &str) -> SavedId {
 }
 
 #[test]
-fn the_fridge_request_carries_the_photo_and_a_closed_list_of_ids() {
+fn the_fridge_request_carries_the_photo_and_a_closed_list_of_ids_once() {
     let photo = Photo::parse(Some("image/jpeg"), vec![0xFF, 0xD8, 0xFF, 0xD9]).unwrap();
-    let ingredients = BTreeMap::from([(id("egg"), "Egg".to_string()), (id("leek"), "Leek".to_string())]);
+    let ingredients = vec![id("egg"), id("leek")];
     let body = fridge_request(&FridgeQuestion { photo: &photo, ingredients: &ingredients });
     let parts = &body["contents"][0]["parts"];
     assert_eq!(parts[1]["inline_data"]["mime_type"], "image/jpeg");
     assert_eq!(parts[1]["inline_data"]["data"], "/9j/2Q==");
     let schema = &body["generationConfig"]["response_schema"];
     assert_eq!(schema["properties"]["items"]["items"]["properties"]["ingredient"]["enum"], json!(["egg", "leek"]));
-    assert!(parts[0]["text"].as_str().unwrap().contains("egg: Egg"));
+    let text = parts[0]["text"].as_str().unwrap();
+    assert!(!text.contains("leek"), "the ids are listed once, as the allowed values, not again in the text");
+    assert!(text.contains("allowed values"));
 }
 
 #[test]

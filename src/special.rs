@@ -5,6 +5,8 @@
 //! kitchen, diet and avoid list, apply only the swaps a lesson lists, check
 //! the final dish again, then rank.
 
+use crate::graph::serving::CookFacts;
+use crate::graph::Graph;
 use crate::kernel::ids::SavedId;
 use crate::library::{Lesson, Library, Restrictions};
 use crate::profile::Profile;
@@ -13,6 +15,7 @@ use serde::Serialize;
 use std::collections::BTreeSet;
 
 pub mod game;
+pub mod links;
 mod offer;
 mod plan;
 pub mod progress;
@@ -59,20 +62,27 @@ pub struct Tonight<'a> {
     pub open: &'a OpenLevels,
 }
 
-/// Every lesson this cook may be offered tonight, in the library's order.
-/// An unknown diet or avoid item leaves the list empty.
-pub fn candidates(library: &Library, tonight: &Tonight) -> Vec<Candidate> {
-    let mut found = Vec::new();
-    for lesson in library.lessons.values() {
-        let is_open = tonight.open.contains(&lesson.skill, lesson.level);
-        if !is_open || !fits_kitchen_and_taste(library, lesson, tonight.profile) {
-            continue;
-        }
-        if let Some(candidate) = plan::cook(library, lesson, tonight) {
-            found.push(candidate);
-        }
-    }
-    found
+/// Every lesson this cook may be offered tonight, in the library's order. A diet or avoid item the library does
+/// not list leaves the list empty, and so does a lesson the graph cannot match to one recipe.
+pub fn candidates(library: &Library, graph: &Graph, tonight: &Tonight) -> Vec<Candidate> {
+    let Ok(avoided) = library.restrictions.facts_to_avoid(&restrictions(tonight.profile)) else {
+        return Vec::new();
+    };
+    let facts = CookFacts { avoided, at_hand: graph_ids(&tonight.available) };
+    let kitchen = plan::Kitchen { graph, facts: &facts, tonight };
+    let open_lessons = library.lessons.values().filter(|lesson| is_offerable(library, lesson, tonight));
+    open_lessons.filter_map(|lesson| plan::cook(lesson, &kitchen)).collect()
+}
+
+/// A lesson at an open level that suits this cook's kitchen and taste. Whether it is safe is the graph's to say.
+fn is_offerable(library: &Library, lesson: &Lesson, tonight: &Tonight) -> bool {
+    let is_open = tonight.open.contains(&lesson.skill, lesson.level);
+    is_open && fits_kitchen_and_taste(library, lesson, tonight.profile)
+}
+
+/// What the cook has, named as the graph names it.
+fn graph_ids(available: &BTreeSet<SavedId>) -> BTreeSet<String> {
+    available.iter().map(|id| format!("{}{id}", plan::INGREDIENT_PREFIX)).collect()
 }
 
 fn fits_kitchen_and_taste(library: &Library, lesson: &Lesson, profile: &Profile) -> bool {

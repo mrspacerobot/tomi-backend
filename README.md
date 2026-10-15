@@ -58,13 +58,13 @@ The body is the photo itself, with its `Content-Type`. The answer:
              { "label": "a jar of pesto", "ingredient": null, "confidence": 0.7 } ] }
 ```
 
-The model may only name ingredients from Tomi's ingredient table; anything
+The model may only name ingredients the cooking graph knows (every id is listed once, as the allowed values); anything
 else comes back as a plain label for the cook to confirm, type or skip.
 **Proof of concept: every scanned photo is kept**, as it arrived and with what was seen, in a
 private bucket (`kept: true`), when photo storage is set up (`SUPABASE_SECRET_KEY`).
 Nothing asks the cook yet. A consent step must come before real cooks use it.
 Without a model configured the answer is `503 ai_unavailable`, and the app
-falls back to typing.
+falls back to typing. Without a graph it is `503 graph_unavailable`.
 
 ### Tonight's special
 
@@ -72,9 +72,10 @@ falls back to typing.
 { "ingredients": ["egg", "spinach"], "scanId": "…" }
 ```
 
-The cook's cupboard staples are added. Code filters the library by diet,
-avoid list, "never" cuisines and kitchen, applies only the swaps a lesson
-lists, and checks the final dish again. The model then reorders the short
+The cook's cupboard staples are added. Code filters the library by "never"
+cuisines and kitchen, and the cooking graph says whether the lesson's recipe can be made
+safely for the cook's diet and avoid list, with the swaps it allows. Without a graph the
+answer is `503 graph_unavailable`. The model then reorders the short
 list and writes a one-line reason; it cannot add a lesson. Without a model,
 or when it fails, the order is by fewest ingredients to buy
 (`rankedBy: "overlap"`). Each offer carries the final ingredients, the

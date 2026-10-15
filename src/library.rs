@@ -1,6 +1,6 @@
-//! Tomi's reviewed library: ingredient table, equipment, skills and lessons.
+//! Tomi's reviewed library: diets and avoid items, equipment, skills and lessons.
 //!
-//! Parsed from the same JSON files the app ships (`library/`). The table,
+//! Parsed from the same JSON files the app ships (`library/`). The restrictions,
 //! equipment list and catalog are read strictly: an unknown field or an
 //! undeclared id rejects the whole library. A lesson that names something
 //! the lists lack is left out and reported, never served.
@@ -13,7 +13,7 @@ mod choices;
 mod equipment;
 pub mod files;
 mod lesson;
-mod table;
+mod restrictions;
 #[cfg(test)]
 pub(crate) mod tests;
 mod text;
@@ -21,15 +21,15 @@ mod text;
 pub use catalog::{Catalog, Course, Level, Skill};
 pub use choices::Choices;
 pub use equipment::{Equipment, EquipmentList};
-pub use lesson::{Lesson, LessonIngredient, Swap};
-pub use table::{IngredientTable, Listed, Refusal, Restrictions};
+pub use lesson::{Lesson, LessonIngredient};
+pub use restrictions::{Refusal, RestrictionList, Restrictions};
 pub use text::{Choice, LocalizedText};
 
 /// The library's files as text. Reading them from disk is the caller's job,
 /// so the rules here stay free of I/O.
 pub struct LibraryFiles {
     pub catalog: String,
-    pub ingredients: String,
+    pub restrictions: String,
     pub equipment: String,
     /// The server's own `choices.json`: cuisines, experience and units.
     pub choices: String,
@@ -39,7 +39,7 @@ pub struct LibraryFiles {
 
 pub struct Library {
     pub version: i64,
-    pub table: IngredientTable,
+    pub restrictions: RestrictionList,
     pub equipment: EquipmentList,
     pub catalog: Catalog,
     pub choices: Choices,
@@ -56,12 +56,12 @@ pub struct ParseLibraryError {
 impl Library {
     /// The library, and the lessons left out with the reason for each.
     pub fn parse(files: &LibraryFiles) -> Result<(Library, Vec<String>), ParseLibraryError> {
-        let table = IngredientTable::parse(&files.ingredients).map_err(in_file("ingredients.json"))?;
+        let restrictions = RestrictionList::parse(&files.restrictions).map_err(in_file("restrictions.json"))?;
         let equipment = EquipmentList::parse(&files.equipment).map_err(in_file("equipment.json"))?;
         let catalog = Catalog::parse(&files.catalog).map_err(in_file("catalog.json"))?;
         let choices = Choices::parse(&files.choices).map_err(in_file("choices.json"))?;
         let version = catalog.library_version;
-        let mut library = Library { version, table, equipment, catalog, choices, lessons: BTreeMap::new() };
+        let mut library = Library { version, restrictions, equipment, catalog, choices, lessons: BTreeMap::new() };
         let left_out = library.add_lessons(&files.lessons);
         Ok((library, left_out))
     }
