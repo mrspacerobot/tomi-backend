@@ -8,16 +8,19 @@ use crate::kernel::ids::SavedId;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 
+mod derived;
 #[cfg(test)]
 mod tests;
 
-const SCHEMA_VERSION: i64 = 1;
+const SCHEMA_VERSION: i64 = 2;
 const FACT_PREFIX: &str = "fact/";
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct File {
     schema_version: i64,
+    /// Whether every allergen fact no item rules out gets an item of its own, once the graph is known.
+    allergens_from_graph: bool,
     avoid_items: Vec<Entry>,
     diets: Vec<Entry>,
 }
@@ -37,6 +40,14 @@ pub struct Restrictions<'a> {
     pub avoid: &'a BTreeSet<SavedId>,
 }
 
+/// Whether an avoid item is about an allergen or a choice. An item nobody can classify is read as an allergen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Kind {
+    Allergen,
+    Choice,
+}
+
 /// Why a cook's restrictions cannot be read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Refusal {
@@ -51,6 +62,10 @@ pub struct RestrictionList {
     pub avoid_items: Vec<Choice>,
     diet_facts: BTreeMap<SavedId, BTreeSet<String>>,
     item_facts: BTreeMap<SavedId, BTreeSet<String>>,
+    kinds: BTreeMap<SavedId, Kind>,
+    allergens_from_graph: bool,
+    /// Every fact the graph has, once it is known, so a saved id that is a fact's name is still read as it.
+    known_facts: BTreeSet<String>,
 }
 
 impl RestrictionList {
@@ -72,10 +87,30 @@ impl RestrictionList {
             facts.extend(found.ok_or_else(|| Refusal::UnknownDiet(diet.clone()))?.iter().cloned());
         }
         for item in cook.avoid {
-            let found = self.item_facts.get(item);
-            facts.extend(found.ok_or_else(|| Refusal::UnknownAvoidItem(item.clone()))?.iter().cloned());
+            facts.extend(self.facts_of_item(item)?);
         }
         Ok(facts)
+    }
+
+    /// An item's facts. An id no item has is still read as the graph fact of that name, which is only stricter.
+    fn facts_of_item(&self, item: &SavedId) -> Result<BTreeSet<String>, Refusal> {
+        if let Some(found) = self.item_facts.get(item) {
+            return Ok(found.clone());
+        }
+        let named = format!("{FACT_PREFIX}{item}");
+        if self.known_facts.contains(&named) {
+            return Ok(BTreeSet::from([named]));
+        }
+        Err(Refusal::UnknownAvoidItem(item.clone()))
+    }
+
+    /// Every avoid item with the facts it rules out, written and derived.
+    pub fn item_facts(&self) -> &BTreeMap<SavedId, BTreeSet<String>> {
+        &self.item_facts
+    }
+
+    pub fn kind_of(&self, item: &SavedId) -> Kind {
+        self.kinds.get(item).copied().unwrap_or(Kind::Allergen)
     }
 
     /// Every fact named here must be one the graph has, or the start is refused.
@@ -112,6 +147,9 @@ impl From<File> for RestrictionList {
             avoid_items: file.avoid_items.iter().map(choice).collect(),
             diet_facts: facts(&file.diets),
             item_facts: facts(&file.avoid_items),
+            kinds: BTreeMap::new(),
+            allergens_from_graph: file.allergens_from_graph,
+            known_facts: BTreeSet::new(),
         }
     }
 }

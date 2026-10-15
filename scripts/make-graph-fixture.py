@@ -3,7 +3,7 @@
 
     scripts/make-graph-fixture.py ../cooking-graph/out/release
 
-It keeps the recipes the shipped lessons map to, the whole program, every fact, and the ingredients those recipes and
+It keeps the recipes the shipped lessons map to, the whole program, every fact (and its thing), and the ingredients those recipes and
 their swaps name. Everything is copied unchanged from the release; only the selection is ours. Run it again when the
 graph's artifact schema changes, and commit the result.
 """
@@ -34,7 +34,7 @@ def excerpt(release):
     serving = {"facts": artifact["serving"]["facts"],
                "recipes": {one: artifact["serving"]["recipes"][one] for one in RECIPES}}
     wanted = {one for one in ingredients_named(serving) if one.startswith("ingredient/")}
-    things = {key: value for key, value in artifact["things"].items() if key in wanted or key.startswith("program/")}
+    things = {key: value for key, value in artifact["things"].items() if key in wanted or key.startswith(("program/", "fact/"))}
     return {"artifactSchemaVersion": artifact["artifactSchemaVersion"], "channel": "draft", "things": things,
             "serving": serving}
 

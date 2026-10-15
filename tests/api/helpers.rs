@@ -49,7 +49,10 @@ pub fn server(pool: PgPool) -> Router {
     server_with(pool, Setup::default())
 }
 
-pub fn server_with(pool: PgPool, setup: Setup) -> Router {
+pub fn server_with(pool: PgPool, mut setup: Setup) -> Router {
+    if let Some(graph) = &setup.graph {
+        setup.library.agree_with(graph).unwrap();
+    }
     let state = AppState {
         db: pool,
         verifier: Arc::new(setup.verifier),

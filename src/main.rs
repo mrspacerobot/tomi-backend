@@ -68,9 +68,9 @@ fn state(config: &Config, pool: PgPool) -> Result<AppState, String> {
     let secret = config.supabase_jwt_secret.as_deref();
     let verifier = Verifier::new(&config.supabase_url, secret);
     let verifier = verifier.map_err(|error| format!("auth: {error}"))?;
-    let library = library(&config.library_dir)?;
+    let mut library = library(&config.library_dir)?;
     let graph = graph::files::start(GRAPH_LOCK, &config.graph)?;
-    agree(&library, graph.as_ref())?;
+    agree(&mut library, graph.as_ref())?;
     Ok(AppState {
         db: pool,
         verifier: Arc::new(verifier),
@@ -84,11 +84,11 @@ fn state(config: &Config, pool: PgPool) -> Result<AppState, String> {
 
 /// The library's restrictions may only name facts the graph has, or there is no start. A lesson the graph cannot
 /// match to one recipe is left out of every answer and said so here.
-fn agree(library: &Library, graph: Option<&graph::Graph>) -> Result<(), String> {
+fn agree(library: &mut Library, graph: Option<&graph::Graph>) -> Result<(), String> {
     let Some(graph) = graph else {
         return Ok(());
     };
-    library.restrictions.check_against(&graph.serving.facts)?;
+    library.agree_with(graph)?;
     for reason in special::links::unlinked(library, graph) {
         log_lesson_left_out(&reason);
     }

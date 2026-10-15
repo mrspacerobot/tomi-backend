@@ -87,6 +87,36 @@ async fn a_listed_swap_is_applied_and_named(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn an_allergen_only_the_graph_knows_is_honoured(pool: PgPool) {
+    // Sulphites had no avoid item before the graph added one: the wine is out, the stock stands in.
+    let app = open_server(pool, FakeAi::default());
+    let cook = comfortable_cook(&app, json!({"avoid": ["sulphites"]})).await;
+    let at_home = json!({"ingredients": ["chicken-thigh", "garlic", "lemon", "sunflower-oil"]});
+    let reply = special(&app, &cook, at_home).await;
+    assert_eq!(reply.body["special"]["lessonId"], PAN_SAUCE);
+    assert_eq!(reply.body["special"]["swaps"][0]["added"]["id"], "chicken-stock");
+    assert_eq!(reply.body["special"]["checked"]["avoid"], json!(["sulphites"]));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn two_graph_allergens_together_leave_no_safe_way(pool: PgPool) {
+    // Wine holds sulphites and every stock holds celery, so a cook avoiding both gets no pan sauce.
+    let app = open_server(pool, FakeAi::default());
+    let cook = comfortable_cook(&app, json!({"avoid": ["sulphites", "celery"]})).await;
+    let reply = special(&app, &cook, json!({"ingredients": ["chicken-thigh"]})).await;
+    assert_ne!(reply.body["special"]["lessonId"], PAN_SAUCE);
+    assert!(reply.body["alternatives"].as_array().unwrap().iter().all(|offer| offer["lessonId"] != PAN_SAUCE));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn saved_nuts_still_rule_out_peanuts_and_tree_nuts_together(pool: PgPool) {
+    let app = open_server(pool, FakeAi::default());
+    let cook = comfortable_cook(&app, json!({"avoid": ["nuts"]})).await;
+    let reply = special(&app, &cook, json!({"ingredients": ["egg"]})).await;
+    assert_eq!(reply.body["special"]["checked"]["avoid"], json!(["nuts"]));
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn a_vegetarian_never_gets_the_chicken(pool: PgPool) {
     let app = open_server(pool, FakeAi::default());
     let cook = comfortable_cook(&app, json!({"diet": "vegetarian"})).await;

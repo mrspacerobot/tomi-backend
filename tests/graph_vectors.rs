@@ -53,9 +53,25 @@ fn graph_vectors_the_server_offers_exactly_what_the_reference_offers() {
 fn graph_vectors_the_shipped_library_agrees_with_the_graph() {
     let (graph, _) = load();
     let files = tomi_api::library::files::read(Path::new("library")).unwrap();
-    let (library, left_out) = tomi_api::library::Library::parse(&files).unwrap();
+    let (mut library, left_out) = tomi_api::library::Library::parse(&files).unwrap();
     assert!(left_out.is_empty(), "{left_out:?}");
-    assert_eq!(library.restrictions.check_against(&graph.serving.facts), Ok(()));
+    assert_eq!(library.agree_with(&graph), Ok(()));
+    assert_eq!(
+        released_items(),
+        current_items(&library),
+        "the avoid items differ from library/avoid-items.released.json"
+    );
     let unlinked = tomi_api::special::links::unlinked(&library, &graph);
     assert!(unlinked.is_empty(), "{unlinked:?}");
+}
+
+type Items = std::collections::BTreeMap<String, BTreeSet<String>>;
+
+fn released_items() -> Items {
+    serde_json::from_str(&std::fs::read_to_string("library/avoid-items.released.json").unwrap()).unwrap()
+}
+
+fn current_items(library: &tomi_api::library::Library) -> Items {
+    let items = library.restrictions.item_facts();
+    items.iter().map(|(id, facts)| (id.to_string(), facts.clone())).collect()
 }

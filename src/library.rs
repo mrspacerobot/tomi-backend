@@ -5,6 +5,7 @@
 //! undeclared id rejects the whole library. A lesson that names something
 //! the lists lack is left out and reported, never served.
 
+use crate::graph::Graph;
 use crate::kernel::ids::SavedId;
 use std::collections::BTreeMap;
 
@@ -22,7 +23,7 @@ pub use catalog::{Catalog, Course, Level, Skill};
 pub use choices::Choices;
 pub use equipment::{Equipment, EquipmentList};
 pub use lesson::{Lesson, LessonIngredient};
-pub use restrictions::{Refusal, RestrictionList, Restrictions};
+pub use restrictions::{Kind, Refusal, RestrictionList, Restrictions};
 pub use text::{Choice, LocalizedText};
 
 /// The library's files as text. Reading them from disk is the caller's job,
@@ -64,6 +65,13 @@ impl Library {
         let mut library = Library { version, restrictions, equipment, catalog, choices, lessons: BTreeMap::new() };
         let left_out = library.add_lessons(&files.lessons);
         Ok((library, left_out))
+    }
+
+    /// Settles what only the graph can tell: the avoid items it adds, and that every fact the restrictions name
+    /// is one it has. Without this the library's own avoid items stand as written.
+    pub fn agree_with(&mut self, graph: &Graph) -> Result<(), String> {
+        self.restrictions.extend_from_graph(&graph.facts)?;
+        self.restrictions.check_against(&graph.serving.facts)
     }
 
     fn add_lessons(&mut self, files: &[(String, String)]) -> Vec<String> {

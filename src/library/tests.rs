@@ -72,7 +72,7 @@ fn a_broken_restrictions_file_rejects_the_library() {
     let text = shipped_files().restrictions;
     let broken = [
         text.replacen("\"fact/milk\"", "\"milk\"", 1),
-        text.replacen("\"schemaVersion\": 1", "\"schemaVersion\": 2", 1),
+        text.replacen("\"schemaVersion\": 2", "\"schemaVersion\": 3", 1),
         text.replacen("\"avoids\": [", "\"tags\": [], \"avoids\": [", 1),
     ];
     for broken_text in broken {
@@ -88,4 +88,37 @@ fn a_lesson_at_a_level_the_catalog_lacks_is_left_out() {
     files.lessons[0].1 = files.lessons[0].1.replacen("\"level\": 3", "\"level\": 9", 1);
     let (_, left_out) = Library::parse(&files).unwrap();
     assert!(left_out[0].contains("has no level 9"), "{left_out:?}");
+}
+
+/// Every avoid item the library ends up with, by id, with the facts it rules out.
+fn released() -> std::collections::BTreeMap<String, BTreeSet<String>> {
+    let text = include_str!("../../library/avoid-items.released.json");
+    serde_json::from_str(text).unwrap()
+}
+
+fn current(library: &Library) -> std::collections::BTreeMap<String, BTreeSet<String>> {
+    let items = library.restrictions.item_facts();
+    items.iter().map(|(id, facts)| (id.to_string(), facts.clone())).collect()
+}
+
+fn with_graph() -> Library {
+    let mut library = shipped();
+    library.agree_with(&crate::special::links::tests::fixture_graph()).unwrap();
+    library
+}
+
+#[test]
+fn the_avoid_items_are_exactly_the_released_ones() {
+    // A change to this list is a change to what a cook with an allergy is protected from. Edit
+    // `library/avoid-items.released.json` in the same pull request so a person sees it.
+    assert_eq!(current(&with_graph()), released());
+}
+
+#[test]
+fn a_released_avoid_item_is_never_removed_and_never_rules_out_less() {
+    let now = current(&with_graph());
+    for (id, facts) in released() {
+        let found = now.get(&id).unwrap_or_else(|| panic!("`{id}` was released and is gone"));
+        assert!(found.is_superset(&facts), "`{id}` rules out less than it did");
+    }
 }

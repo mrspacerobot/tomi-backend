@@ -1,5 +1,6 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "allergensFromGraph": true,
   "avoidItems": [
     {
       "id": "nuts",
@@ -92,6 +93,24 @@
       },
       "avoids": [
         "fact/alcohol"
+      ]
+    },
+    {
+      "id": "peanuts",
+      "name": {
+        "en": "Peanuts"
+      },
+      "avoids": [
+        "fact/peanuts"
+      ]
+    },
+    {
+      "id": "tree-nuts",
+      "name": {
+        "en": "Tree nuts"
+      },
+      "avoids": [
+        "fact/tree-nuts"
       ]
     }
   ],

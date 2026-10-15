@@ -9,6 +9,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 mod checksum;
+pub mod facts;
 pub mod files;
 mod foods;
 mod manifest;
@@ -19,6 +20,7 @@ pub mod serving;
 mod tests;
 
 pub use checksum::sha256_hex;
+pub use facts::Facts;
 pub use foods::Foods;
 pub use pin::{GraphPin, PinError};
 pub use program::Program;
@@ -89,6 +91,8 @@ pub struct Graph {
     pub serving: Serving,
     /// Every ingredient the graph knows, with its names.
     pub foods: Foods,
+    /// Every fact with its name and whether it is an allergen or a diet choice.
+    pub facts: Facts,
     /// Which techniques each skill level teaches.
     pub program: Program,
     things: HashMap<String, Value>,
@@ -115,6 +119,7 @@ impl Graph {
             source_commit: manifest.source_commit,
             serving: body.serving,
             foods: Foods::from_things(&body.things),
+            facts: Facts::from_things(&body.things),
             program: Program::from_things(&body.things),
             things: body.things,
         }

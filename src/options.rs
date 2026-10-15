@@ -4,7 +4,7 @@ use crate::graph::Foods;
 use crate::kernel::display::Shown;
 use crate::kernel::ids::SavedId;
 use crate::kernel::language::Language;
-use crate::library::{Course, Equipment, Library, Skill};
+use crate::library::{Choice, Course, Equipment, Kind, Library, Skill};
 use serde::Serialize;
 
 mod routes;
@@ -18,13 +18,21 @@ pub use routes::router;
 pub struct Options {
     library_version: i64,
     diets: Vec<Shown>,
-    avoid_items: Vec<Shown>,
+    avoid_items: Vec<ShownAvoidItem>,
     cuisines: Vec<Shown>,
     equipment: Vec<ShownEquipment>,
     experience: Vec<Shown>,
     units: Vec<Shown>,
     ingredients: Vec<Shown>,
     courses: Vec<ShownCourse>,
+}
+
+/// An avoid item, with whether it is about an allergen or a choice, so the app can group them.
+#[derive(Serialize)]
+struct ShownAvoidItem {
+    #[serde(flatten)]
+    shown: Shown,
+    kind: Kind,
 }
 
 #[derive(Serialize)]
@@ -63,7 +71,7 @@ pub fn options(library: &Library, foods: &Foods, language: &Language) -> Options
     Options {
         library_version: library.version,
         diets: Shown::all(&restrictions.diets, language),
-        avoid_items: Shown::all(&restrictions.avoid_items, language),
+        avoid_items: shown_avoid_items(library, language),
         cuisines: Shown::all(&choices.cuisines, language),
         equipment: library.equipment.items.iter().map(|item| shown_equipment(item, language)).collect(),
         experience: Shown::all(&choices.experience, language),
@@ -71,6 +79,14 @@ pub fn options(library: &Library, foods: &Foods, language: &Language) -> Options
         ingredients: Shown::all(foods.listed(), language),
         courses: library.catalog.courses.iter().map(|course| shown_course(library, course, language)).collect(),
     }
+}
+
+fn shown_avoid_items(library: &Library, language: &Language) -> Vec<ShownAvoidItem> {
+    let shown = |choice: &Choice| ShownAvoidItem {
+        shown: Shown::of(choice, language),
+        kind: library.restrictions.kind_of(&choice.id),
+    };
+    library.restrictions.avoid_items.iter().map(shown).collect()
 }
 
 fn shown_equipment(item: &Equipment, language: &Language) -> ShownEquipment {

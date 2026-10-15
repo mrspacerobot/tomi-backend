@@ -25,6 +25,14 @@ stay the raw values the app saves (`never`, `basics`, `comfortable`;
 the graph facts it rules out (`avoids`). The ids and names are the ones the app's
 table had, and ids are permanent: saved preferences keep them. **Only a person
 edits it**, because it decides which foods a cook with an allergy is shown. Every
-fact it names must exist in the graph, or the server does not start. Facts that
-have no avoid item yet (celery, mustard, lupin, sulphites, buckwheat) are
-tracked in mrspacerobot/tomi#123.
+fact it names must exist in the graph, or the server does not start. With
+`"allergensFromGraph": true`, every allergen fact of the graph that no item here rules
+out gets an avoid item of its own at start (its id is the fact's slug, its name the
+graph's), so an allergen the graph knows can never be missing from the list. That is
+how celery, mustard, lupin, sulphites and buckwheat appear (mrspacerobot/tomi#123).
+
+`avoid-items.released.json` lists every avoid item the library ends up with, by id,
+with the facts it rules out. A test fails when the real list differs from it, and
+when a released item is gone or rules out less, so a graph update that adds or changes
+an avoid item shows up in a reviewed diff here. Update it in the same pull request,
+and never remove or narrow a released id: saved preferences keep it.

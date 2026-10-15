@@ -1,0 +1,56 @@
+{
+  "alcohol": [
+    "fact/alcohol"
+  ],
+  "buckwheat": [
+    "fact/buckwheat"
+  ],
+  "celery": [
+    "fact/celery"
+  ],
+  "dairy": [
+    "fact/milk"
+  ],
+  "eggs": [
+    "fact/egg"
+  ],
+  "fish": [
+    "fact/fish"
+  ],
+  "gluten": [
+    "fact/gluten",
+    "fact/wheat"
+  ],
+  "lupin": [
+    "fact/lupin"
+  ],
+  "mustard": [
+    "fact/mustard"
+  ],
+  "nuts": [
+    "fact/peanuts",
+    "fact/tree-nuts"
+  ],
+  "peanuts": [
+    "fact/peanuts"
+  ],
+  "pork": [
+    "fact/pork"
+  ],
+  "sesame": [
+    "fact/sesame"
+  ],
+  "shellfish": [
+    "fact/crustaceans",
+    "fact/molluscs"
+  ],
+  "soy": [
+    "fact/soy"
+  ],
+  "sulphites": [
+    "fact/sulphites"
+  ],
+  "tree-nuts": [
+    "fact/tree-nuts"
+  ]
+}
