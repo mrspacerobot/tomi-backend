@@ -6,6 +6,7 @@ pub(crate) fn shipped_files() -> LibraryFiles {
     LibraryFiles {
         catalog: include_str!("../../library/catalog.json").to_string(),
         restrictions: include_str!("../../library/restrictions.json").to_string(),
+        staples: include_str!("../../library/staples.json").to_string(),
         equipment: include_str!("../../library/equipment.json").to_string(),
         choices: include_str!("../../library/choices.json").to_string(),
         lessons: vec![

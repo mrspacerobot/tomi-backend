@@ -15,6 +15,7 @@ mod equipment;
 pub mod files;
 mod lesson;
 mod restrictions;
+mod staples;
 #[cfg(test)]
 pub(crate) mod tests;
 mod text;
@@ -24,6 +25,7 @@ pub use choices::Choices;
 pub use equipment::{Equipment, EquipmentList};
 pub use lesson::{Lesson, LessonIngredient};
 pub use restrictions::{Kind, Refusal, RestrictionList, Restrictions};
+pub use staples::{Staple, StapleList};
 pub use text::{Choice, LocalizedText};
 
 /// The library's files as text. Reading them from disk is the caller's job,
@@ -31,6 +33,7 @@ pub use text::{Choice, LocalizedText};
 pub struct LibraryFiles {
     pub catalog: String,
     pub restrictions: String,
+    pub staples: String,
     pub equipment: String,
     /// The server's own `choices.json`: cuisines, experience and units.
     pub choices: String,
@@ -41,6 +44,7 @@ pub struct LibraryFiles {
 pub struct Library {
     pub version: i64,
     pub restrictions: RestrictionList,
+    pub staples: StapleList,
     pub equipment: EquipmentList,
     pub catalog: Catalog,
     pub choices: Choices,
@@ -58,11 +62,13 @@ impl Library {
     /// The library, and the lessons left out with the reason for each.
     pub fn parse(files: &LibraryFiles) -> Result<(Library, Vec<String>), ParseLibraryError> {
         let restrictions = RestrictionList::parse(&files.restrictions).map_err(in_file("restrictions.json"))?;
+        let staples = StapleList::parse(&files.staples).map_err(in_file("staples.json"))?;
         let equipment = EquipmentList::parse(&files.equipment).map_err(in_file("equipment.json"))?;
         let catalog = Catalog::parse(&files.catalog).map_err(in_file("catalog.json"))?;
         let choices = Choices::parse(&files.choices).map_err(in_file("choices.json"))?;
         let version = catalog.library_version;
-        let mut library = Library { version, restrictions, equipment, catalog, choices, lessons: BTreeMap::new() };
+        let mut library =
+            Library { version, restrictions, staples, equipment, catalog, choices, lessons: BTreeMap::new() };
         let left_out = library.add_lessons(&files.lessons);
         Ok((library, left_out))
     }
@@ -71,7 +77,8 @@ impl Library {
     /// is one it has. Without this the library's own avoid items stand as written.
     pub fn agree_with(&mut self, graph: &Graph) -> Result<(), String> {
         self.restrictions.extend_from_graph(&graph.facts)?;
-        self.restrictions.check_against(&graph.serving.facts)
+        self.restrictions.check_against(&graph.serving.facts)?;
+        self.staples.check_against(&graph.foods)
     }
 
     fn add_lessons(&mut self, files: &[(String, String)]) -> Vec<String> {

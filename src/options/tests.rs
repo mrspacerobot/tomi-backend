@@ -71,3 +71,20 @@ fn nuts_can_also_be_chosen_as_peanuts_or_tree_nuts_alone() {
     assert_eq!(avoid_item(&options, "peanuts")["name"], "Peanuts");
     assert_eq!(avoid_item(&options, "tree-nuts")["name"], "Tree nuts");
 }
+
+#[test]
+fn the_cupboard_offers_the_staples_with_the_graphs_names_and_which_are_assumed() {
+    let options = shipped_options("en");
+    let staples = options["staples"].as_array().unwrap();
+    assert_eq!(staples[0], json!({"id": "olive-oil", "name": "Olive oil", "assumed": true}));
+    let rice = staples.iter().find(|staple| staple["id"] == "rice").unwrap();
+    assert_eq!(rice, &json!({"id": "rice", "name": "Rice", "assumed": false}));
+}
+
+#[test]
+fn the_cupboard_is_empty_when_there_is_no_graph_to_name_the_staples() {
+    let library = Library::parse(&shipped_files()).unwrap().0;
+    let language = Language::from_accept_language(Some("en"));
+    let options = serde_json::to_value(options(&library, &crate::graph::Foods::empty(), &language)).unwrap();
+    assert_eq!(options["staples"], json!([]));
+}

@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "staples": [
+    {
+      "ingredient": "olive-oil",
+      "assumed": true
+    },
+    {
+      "ingredient": "sunflower-oil",
+      "assumed": true
+    },
+    {
+      "ingredient": "salt",
+      "assumed": true
+    },
+    {
+      "ingredient": "black-pepper",
+      "assumed": true
+    },
+    {
+      "ingredient": "chili-flakes",
+      "assumed": false
+    },
+    {
+      "ingredient": "sugar",
+      "assumed": false
+    },
+    {
+      "ingredient": "flour",
+      "assumed": false
+    },
+    {
+      "ingredient": "baking-powder",
+      "assumed": false
+    },
+    {
+      "ingredient": "butter",
+      "assumed": false
+    },
+    {
+      "ingredient": "egg",
+      "assumed": false
+    },
+    {
+      "ingredient": "milk",
+      "assumed": false
+    },
+    {
+      "ingredient": "onion",
+      "assumed": false
+    },
+    {
+      "ingredient": "garlic",
+      "assumed": false
+    },
+    {
+      "ingredient": "lemon",
+      "assumed": false
+    },
+    {
+      "ingredient": "rice",
+      "assumed": false
+    },
+    {
+      "ingredient": "pasta",
+      "assumed": false
+    },
+    {
+      "ingredient": "potato",
+      "assumed": false
+    },
+    {
+      "ingredient": "tinned-tomatoes",
+      "assumed": false
+    },
+    {
+      "ingredient": "tomato-paste",
+      "assumed": false
+    },
+    {
+      "ingredient": "soy-sauce",
+      "assumed": false
+    },
+    {
+      "ingredient": "vinegar",
+      "assumed": false
+    },
+    {
+      "ingredient": "honey",
+      "assumed": false
+    }
+  ]
+}

@@ -3,8 +3,8 @@
 
     scripts/make-graph-fixture.py ../cooking-graph/out/release
 
-It keeps the recipes the shipped lessons map to, the whole program, every fact (and its thing), and the ingredients those recipes and
-their swaps name. Everything is copied unchanged from the release; only the selection is ours. Run it again when the
+It keeps the recipes the shipped lessons map to, the whole program, every fact (and its thing), the ingredients those recipes and
+their swaps name, and the cupboard staples. Everything is copied unchanged from the release; only the selection is ours. Run it again when the
 graph's artifact schema changes, and commit the result.
 """
 import hashlib
@@ -29,11 +29,16 @@ def ingredients_named(serving):
     return found
 
 
+def staples():
+    path = os.path.join(os.path.dirname(__file__), "..", "library", "staples.json")
+    return {"ingredient/" + one["ingredient"] for one in json.load(open(path))["staples"]}
+
+
 def excerpt(release):
     artifact = json.load(open(os.path.join(release, "graph-artifact.json")))
     serving = {"facts": artifact["serving"]["facts"],
                "recipes": {one: artifact["serving"]["recipes"][one] for one in RECIPES}}
-    wanted = {one for one in ingredients_named(serving) if one.startswith("ingredient/")}
+    wanted = {one for one in ingredients_named(serving) if one.startswith("ingredient/")} | staples()
     things = {key: value for key, value in artifact["things"].items() if key in wanted or key.startswith(("program/", "fact/"))}
     return {"artifactSchemaVersion": artifact["artifactSchemaVersion"], "channel": "draft", "things": things,
             "serving": serving}

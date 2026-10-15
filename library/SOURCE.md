@@ -31,6 +31,12 @@ out gets an avoid item of its own at start (its id is the fact's slug, its name 
 graph's), so an allergen the graph knows can never be missing from the list. That is
 how celery, mustard, lupin, sulphites and buckwheat appear (mrspacerobot/tomi#123).
 
+`staples.json` is the cupboard question's list: the everyday ingredients a cook can say
+they always have (about twenty), each with `assumed`, whether a kitchen is taken to have
+it until the cook answers. Only a person edits it. Every ingredient must be one the graph
+knows, or the server does not start. Anything else a cook has, they type. Only salt, pepper
+and the two oils are assumed for now; the owner has not yet confirmed that.
+
 `avoid-items.released.json` lists every avoid item the library ends up with, by id,
 with the facts it rules out. A test fails when the real list differs from it, and
 when a released item is gone or rules out less, so a graph update that adds or changes

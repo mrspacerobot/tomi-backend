@@ -23,6 +23,7 @@ pub struct Options {
     equipment: Vec<ShownEquipment>,
     experience: Vec<Shown>,
     units: Vec<Shown>,
+    staples: Vec<ShownStaple>,
     ingredients: Vec<Shown>,
     courses: Vec<ShownCourse>,
 }
@@ -33,6 +34,15 @@ struct ShownAvoidItem {
     #[serde(flatten)]
     shown: Shown,
     kind: Kind,
+}
+
+/// An everyday ingredient the cupboard question offers, named by the graph.
+#[derive(Serialize)]
+struct ShownStaple {
+    id: SavedId,
+    name: String,
+    /// Counted as at home until the cook has answered.
+    assumed: bool,
 }
 
 #[derive(Serialize)]
@@ -76,6 +86,7 @@ pub fn options(library: &Library, foods: &Foods, language: &Language) -> Options
         equipment: library.equipment.items.iter().map(|item| shown_equipment(item, language)).collect(),
         experience: Shown::all(&choices.experience, language),
         units: Shown::all(&choices.units, language),
+        staples: shown_staples(library, foods, language),
         ingredients: Shown::all(foods.listed(), language),
         courses: library.catalog.courses.iter().map(|course| shown_course(library, course, language)).collect(),
     }
@@ -87,6 +98,18 @@ fn shown_avoid_items(library: &Library, language: &Language) -> Vec<ShownAvoidIt
         kind: library.restrictions.kind_of(&choice.id),
     };
     library.restrictions.avoid_items.iter().map(shown).collect()
+}
+
+/// The staples the graph can name. Without a graph there are no names, so the list is empty rather than guessed.
+fn shown_staples(library: &Library, foods: &Foods, language: &Language) -> Vec<ShownStaple> {
+    let mut shown = Vec::new();
+    for staple in library.staples.listed() {
+        if let Some(choice) = foods.choice(&staple.ingredient) {
+            let name = choice.name.text(language.as_str()).to_string();
+            shown.push(ShownStaple { id: staple.ingredient.clone(), name, assumed: staple.assumed });
+        }
+    }
+    shown
 }
 
 fn shown_equipment(item: &Equipment, language: &Language) -> ShownEquipment {
