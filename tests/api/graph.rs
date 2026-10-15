@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use tomi_api::config::GraphConfig;
 use tomi_api::graph::files;
-use tomi_api::graph::{sha256_hex, Graph, GraphFiles, GraphPin, GraphPolicy};
+use tomi_api::graph::{sha256_hex, GraphFiles};
 use uuid::Uuid;
 
 const VERSION: &str = "2026.10.11-1102817";
@@ -40,12 +40,10 @@ fn config(folder: Option<&PathBuf>, allow_draft: bool) -> GraphConfig {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn bootstrap_names_the_graph_version_and_channel(pool: PgPool) {
-    let files = files("draft");
-    let pin = GraphPin::parse(&lock_for(&files)).unwrap().unwrap();
-    let graph = Graph::load(&files, &pin, &GraphPolicy { allow_draft: true }).unwrap();
-    let app = server_with(pool, Setup { graph: Some(graph), ..Setup::default() });
+    // The fixture is a real excerpt, so the shipped restrictions agree with it, as the start-up check demands.
+    let app = server_with(pool, Setup::default());
     let reply = get(&app, "/v1/bootstrap", None).await;
-    assert_eq!(reply.body["graphArtifactVersion"], VERSION);
+    assert_eq!(reply.body["graphArtifactVersion"], "fixture");
     assert_eq!(reply.body["graphChannel"], "draft");
 }
 
