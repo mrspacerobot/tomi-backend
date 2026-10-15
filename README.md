@@ -118,7 +118,9 @@ into memory. A pin that cannot be loaded stops the start. With no pin the API st
 (scans and suggestions answer `503 graph_unavailable`), unless `GRAPH_REQUIRED=true`, which a deployment sets so that
 such a build does not start at all.
 A `draft` graph is refused unless `GRAPH_ALLOW_DRAFT=true`; the graph repository can build nothing else yet.
-`scripts/fetch-graph.sh` fetches the pinned release, or with `--from <checkout>` builds and pins one locally.
+The `bump-graph` workflow checks daily (and on demand) for a newer graph release. When there is one it pins it in
+`graph.lock`, runs the conformance tests against that graph, and only then opens a pull request, which a person
+merges. `scripts/fetch-graph.sh` fetches the pinned release, or with `--from <checkout>` builds and pins one locally.
 
 No route uses the graph yet. See `docs/local-development.md` to run it.
 
