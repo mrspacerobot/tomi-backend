@@ -1,6 +1,6 @@
 //! The manifest and the artifact as they are written by the graph repository's `./release`.
 
-use super::GraphError;
+use super::{GraphError, Serving};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde_json::Value;
@@ -29,6 +29,7 @@ pub struct Body {
     pub artifact_schema_version: u64,
     pub channel: String,
     pub things: HashMap<String, Value>,
+    pub serving: Serving,
 }
 
 /// Reads `text` as JSON. The error never repeats the text.

@@ -45,5 +45,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GRAPH_READ_TOKEN }}
         run: ./scripts/fetch-graph.sh
+      - name: The server agrees with the graph's reference on every shipped case
+        run: |
+          if [ -f graph/serving-vectors.json ]; then
+            cargo test --test graph_vectors -- --ignored
+          else
+            echo "graph.lock pins no graph, so there are no cases to check."
+          fi
       - name: Build the image
         run: docker build -t tomi-api .

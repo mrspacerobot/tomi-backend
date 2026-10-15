@@ -12,14 +12,16 @@ mod checksum;
 pub mod files;
 mod manifest;
 mod pin;
+pub mod serving;
 #[cfg(test)]
 mod tests;
 
 pub use checksum::sha256_hex;
 pub use pin::{GraphPin, PinError};
+pub use serving::Serving;
 
 /// The only artifact layout this build can read.
-pub const ARTIFACT_SCHEMA_VERSION: u64 = 1;
+pub const ARTIFACT_SCHEMA_VERSION: u64 = 2;
 
 /// The graph's files as text. Reading them from disk is the caller's job.
 pub struct GraphFiles {
@@ -79,6 +81,8 @@ pub struct Graph {
     pub version: String,
     pub channel: Channel,
     pub source_commit: String,
+    /// Which facts each recipe, line and swap is unsafe for, worked out by the graph repository.
+    pub serving: Serving,
     things: HashMap<String, Value>,
 }
 
@@ -92,8 +96,18 @@ impl Graph {
             return Err(GraphError::DraftRefused);
         }
         verify(files, &manifest, pin)?;
-        let things = read_things(&files.artifact, &manifest.channel)?;
-        Ok(Graph { version: manifest.graph_version, channel, source_commit: manifest.source_commit, things })
+        let body = read_body(&files.artifact, &manifest.channel)?;
+        Ok(Graph::from_parts(manifest, channel, body))
+    }
+
+    fn from_parts(manifest: manifest::Manifest, channel: Channel, body: manifest::Body) -> Graph {
+        Graph {
+            version: manifest.graph_version,
+            channel,
+            source_commit: manifest.source_commit,
+            serving: body.serving,
+            things: body.things,
+        }
     }
 
     pub fn thing(&self, id: &str) -> Option<&Value> {
@@ -129,11 +143,11 @@ fn verify(files: &GraphFiles, manifest: &manifest::Manifest, pin: &GraphPin) -> 
 
 /// The artifact's own channel is covered by its checksum. The manifest's is not,
 /// so the two must agree, or a manifest could promote a draft graph.
-fn read_things(artifact: &str, manifest_channel: &str) -> Result<HashMap<String, Value>, GraphError> {
+fn read_body(artifact: &str, manifest_channel: &str) -> Result<manifest::Body, GraphError> {
     let body: manifest::Body = manifest::read(artifact)?;
     check_schema(body.artifact_schema_version)?;
     if body.channel != manifest_channel {
         return Err(GraphError::ChannelMismatch);
     }
-    Ok(body.things)
+    Ok(body)
 }

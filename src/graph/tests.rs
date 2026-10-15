@@ -8,12 +8,13 @@ fn artifact_text(schema: u64, channel: &str) -> String {
         "technique/sear": { "tier": "drafted", "names": { "en": "Sear" } },
         "ingredient/egg": { "tier": "drafted", "safety": { "state": "unverified" } },
     });
-    json!({ "artifactSchemaVersion": schema, "channel": channel, "things": things }).to_string()
+    let serving = json!({ "facts": ["fact/egg"], "recipes": {} });
+    json!({ "artifactSchemaVersion": schema, "channel": channel, "things": things, "serving": serving }).to_string()
 }
 
 fn manifest_text(artifact: &str, channel: &str) -> String {
     json!({
-        "artifactSchemaVersion": 1,
+        "artifactSchemaVersion": 2,
         "graphVersion": VERSION,
         "sourceCommit": "1102817abcdef",
         "channel": channel,
@@ -25,7 +26,7 @@ fn manifest_text(artifact: &str, channel: &str) -> String {
 }
 
 fn files(channel: &str) -> GraphFiles {
-    let artifact = artifact_text(1, channel);
+    let artifact = artifact_text(2, channel);
     GraphFiles { manifest: manifest_text(&artifact, channel), artifact }
 }
 
@@ -49,9 +50,9 @@ fn a_graph_that_matches_its_pin_loads_into_memory() {
 
 #[test]
 fn an_unknown_schema_version_is_refused_before_anything_else_is_read() {
-    let files = GraphFiles { manifest: json!({ "artifactSchemaVersion": 2 }).to_string(), artifact: "not json".into() };
+    let files = GraphFiles { manifest: json!({ "artifactSchemaVersion": 1 }).to_string(), artifact: "not json".into() };
     let pin = GraphPin { version: "x".into(), sha256: "y".into() };
-    assert_eq!(Graph::load(&files, &pin, &DRAFTS).unwrap_err(), GraphError::UnsupportedSchema(2));
+    assert_eq!(Graph::load(&files, &pin, &DRAFTS).unwrap_err(), GraphError::UnsupportedSchema(1));
 }
 
 #[test]
@@ -100,7 +101,7 @@ fn an_unknown_channel_is_refused_never_read_as_production() {
 
 #[test]
 fn a_manifest_that_claims_another_channel_than_its_artifact_is_refused() {
-    let artifact = artifact_text(1, "draft");
+    let artifact = artifact_text(2, "draft");
     let files = GraphFiles { manifest: manifest_text(&artifact, "production"), artifact };
     let error = Graph::load(&files, &pin_for(&files), &NO_DRAFTS).unwrap_err();
     assert_eq!(error, GraphError::ChannelMismatch);
@@ -108,9 +109,9 @@ fn a_manifest_that_claims_another_channel_than_its_artifact_is_refused() {
 
 #[test]
 fn an_artifact_of_another_schema_version_than_its_manifest_is_refused() {
-    let artifact = artifact_text(2, "draft");
+    let artifact = artifact_text(3, "draft");
     let files = GraphFiles { manifest: manifest_text(&artifact, "draft"), artifact };
-    assert_eq!(Graph::load(&files, &pin_for(&files), &DRAFTS).unwrap_err(), GraphError::UnsupportedSchema(2));
+    assert_eq!(Graph::load(&files, &pin_for(&files), &DRAFTS).unwrap_err(), GraphError::UnsupportedSchema(3));
 }
 
 #[test]
