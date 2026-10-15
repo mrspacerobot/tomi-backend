@@ -1,4 +1,4 @@
-use crate::helpers::{get, new_cook, patch_profile, server};
+use crate::helpers::{get, new_cook, patch_profile, server, server_with, Setup};
 use axum::http::StatusCode;
 use serde_json::{json, Value};
 use sqlx::PgPool;
@@ -122,7 +122,7 @@ async fn a_profile_saved_by_a_newer_server_is_refused_and_never_overwritten(pool
     let cook = crate::helpers::token_with(&crate::helpers::claims(subject));
     get(&app, "/v1/profile", Some(&cook)).await;
     let data = json!({"diet": "vegan", "someNewRestriction": ["x"]});
-    store_row(&pool, Row { subject, schema_version: 2, data }).await;
+    store_row(&pool, Row { subject, schema_version: 3, data }).await;
 
     let read = get(&app, "/v1/profile", Some(&cook)).await;
     assert_eq!(read.status, StatusCode::SERVICE_UNAVAILABLE);
@@ -131,4 +131,30 @@ async fn a_profile_saved_by_a_newer_server_is_refused_and_never_overwritten(pool
     assert_eq!(write.status, StatusCode::SERVICE_UNAVAILABLE);
     let data: Value = sqlx::query_scalar("select data from tomi.profiles").fetch_one(&pool).await.unwrap();
     assert_eq!(data["someNewRestriction"], json!(["x"]));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn a_staple_the_graph_does_not_know_is_refused(pool: PgPool) {
+    let (app, cook) = (server(pool), new_cook());
+    let reply = patch_profile(&app, &cook, json!({"version": 0, "cupboardStaples": ["rice", "unicorn-meat"]})).await;
+    assert_eq!(reply.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(reply.body["error"]["code"], "invalid_request");
+    assert!(reply.body["error"]["details"]["problems"][0].as_str().unwrap().contains("unicorn-meat"));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn staples_the_graph_knows_are_saved_and_the_cupboard_is_marked_answered(pool: PgPool) {
+    let (app, cook) = (server(pool), new_cook());
+    let body = json!({"version": 0, "cupboardStaples": ["rice", "honey"], "cupboardAnswered": true});
+    let reply = patch_profile(&app, &cook, body).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(reply.body["profile"]["cupboardAnswered"], true);
+    assert_eq!(reply.body["schemaVersion"], 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn without_a_graph_staples_are_saved_as_sent(pool: PgPool) {
+    let app = server_with(pool, Setup { graph: None, ..Setup::default() });
+    let reply = patch_profile(&app, &new_cook(), json!({"version": 0, "cupboardStaples": ["anything"]})).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
 }

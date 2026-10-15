@@ -25,6 +25,7 @@ pub struct ProfilePatch {
     cuisines_to_try: Option<BTreeSet<SavedId>>,
     cuisines_never: Option<BTreeSet<SavedId>>,
     cupboard_staples: Option<BTreeSet<SavedId>>,
+    cupboard_answered: Option<bool>,
     #[serde(default, deserialize_with = "present")]
     equipment: Option<Option<BTreeSet<SavedId>>>,
     experience: Option<Experience>,
@@ -72,6 +73,7 @@ fn replace_food(next: &mut Profile, patch: &ProfilePatch) {
     replace(&mut next.cuisines_to_try, &patch.cuisines_to_try);
     replace(&mut next.cuisines_never, &patch.cuisines_never);
     replace(&mut next.cupboard_staples, &patch.cupboard_staples);
+    replace(&mut next.cupboard_answered, &patch.cupboard_answered);
 }
 
 fn replace_kitchen(next: &mut Profile, patch: ProfilePatch) {

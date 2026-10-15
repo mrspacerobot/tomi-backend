@@ -113,7 +113,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 
 - **No `unwrap`, `expect`, `panic!`, `todo!` or `unimplemented!` in service code.** Return a `Result` and let `?` carry it. Tests may unwrap: a failed unwrap there is a failed test.
 - **Errors are enums with `thiserror`,** one per boundary (`AuthError`, `PatchError`, `AppError`), converted with `From` and `?` where a conversion is always the same, and `map_err` only where the call site decides. `AppError` decides the HTTP status and the stable `code` the app acts on. Codes are permanent once released.
-- **A lint override uses `#[expect(lint, reason = "...")]`, never `#[allow]`.** `expect` fails when the lint no longer fires, so stale overrides cannot pile up. Clippy refuses `#[allow]` here. The accepted reasons so far: `tracing`'s macros expand into branches that inflate `cognitive_complexity`, so each log line sits in its own small function; and a flat `match` from each case to its value may pass `too_many_lines`.
+- **A lint override uses `#[expect(lint, reason = "...")]`, never `#[allow]`.** `expect` fails when the lint no longer fires, so stale overrides cannot pile up. Clippy refuses `#[allow]` here. The accepted reasons so far: `tracing`'s macros expand into branches that inflate `cognitive_complexity`, so each log line sits in its own small function; and a flat `match` from each case to its value, or a struct literal that names every field's default and does nothing else, may pass `too_many_lines`.
 - **Logs are structured `tracing` events, never `println!`.** They hold status, latency, versions, ids and counts. Never a request body, a photo, chat text, an ingredient or a restriction.
 - **No `unsafe`.** The crate forbids it.
 

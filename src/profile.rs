@@ -22,7 +22,7 @@ pub use patch::{apply, PatchError, ProfilePatch};
 pub use stored::{from_stored, StoredProfileError};
 
 /// Bumped whenever the profile gains a field or the stored JSON shape changes. See `stored.rs`.
-pub const PROFILE_SCHEMA_VERSION: i32 = 1;
+pub const PROFILE_SCHEMA_VERSION: i32 = 2;
 
 /// How much the cook already cooks. The raw values are saved by the app.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +53,9 @@ pub struct Profile {
     pub cuisines_never: BTreeSet<SavedId>,
     /// Ingredients the cook always has at home.
     pub cupboard_staples: BTreeSet<SavedId>,
+    /// Whether the cook has answered the cupboard question. Until then the staples a kitchen is taken to have
+    /// count, and `cupboardStaples` is not read: an empty list alone cannot say "never asked".
+    pub cupboard_answered: bool,
     /// None while the cook has not answered. An empty list is an answer.
     pub equipment: Option<BTreeSet<SavedId>>,
     pub experience: Experience,
@@ -67,6 +70,10 @@ pub struct Profile {
 }
 
 impl Default for Profile {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "a flat literal of every field's default, the long shape AGENTS.md allows"
+    )]
     fn default() -> Self {
         Profile {
             diet: None,
@@ -75,6 +82,7 @@ impl Default for Profile {
             cuisines_to_try: BTreeSet::new(),
             cuisines_never: BTreeSet::new(),
             cupboard_staples: BTreeSet::new(),
+            cupboard_answered: false,
             equipment: None,
             experience: Experience::default(),
             servings: 2,

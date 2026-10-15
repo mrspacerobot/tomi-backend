@@ -121,3 +121,32 @@ fn a_row_with_an_unknown_field_at_this_version_is_refused() {
 fn a_row_with_a_version_below_one_is_unreadable() {
     assert_eq!(from_stored(0, json!({})).unwrap_err(), StoredProfileError::Unreadable);
 }
+
+#[test]
+fn a_cook_who_has_not_answered_the_cupboard_is_marked_so() {
+    let profile = from_stored(PROFILE_SCHEMA_VERSION, json!({})).unwrap();
+    assert!(!profile.cupboard_answered);
+}
+
+#[test]
+fn a_patch_can_record_that_the_cupboard_was_answered() {
+    let next = apply(&Profile::default(), patch(json!({"version": 1, "cupboardAnswered": true}))).unwrap();
+    assert!(next.cupboard_answered);
+}
+
+#[test]
+fn a_row_saved_before_the_cupboard_question_with_staples_counts_as_answered() {
+    let stored = json!({"cupboardStaples": ["rice"]});
+    assert!(from_stored(1, stored).unwrap().cupboard_answered);
+}
+
+#[test]
+fn a_row_saved_before_the_cupboard_question_without_staples_does_not() {
+    assert!(!from_stored(1, json!({"cupboardStaples": []})).unwrap().cupboard_answered);
+}
+
+#[test]
+fn a_row_at_this_version_keeps_what_it_says_about_the_cupboard() {
+    let stored = json!({"cupboardStaples": ["rice"], "cupboardAnswered": false});
+    assert!(!from_stored(PROFILE_SCHEMA_VERSION, stored).unwrap().cupboard_answered);
+}

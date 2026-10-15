@@ -3,6 +3,7 @@
 use super::db::{self as store, ProfileWrite, StoredProfile};
 use crate::error::AppError;
 use crate::http::{json_body, CurrentUser};
+use crate::kernel::ids::SavedId;
 use crate::profile::{self, PatchError, Profile, ProfilePatch, PROFILE_SCHEMA_VERSION};
 use crate::AppState;
 use axum::extract::rejection::JsonRejection;
@@ -10,6 +11,7 @@ use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
 use serde::Serialize;
+use std::collections::BTreeSet;
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/v1/profile", get(read).patch(change))
@@ -45,7 +47,9 @@ async fn change(
     let patch = json_body(body)?;
     let expected_version = patch.version;
     let stored = store::read(&state.db, user_id).await?;
+    let before = stored.profile.cupboard_staples.clone();
     let profile = changed(stored, patch)?;
+    check_new_staples(&state, &before, &profile)?;
     let write = ProfileWrite { user_id, expected_version, profile };
     let saved = save(&state, write).await?;
     Ok(Json(saved.into()))
@@ -58,6 +62,23 @@ fn changed(stored: StoredProfile, patch: ProfilePatch) -> Result<Profile, AppErr
         return Err(conflict(patch.version, stored));
     }
     profile::apply(&stored.profile, patch).map_err(refusal)
+}
+
+/// A staple added by this change must be an ingredient the graph knows, when there is a graph to ask. One saved
+/// earlier is left alone, so a graph that later drops an ingredient never blocks an unrelated change.
+fn check_new_staples(state: &AppState, before: &BTreeSet<SavedId>, profile: &Profile) -> Result<(), AppError> {
+    if state.graph.is_none() {
+        return Ok(());
+    }
+    let added = profile.cupboard_staples.difference(before);
+    let unknown: Vec<String> = added
+        .filter(|id| !state.foods().knows(id))
+        .map(|id| format!("cupboardStaples: `{id}` is not an ingredient Tomi knows"))
+        .collect();
+    if unknown.is_empty() {
+        return Ok(());
+    }
+    Err(AppError::Invalid(unknown))
 }
 
 /// Saves, or reports a conflict when someone wrote between our read and
