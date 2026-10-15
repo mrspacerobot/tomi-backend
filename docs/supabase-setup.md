@@ -149,10 +149,15 @@ variable in a script you commit:
 
 ```sh
 gcloud run deploy tomi-api --source . --region europe-west3 \
-  --set-env-vars SUPABASE_URL=https://<project-ref>.supabase.co \
+  --set-env-vars SUPABASE_URL=https://<project-ref>.supabase.co,GRAPH_REQUIRED=true,GRAPH_ALLOW_DRAFT=true \
   --set-secrets DATABASE_URL=tomi-database-url:latest,GEMINI_API_KEY=tomi-gemini-key:latest,SUPABASE_SECRET_KEY=tomi-supabase-secret:latest \
   --allow-unauthenticated
 ```
+
+`GRAPH_REQUIRED=true` makes a build that pins no graph refuse to start, so a deploy
+without a graph fails its health check and never replaces a working one. Every scan and
+suggestion needs the graph. `GRAPH_ALLOW_DRAFT=true` is for the proof of concept only: the graph
+has no production release until its safety gates pass, and then it must be removed.
 
 `--allow-unauthenticated` lets the app reach the API at all. The API checks
 every cook's token itself.

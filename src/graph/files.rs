@@ -21,7 +21,7 @@ pub fn read(folder: &Path) -> io::Result<GraphFiles> {
 pub fn start(lock: &str, config: &GraphConfig) -> Result<Option<Graph>, String> {
     let pin = GraphPin::parse(lock).map_err(|error| error.to_string())?;
     let Some(pin) = pin else {
-        return Ok(None);
+        return no_graph(config);
     };
     let Some(folder) = &config.dir else {
         return Err("graph.lock pins a graph but GRAPH_DIR is not set".to_string());
@@ -31,6 +31,14 @@ pub fn start(lock: &str, config: &GraphConfig) -> Result<Option<Graph>, String> 
     let graph = Graph::load(&files, &pin, &policy).map_err(|error| format!("graph: {error}"))?;
     log_loaded(&graph);
     Ok(Some(graph))
+}
+
+/// A build that pins no graph starts without one, unless the deployment says it must have one.
+fn no_graph(config: &GraphConfig) -> Result<Option<Graph>, String> {
+    if config.required {
+        return Err("graph.lock pins no graph but GRAPH_REQUIRED is true".to_string());
+    }
+    Ok(None)
 }
 
 #[expect(clippy::cognitive_complexity, reason = "tracing's macro expands into branches no reader sees")]

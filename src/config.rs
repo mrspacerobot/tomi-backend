@@ -26,6 +26,9 @@ pub struct GraphConfig {
     /// Without a folder, a build that pins a graph does not start.
     pub dir: Option<String>,
     pub allow_draft: bool,
+    /// A deployment that must serve cooks sets this: a build that pins no graph then does not start, instead of
+    /// starting and answering every scan and suggestion with `graph_unavailable`.
+    pub required: bool,
 }
 
 /// Without a key, the scan is unavailable and specials rank without AI.
@@ -69,7 +72,11 @@ impl AiConfig {
 
 impl GraphConfig {
     fn from_env() -> Self {
-        GraphConfig { dir: read("GRAPH_DIR"), allow_draft: optional("GRAPH_ALLOW_DRAFT", "false") == "true" }
+        GraphConfig {
+            dir: read("GRAPH_DIR"),
+            allow_draft: optional("GRAPH_ALLOW_DRAFT", "false") == "true",
+            required: optional("GRAPH_REQUIRED", "false") == "true",
+        }
     }
 }
 

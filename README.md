@@ -106,7 +106,9 @@ artifact in `/graph`. Graph version and image move together, so rolling the imag
 
 At start the API reads `GRAPH_DIR`, checks the artifact against its manifest and against the pin, refuses it
 unless the schema version, the checksum, the pinned version and the channel all agree, and loads every thing
-into memory. A pin that cannot be loaded stops the start. With no pin the API starts without graph features.
+into memory. A pin that cannot be loaded stops the start. With no pin the API starts without graph features
+(scans and suggestions answer `503 graph_unavailable`), unless `GRAPH_REQUIRED=true`, which a deployment sets so that
+such a build does not start at all.
 A `draft` graph is refused unless `GRAPH_ALLOW_DRAFT=true`; the graph repository can build nothing else yet.
 `scripts/fetch-graph.sh` fetches the pinned release, or with `--from <checkout>` builds and pins one locally.
 

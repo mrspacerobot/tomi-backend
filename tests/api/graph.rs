@@ -35,7 +35,7 @@ fn folder_with(files: &GraphFiles) -> PathBuf {
 }
 
 fn config(folder: Option<&PathBuf>, allow_draft: bool) -> GraphConfig {
-    GraphConfig { dir: folder.map(|path| path.to_string_lossy().to_string()), allow_draft }
+    GraphConfig { dir: folder.map(|path| path.to_string_lossy().to_string()), allow_draft, required: false }
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -60,6 +60,21 @@ async fn bootstrap_says_null_without_a_graph(pool: PgPool) {
 #[test]
 fn a_build_that_pins_no_graph_starts_without_one() {
     assert!(files::start("none\n", &config(None, false)).unwrap().is_none());
+}
+
+#[test]
+fn a_build_that_pins_no_graph_does_not_start_when_a_graph_is_required() {
+    let required = GraphConfig { required: true, ..config(None, false) };
+    let error = files::start("none\n", &required).unwrap_err();
+    assert!(error.contains("GRAPH_REQUIRED"), "{error}");
+}
+
+#[test]
+fn a_required_graph_that_is_pinned_and_present_starts() {
+    let files = files("draft");
+    let folder = folder_with(&files);
+    let required = GraphConfig { required: true, ..config(Some(&folder), true) };
+    assert!(files::start(&lock_for(&files), &required).unwrap().is_some());
 }
 
 #[test]
