@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "cuisines": [
+    {
+      "id": "italian",
+      "name": {
+        "en": "Italian"
+      }
+    },
+    {
+      "id": "mexican",
+      "name": {
+        "en": "Mexican"
+      }
+    },
+    {
+      "id": "indian",
+      "name": {
+        "en": "Indian"
+      }
+    },
+    {
+      "id": "chinese",
+      "name": {
+        "en": "Chinese"
+      }
+    },
+    {
+      "id": "japanese",
+      "name": {
+        "en": "Japanese"
+      }
+    },
+    {
+      "id": "thai",
+      "name": {
+        "en": "Thai"
+      }
+    },
+    {
+      "id": "french",
+      "name": {
+        "en": "French"
+      }
+    },
+    {
+      "id": "middle-eastern",
+      "name": {
+        "en": "Middle Eastern"
+      }
+    },
+    {
+      "id": "mediterranean",
+      "name": {
+        "en": "Mediterranean"
+      }
+    },
+    {
+      "id": "korean",
+      "name": {
+        "en": "Korean"
+      }
+    }
+  ],
+  "experience": [
+    {
+      "id": "never",
+      "name": {
+        "en": "Never, really"
+      },
+      "summary": {
+        "en": "Start at the first dish. I explain everything, including how to hold the knife."
+      }
+    },
+    {
+      "id": "basics",
+      "name": {
+        "en": "The basics"
+      },
+      "summary": {
+        "en": "Start at the first course, with shorter explanations."
+      }
+    },
+    {
+      "id": "comfortable",
+      "name": {
+        "en": "Comfortable"
+      },
+      "summary": {
+        "en": "The first course arrives already stamped. You start at Heat control."
+      }
+    }
+  ],
+  "units": [
+    {
+      "id": "metric",
+      "name": {
+        "en": "Metric"
+      },
+      "summary": {
+        "en": "grams, millilitres, °C"
+      }
+    },
+    {
+      "id": "cups",
+      "name": {
+        "en": "Cups"
+      },
+      "summary": {
+        "en": "cups, ounces, °F"
+      }
+    }
+  ]
+}

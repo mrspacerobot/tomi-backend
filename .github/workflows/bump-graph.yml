@@ -1,0 +1,60 @@
+# Opens a pull request that pins the newest cooking-graph release, when there is one.
+#
+# A pull request opened with the built-in token does not start other workflows, so this job runs the
+# conformance tests against the new graph itself and opens the pull request only if they pass. Merging is
+# a person's decision: it puts a new graph in front of cooks.
+name: bump-graph
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin the newest graph release
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GRAPH_READ_TOKEN }}
+        run: ./scripts/bump-graph.sh
+      - uses: dtolnay/rust-toolchain@1.97.0
+        if: steps.bump.outputs.bumped == 'true'
+      - uses: Swatinem/rust-cache@v2
+        if: steps.bump.outputs.bumped == 'true'
+      - name: The server agrees with the new graph
+        if: steps.bump.outputs.bumped == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GRAPH_READ_TOKEN }}
+        run: |
+          ./scripts/fetch-graph.sh
+          cargo test --test graph_vectors -- --ignored
+      - name: Open the pull request
+        if: steps.bump.outputs.bumped == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          branch="bump-graph-$VERSION"
+          if [ "$(gh pr list --head "$branch" --state open --json number --jq length)" != "0" ]; then
+            echo "A pull request for $VERSION is already open."
+            exit 0
+          fi
+          channel=$(python3 -c "import json; print(json.load(open('graph/manifest.json'))['channel'])")
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git switch -c "$branch"
+          git add graph.lock
+          git commit -m "Pin the cooking graph $VERSION (#16)" -m "Pinned by the bump-graph workflow. Channel: $channel."
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" --title "Pin the cooking graph $VERSION (#16)" --body "Pins graph release \`graph-v$VERSION\` (channel: $channel).
+
+          The checksum of the artifact matches its manifest, and the server's conformance tests passed against it: it offers exactly what the graph's reference offers in every shipped case, and the library's restrictions, staples and lessons agree with the graph.
+
+          Pull requests opened by a workflow do not start the other checks. Close and reopen this pull request to run them before merging. Merging puts this graph in front of cooks."
