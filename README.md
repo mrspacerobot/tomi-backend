@@ -136,7 +136,10 @@ The `bump-graph` workflow checks daily (and on demand) for a newer graph release
 `graph.lock`, runs the conformance tests against that graph, and only then opens a pull request, which a person
 merges. `scripts/fetch-graph.sh` fetches the pinned release, or with `--from <checkout>` builds and pins one locally.
 
-No route uses the graph yet. See `docs/local-development.md` to run it.
+See `docs/local-development.md` to run it. Merges into `main` automatically deploy the backend and
+the graph pinned in `graph.lock` together to Cloud Run, after the normal checks and graph reference
+tests pass. The new revision must report the expected graph version and pass readiness before it
+receives traffic. See `docs/cloud-run-deployment.md` for the deployment identity, secrets and rollback.
 
 ## Layout and rules
 

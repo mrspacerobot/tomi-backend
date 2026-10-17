@@ -160,6 +160,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 
 ## Project hygiene
 
+- **Deployment follows a merge to main.** CI builds one image containing the backend and the exact graph in `graph.lock`, after running the graph reference tests. Only that image digest is deployed. A revision must pass readiness and report the pinned graph version and channel before traffic moves to it. Graph updates still require an owner-merged pin pull request. Google deployment credentials use repository- and main-branch-scoped Workload Identity Federation, never a service-account key in GitHub.
 - **One issue, one branch, one pull request,** small enough to review in one sitting.
 - **Every commit names its issue.** The subject says what changed, in the imperative, and ends with the issue number: `Add cook events (#4)`. The body says why.
 - **When a decision changes,** update this file and the README in the same pull request.

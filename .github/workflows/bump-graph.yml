@@ -55,6 +55,6 @@ jobs:
           git push origin "$branch"
           gh pr create --base main --head "$branch" --title "Pin the cooking graph $VERSION (#16)" --body "Pins graph release \`graph-v$VERSION\` (channel: $channel).
 
-          The checksum of the artifact matches its manifest, and the server's conformance tests passed against it: it offers exactly what the graph's reference offers in every shipped case, and the library's restrictions, staples and lessons agree with the graph.
+          The checksum of the artifact matches its manifest, and the server's conformance tests passed against it: it offers exactly what the graph's reference offers in every shipped case, and the library's restrictions and staples agree with the graph.
 
-          Pull requests opened by a workflow do not start the other checks. Close and reopen this pull request to run them before merging. Merging puts this graph in front of cooks."
+          Pull requests opened by a workflow do not start the other checks. Close and reopen this pull request to run them before merging. Merging runs the full checks and automatically deploys the backend with this graph."

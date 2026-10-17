@@ -144,22 +144,22 @@ plan to upgrade before the dataset grows.
 
 ## 10. Deploying to Cloud Run
 
-Store `DATABASE_URL` in Secret Manager, never as a plain environment
-variable in a script you commit:
+Merges into `main` deploy automatically after the normal checks and graph reference
+tests pass. CI packages the exact pinned graph with the backend and deploys that
+image by digest. See [automatic deployment](cloud-run-deployment.md) for the Google
+identity, GitHub variables, runtime secrets and rollback procedure.
 
-```sh
-gcloud run deploy tomi-api --source . --region europe-west3 \
-  --set-env-vars SUPABASE_URL=https://<project-ref>.supabase.co,GRAPH_REQUIRED=true,GRAPH_ALLOW_DRAFT=true \
-  --set-secrets DATABASE_URL=tomi-database-url:latest,GEMINI_API_KEY=tomi-gemini-key:latest,SUPABASE_SECRET_KEY=tomi-supabase-secret:latest \
-  --allow-unauthenticated
-```
+Store `DATABASE_URL`, `GEMINI_API_KEY` and `SUPABASE_SECRET_KEY` in Secret Manager,
+never as plain values in a script you commit. `SUPABASE_URL` is a public repository
+variable. The runtime service account reads the three secrets when Cloud Run starts
+the revision.
 
 `GRAPH_REQUIRED=true` makes a build that pins no graph refuse to start, so a deploy
 without a graph fails its health check and never replaces a working one. Every scan and
 suggestion needs the graph. `GRAPH_ALLOW_DRAFT=true` is for the proof of concept only: the graph
 has no production release until its safety gates pass, and then it must be removed.
 
-`--allow-unauthenticated` lets the app reach the API at all. The API checks
+Public Cloud Run access lets the app reach the API. The API checks
 every cook's token itself.
 
 ## Not done yet
