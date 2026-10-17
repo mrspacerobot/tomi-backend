@@ -151,18 +151,4 @@ jobs:
         if: steps.current.outputs.deploy == 'true'
         env:
           ALLOW_DRAFT: ${{ needs.graph.outputs.channel == 'draft' }}
-        run: |
-          gcloud run deploy "$SERVICE" --project "$CLOUD_PROJECT" --region "$REGION" \
-            --image "$DEPLOY_IMAGE" --service-account "$RUNTIME_ACCOUNT" \
-            --update-env-vars "SUPABASE_URL=$SUPABASE_URL,GRAPH_REQUIRED=true,GRAPH_ALLOW_DRAFT=$ALLOW_DRAFT" \
-            --update-secrets 'DATABASE_URL=tomi-database-url:latest,GEMINI_API_KEY=tomi-gemini-key:latest,SUPABASE_SECRET_KEY=tomi-supabase-secret:latest' \
-            --allow-unauthenticated --no-traffic --tag candidate --quiet --format=json > "$RUNNER_TEMP/service.json"
-          url=$(jq -er '.status.traffic[] | select(.tag == "candidate") | .url' "$RUNNER_TEMP/service.json")
-          revision=$(jq -er '.status.traffic[] | select(.tag == "candidate") | .revisionName' "$RUNNER_TEMP/service.json")
-          curl --fail --silent --show-error "$url/readyz"
-          curl --fail --silent --show-error "$url/v1/bootstrap" > "$RUNNER_TEMP/bootstrap.json"
-          jq -e --arg version "$GRAPH_VERSION" --arg channel "$GRAPH_CHANNEL" \
-            '.graphArtifactVersion == $version and .graphChannel == $channel' "$RUNNER_TEMP/bootstrap.json"
-          gcloud run services update-traffic "$SERVICE" --project "$CLOUD_PROJECT" --region "$REGION" \
-            --to-revisions "$revision=100" --quiet
-          printf 'Deployed `%s` with graph `%s` (%s).\n' "$GITHUB_SHA" "$GRAPH_VERSION" "$GRAPH_CHANNEL" >> "$GITHUB_STEP_SUMMARY"
+        run: ./scripts/deploy.sh

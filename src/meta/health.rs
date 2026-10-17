@@ -7,7 +7,7 @@ use axum::routing::get;
 use axum::Router;
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/healthz", get(alive)).route("/readyz", get(ready))
+    Router::new().route("/health", get(alive)).route("/healthz", get(alive)).route("/readyz", get(ready))
 }
 
 /// The process is up.
