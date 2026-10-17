@@ -1,26 +1,19 @@
 use super::*;
+use crate::kernel::ids::SavedId;
 use std::collections::BTreeSet;
 
 pub(crate) fn shipped_files() -> LibraryFiles {
-    let lesson = |name: &str, text: &str| (name.to_string(), text.to_string());
     LibraryFiles {
         catalog: include_str!("../../library/catalog.json").to_string(),
         restrictions: include_str!("../../library/restrictions.json").to_string(),
         staples: include_str!("../../library/staples.json").to_string(),
         equipment: include_str!("../../library/equipment.json").to_string(),
         choices: include_str!("../../library/choices.json").to_string(),
-        lessons: vec![
-            lesson("omelette", include_str!("../../library/lessons/spinach-hard-cheese-omelette.lesson.json")),
-            lesson(
-                "pan-sauce",
-                include_str!("../../library/lessons/seared-chicken-lemon-butter-pan-sauce.lesson.json"),
-            ),
-        ],
     }
 }
 
 fn shipped() -> Library {
-    Library::parse(&shipped_files()).unwrap().0
+    Library::parse(&shipped_files()).unwrap()
 }
 
 fn id(raw: &str) -> SavedId {
@@ -40,9 +33,8 @@ fn facts(raw: &[&str]) -> BTreeSet<String> {
 
 #[test]
 fn the_shipped_library_parses_whole() {
-    let (library, left_out) = Library::parse(&shipped_files()).unwrap();
-    assert!(left_out.is_empty(), "{left_out:?}");
-    assert_eq!(library.lessons.len(), 2);
+    let library = Library::parse(&shipped_files()).unwrap();
+    assert_eq!(library.restrictions.diets.len(), 3);
 }
 
 #[test]
@@ -64,7 +56,7 @@ fn a_diet_or_avoid_item_the_list_does_not_have_refuses() {
 
 #[test]
 fn the_shipped_restrictions_name_only_facts_the_graph_has() {
-    let graph = crate::special::links::tests::fixture_graph();
+    let graph = crate::graph::test_helpers::fixture_graph();
     assert_eq!(shipped().restrictions.check_against(&graph.serving.facts), Ok(()));
 }
 
@@ -83,14 +75,6 @@ fn a_broken_restrictions_file_rejects_the_library() {
     }
 }
 
-#[test]
-fn a_lesson_at_a_level_the_catalog_lacks_is_left_out() {
-    let mut files = shipped_files();
-    files.lessons[0].1 = files.lessons[0].1.replacen("\"level\": 3", "\"level\": 9", 1);
-    let (_, left_out) = Library::parse(&files).unwrap();
-    assert!(left_out[0].contains("has no level 9"), "{left_out:?}");
-}
-
 /// Every avoid item the library ends up with, by id, with the facts it rules out.
 fn released() -> std::collections::BTreeMap<String, BTreeSet<String>> {
     let text = include_str!("../../library/avoid-items.released.json");
@@ -104,7 +88,7 @@ fn current(library: &Library) -> std::collections::BTreeMap<String, BTreeSet<Str
 
 fn with_graph() -> Library {
     let mut library = shipped();
-    library.agree_with(&crate::special::links::tests::fixture_graph()).unwrap();
+    library.agree_with(&crate::graph::test_helpers::fixture_graph()).unwrap();
     library
 }
 

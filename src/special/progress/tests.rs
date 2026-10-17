@@ -3,7 +3,7 @@ use crate::library::tests::shipped_files;
 use crate::library::Library;
 
 fn catalog() -> Catalog {
-    Library::parse(&shipped_files()).unwrap().0.catalog
+    Library::parse(&shipped_files()).unwrap().catalog
 }
 
 fn id(raw: &str) -> SavedId {

@@ -15,5 +15,6 @@ mod helpers;
 mod ingredients;
 mod options;
 mod profile;
+mod recipes;
 mod scans;
 mod specials;

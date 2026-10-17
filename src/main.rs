@@ -9,7 +9,7 @@ use tomi_api::auth::Verifier;
 use tomi_api::config::{AiConfig, Config, PhotoConfig};
 use tomi_api::library::Library;
 use tomi_api::storage::{NoStore, PhotoStore, SupabaseStore};
-use tomi_api::{app, db, graph, library, special, AppState};
+use tomi_api::{app, db, graph, library, AppState};
 use tracing_subscriber::EnvFilter;
 
 /// The graph this build is pinned to, written by `scripts/fetch-graph.sh`.
@@ -82,16 +82,12 @@ fn state(config: &Config, pool: PgPool) -> Result<AppState, String> {
     })
 }
 
-/// The library's restrictions may only name facts the graph has, or there is no start. A lesson the graph cannot
-/// match to one recipe is left out of every answer and said so here.
+/// The library's restrictions may only name facts the graph has, or there is no start.
 fn agree(library: &mut Library, graph: Option<&graph::Graph>) -> Result<(), String> {
     let Some(graph) = graph else {
         return Ok(());
     };
     library.agree_with(graph)?;
-    for reason in special::links::unlinked(library, graph) {
-        log_lesson_left_out(&reason);
-    }
     Ok(())
 }
 
@@ -99,11 +95,7 @@ fn agree(library: &mut Library, graph: Option<&graph::Graph>) -> Result<(), Stri
 fn library(folder: &str) -> Result<Library, String> {
     let files = library::files::read(Path::new(folder));
     let files = files.map_err(|error| format!("library in {folder}: {error}"))?;
-    let (library, left_out) = Library::parse(&files).map_err(|error| format!("library: {error}"))?;
-    for reason in &left_out {
-        log_lesson_left_out(reason);
-    }
-    Ok(library)
+    Library::parse(&files).map_err(|error| format!("library: {error}"))
 }
 
 fn ai(config: &AiConfig) -> Result<Arc<dyn Ai>, String> {
@@ -122,11 +114,6 @@ fn photos(project_url: &str, config: &PhotoConfig) -> Result<Arc<dyn PhotoStore>
     let store = SupabaseStore::new(project_url, &config.bucket, key.clone());
     let store = store.map_err(|error| format!("photo storage: {error}"))?;
     Ok(Arc::new(store))
-}
-
-#[expect(clippy::cognitive_complexity, reason = "tracing's macro expands into branches no reader sees")]
-fn log_lesson_left_out(reason: &str) {
-    tracing::warn!(reason, "a lesson was left out of the library");
 }
 
 /// Cloud Run sends SIGTERM before stopping an instance; Ctrl-C locally.

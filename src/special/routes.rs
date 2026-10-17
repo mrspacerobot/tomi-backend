@@ -1,12 +1,12 @@
-//! `POST /v1/lessons/suggest`: tonight's special and up to two alternatives.
+//! `POST /v2/recipes/recommend`: graph recipes the cook can make tonight.
 //!
 //! Code decides what may be offered. The model only reorders the short
 //! list; without it, or when it fails, the order is by what the cook has.
 
 use crate::ai::RankQuestion;
 use crate::error::AppError;
+use crate::graph::Graph;
 use crate::http::{json_body, Caller, CookLanguage};
-use crate::kernel::display::Namer;
 use crate::kernel::ids::SavedId;
 use crate::kernel::language::Language;
 use crate::profile::{read as read_profile, Profile};
@@ -26,7 +26,7 @@ const OFFERS: usize = 3;
 const MAX_INGREDIENTS: usize = 200;
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/v1/lessons/suggest", post(special))
+    Router::new().route("/v2/recipes/recommend", post(special))
 }
 
 #[derive(Deserialize)]
@@ -44,7 +44,8 @@ struct SpecialRequest {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SpecialResponse {
-    library_version: i64,
+    graph_version: String,
+    graph_channel: &'static str,
     /// `model` or `overlap`, so the app can tell how the order was made.
     ranked_by: &'static str,
     special: Option<Offer>,
@@ -58,24 +59,45 @@ async fn special(
 ) -> Result<Json<SpecialResponse>, AppError> {
     let Caller { state, user_id } = caller;
     let request = json_body(body)?;
-    if request.ingredients.len() > MAX_INGREDIENTS {
-        return Err(AppError::Invalid(vec![format!("send at most {MAX_INGREDIENTS} ingredients")]));
-    }
+    validate_size(&request)?;
+    let graph = state.graph()?;
+    validate_ingredients(graph, &request)?;
     confirm_scan(&state, user_id, &request).await?;
     let profile = read_profile(&state.db, user_id).await?.profile;
-    let by_overlap = candidates(&state, &request, &profile)?;
+    let input = CandidateInput { request: &request, profile: &profile };
+    let by_overlap = candidates(&state, graph, input);
     let (model, ranked_by) = model_order(&state, &by_overlap, &profile).await;
     let order = ranked(by_overlap, &model);
-    Ok(Json(response(&state, order, Answer { ranked_by, profile: &profile, language: &language })))
+    Ok(Json(response(graph, order, Answer { ranked_by, profile: &profile, language: &language })))
 }
 
-/// Every lesson the cook may make tonight, fewest to buy first. Until the
+fn validate_size(request: &SpecialRequest) -> Result<(), AppError> {
+    if request.ingredients.len() <= MAX_INGREDIENTS {
+        return Ok(());
+    }
+    Err(AppError::Invalid(vec![format!("send at most {MAX_INGREDIENTS} ingredients")]))
+}
+
+fn validate_ingredients(graph: &Graph, request: &SpecialRequest) -> Result<(), AppError> {
+    let mut listed = request.ingredients.iter().chain(&request.staples_left_out);
+    if listed.all(|id| graph.foods.knows(id)) {
+        return Ok(());
+    }
+    Err(AppError::Invalid(vec!["ingredients must be listed by the cooking graph".into()]))
+}
+
+/// Every recipe the cook may make tonight, fewest to buy first. Until the
 /// server keeps the cook log, only experience grants open levels.
-fn candidates(state: &AppState, request: &SpecialRequest, profile: &Profile) -> Result<Vec<Candidate>, AppError> {
-    let graph = state.graph()?;
-    let open = open_levels(&state.library.catalog, profile.experience, &CookCounts::default());
-    let tonight = Tonight { profile, available: available(state, request, profile), open: &open };
-    Ok(overlap_order(special::candidates(&state.library, graph, &tonight)))
+struct CandidateInput<'a> {
+    request: &'a SpecialRequest,
+    profile: &'a Profile,
+}
+
+fn candidates(state: &AppState, graph: &Graph, input: CandidateInput) -> Vec<Candidate> {
+    let open = open_levels(&state.library.catalog, input.profile.experience, &CookCounts::default());
+    let ingredients = available(state, input.request, input.profile);
+    let tonight = Tonight { profile: input.profile, available: ingredients, open: &open };
+    overlap_order(special::candidates(&state.library, graph, &tonight))
 }
 
 /// A kept photo learns which ingredients the cook confirmed for it.
@@ -105,7 +127,7 @@ async fn model_order(state: &AppState, by_overlap: &[Candidate], profile: &Profi
     }
     let short_list = &by_overlap[..by_overlap.len().min(MODEL_SHORT_LIST)];
     let question = RankQuestion { candidates: short_list, profile };
-    match state.ai.rank_lessons(question).await {
+    match state.ai.rank_recipes(question).await {
         Ok(model) => (model, "model"),
         Err(_) => (Vec::new(), "overlap"),
     }
@@ -118,13 +140,13 @@ struct Answer<'a> {
     language: &'a Language,
 }
 
-fn response(state: &AppState, order: Vec<(Candidate, Option<String>)>, answer: Answer) -> SpecialResponse {
-    let namer = Namer { library: &state.library, foods: state.foods(), language: answer.language };
-    let context = OfferContext { namer, profile: answer.profile };
+fn response(graph: &Graph, order: Vec<(Candidate, Option<String>)>, answer: Answer) -> SpecialResponse {
+    let context = OfferContext { graph, profile: answer.profile, language: answer.language };
     let to_offer = |(candidate, reason): (Candidate, Option<String>)| Offer::new(candidate, reason, &context);
-    let mut offers = order.into_iter().take(OFFERS).map(to_offer);
+    let mut offers = order.into_iter().take(OFFERS).filter_map(to_offer);
     SpecialResponse {
-        library_version: state.library.version,
+        graph_version: graph.version.clone(),
+        graph_channel: graph.channel.as_str(),
         ranked_by: answer.ranked_by,
         special: offers.next(),
         alternatives: offers.collect(),

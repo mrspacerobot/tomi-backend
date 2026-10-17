@@ -58,7 +58,7 @@ pub struct ServedSwap {
 }
 
 /// How much of the swap replaces how much of the original, by weight, volume or count.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Ratio {
     pub stand_in: f64,

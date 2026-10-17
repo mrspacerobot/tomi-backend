@@ -1,11 +1,11 @@
 use super::*;
+use crate::graph::test_helpers::fixture_graph;
 use crate::library::tests::shipped_files;
-use crate::special::links::tests::fixture_graph;
 use serde_json::{json, Value};
 
 fn shipped_options(language: &str) -> Value {
     let graph = fixture_graph();
-    let mut library = Library::parse(&shipped_files()).unwrap().0;
+    let mut library = Library::parse(&shipped_files()).unwrap();
     library.agree_with(&graph).unwrap();
     let language = Language::from_accept_language(Some(language));
     serde_json::to_value(options(&library, &graph.foods, &language)).unwrap()
@@ -83,7 +83,7 @@ fn the_cupboard_offers_the_staples_with_the_graphs_names_and_which_are_assumed()
 
 #[test]
 fn the_cupboard_is_empty_when_there_is_no_graph_to_name_the_staples() {
-    let library = Library::parse(&shipped_files()).unwrap().0;
+    let library = Library::parse(&shipped_files()).unwrap();
     let language = Language::from_accept_language(Some("en"));
     let options = serde_json::to_value(options(&library, &crate::graph::Foods::empty(), &language)).unwrap();
     assert_eq!(options["staples"], json!([]));

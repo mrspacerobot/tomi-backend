@@ -16,7 +16,7 @@ fn foods() -> Foods {
 }
 
 fn resolved(label: &str) -> Resolved {
-    let library = Library::parse(&shipped_files()).unwrap().0;
+    let library = Library::parse(&shipped_files()).unwrap();
     let language = Language::english();
     resolve(label, &Namer { library: &library, foods: &foods(), language: &language })
 }

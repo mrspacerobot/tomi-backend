@@ -53,16 +53,13 @@ fn graph_vectors_the_server_offers_exactly_what_the_reference_offers() {
 fn graph_vectors_the_shipped_library_agrees_with_the_graph() {
     let (graph, _) = load();
     let files = tomi_api::library::files::read(Path::new("library")).unwrap();
-    let (mut library, left_out) = tomi_api::library::Library::parse(&files).unwrap();
-    assert!(left_out.is_empty(), "{left_out:?}");
+    let mut library = tomi_api::library::Library::parse(&files).unwrap();
     assert_eq!(library.agree_with(&graph), Ok(()));
     assert_eq!(
         released_items(),
         current_items(&library),
         "the avoid items differ from library/avoid-items.released.json"
     );
-    let unlinked = tomi_api::special::links::unlinked(&library, &graph);
-    assert!(unlinked.is_empty(), "{unlinked:?}");
 }
 
 type Items = std::collections::BTreeMap<String, BTreeSet<String>>;

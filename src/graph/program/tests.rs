@@ -24,6 +24,37 @@ fn a_level_names_the_techniques_it_teaches() {
 }
 
 #[test]
+fn recipe_eligibility_expands_technique_variants_downward_only_and_terminates_cycles() {
+    let graph = Program::from_things(&variant_things());
+    assert_eq!(graph.levels_for(&["technique/base".into()]), vec![("eggs".into(), 1)]);
+    assert_eq!(graph.levels_for(&["technique/leaf".into()]), vec![("eggs".into(), 1), ("eggs".into(), 2)]);
+    assert!(graph.levels_for(&["technique/unrelated".into()]).is_empty());
+    assert_eq!(graph.levels_for(&["technique/cycle-a".into()]), vec![("eggs".into(), 1)]);
+}
+
+fn variant_things() -> HashMap<String, Value> {
+    let program = json!({"courses": [{"slug": "foundations", "skills": [{
+        "slug": "eggs", "levels": [
+            {"number": 1, "teaches": [{"thing": "technique/base"}]},
+            {"number": 2, "teaches": [{"thing": "technique/leaf"}]}
+        ]
+    }]}]});
+    let mut things = HashMap::from([("program/french".into(), program)]);
+    add_variants(&mut things);
+    things
+}
+
+fn add_variants(things: &mut HashMap<String, Value>) {
+    things.insert("technique/child".into(), json!({"variant_of": [{"thing": "technique/base"}]}));
+    things.insert("technique/leaf".into(), json!({"variant_of": [{"thing": "technique/child"}]}));
+    things.insert("technique/cycle-a".into(), json!({"variant_of": [{"thing": "technique/cycle-b"}]}));
+    things.insert(
+        "technique/cycle-b".into(),
+        json!({"variant_of": [{"thing": "technique/cycle-a"}, {"thing": "technique/base"}]}),
+    );
+}
+
+#[test]
 fn a_level_that_teaches_nothing_or_does_not_exist_names_no_technique() {
     let found = Program::from_things(&things());
     assert!(found.teaches("eggs", 4).is_empty());

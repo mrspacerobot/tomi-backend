@@ -17,6 +17,8 @@ mod pin;
 mod program;
 pub mod serving;
 #[cfg(test)]
+pub(crate) mod test_helpers;
+#[cfg(test)]
 mod tests;
 
 pub use checksum::sha256_hex;

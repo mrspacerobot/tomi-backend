@@ -1,21 +1,21 @@
-//! Tonight's special: which lessons this cook may make with what they have.
+//! Graph recipes a cook may make tonight with their ingredients and restrictions.
 //!
 //! Code decides what may be offered; a model may only reorder that list.
 //! The steps follow Tomi's plan: filter by open skill level, cuisine,
-//! kitchen, diet and avoid list, apply only the swaps a lesson lists, check
+//! kitchen, diet and avoid list, apply only graph-listed swaps, check
 //! the final dish again, then rank.
 
 use crate::graph::serving::CookFacts;
 use crate::graph::Graph;
 use crate::kernel::ids::SavedId;
-use crate::library::{Lesson, Library, Restrictions};
+use crate::library::{EquipmentList, Library, LocalizedText, Restrictions};
 use crate::profile::Profile;
 use crate::special::progress::OpenLevels;
 use serde::Serialize;
+use serde_json::Value;
 use std::collections::BTreeSet;
 
 pub mod game;
-pub mod links;
 mod offer;
 mod plan;
 pub mod progress;
@@ -29,28 +29,29 @@ pub use routes::router;
 pub use offer::{Offer, OfferContext};
 pub use ranking::{overlap_order, ranked, Ranked, MODEL_SHORT_LIST};
 
-/// One lesson the cook may make, as it would be cooked tonight.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+/// A graph recipe that the cook may make tonight.
+#[derive(Debug, Clone)]
 pub struct Candidate {
-    pub lesson_id: SavedId,
-    pub revision: u32,
-    pub title: String,
-    pub minutes: u32,
+    pub recipe_id: String,
+    pub source_recipe: Value,
+    pub title: LocalizedText,
     pub skill: SavedId,
     pub level: u8,
-    /// The ingredients after swaps, in the lesson's order.
-    pub ingredients: Vec<SavedId>,
+    /// The graph's food things after its allowed swaps and omissions.
+    pub ingredients: Vec<String>,
     pub swaps: Vec<AppliedSwap>,
-    /// Final ingredients the cook did not say they have.
-    pub missing: Vec<SavedId>,
+    pub omitted: Vec<String>,
+    pub missing: Vec<String>,
+    pub equipment: Vec<String>,
 }
 
 /// A listed swap applied tonight, named as in the app's `AppliedSwap`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AppliedSwap {
-    pub removed: SavedId,
-    pub added: SavedId,
+    pub removed: String,
+    pub added: String,
+    pub ratio: Option<crate::graph::serving::Ratio>,
+    pub caveat: Option<String>,
 }
 
 /// What the cook brings tonight.
@@ -62,22 +63,56 @@ pub struct Tonight<'a> {
     pub open: &'a OpenLevels,
 }
 
-/// Every lesson this cook may be offered tonight, in the library's order. A diet or avoid item the library does
-/// not list leaves the list empty, and so does a lesson the graph cannot match to one recipe.
+/// Every graph recipe this cook may be offered tonight.
 pub fn candidates(library: &Library, graph: &Graph, tonight: &Tonight) -> Vec<Candidate> {
     let Ok(avoided) = library.restrictions.facts_to_avoid(&restrictions(tonight.profile)) else {
         return Vec::new();
     };
     let facts = CookFacts { avoided, at_hand: graph_ids(&tonight.available) };
     let kitchen = plan::Kitchen { graph, facts: &facts, tonight };
-    let open_lessons = library.lessons.values().filter(|lesson| is_offerable(library, lesson, tonight));
-    open_lessons.filter_map(|lesson| plan::cook(lesson, &kitchen)).collect()
+    let found =
+        graph.serving.recipes.iter().filter_map(|(recipe_id, recipe)| candidate((recipe_id, recipe), graph, &kitchen));
+    found
+        .filter(|candidate| {
+            fits_cuisine(graph, candidate, tonight.profile)
+                && has_tracked_equipment(&library.equipment, candidate, tonight.profile)
+        })
+        .collect()
 }
 
-/// A lesson at an open level that suits this cook's kitchen and taste. Whether it is safe is the graph's to say.
-fn is_offerable(library: &Library, lesson: &Lesson, tonight: &Tonight) -> bool {
-    let is_open = tonight.open.contains(&lesson.skill, lesson.level);
-    is_open && fits_kitchen_and_taste(library, lesson, tonight.profile)
+fn candidate(
+    recipe: (&str, &crate::graph::serving::ServedRecipe),
+    graph: &Graph,
+    kitchen: &plan::Kitchen,
+) -> Option<Candidate> {
+    let (recipe_id, recipe) = recipe;
+    let (skill, level) = eligible_level(graph, recipe, kitchen.tonight)?;
+    let source = graph.thing(recipe_id)?;
+    let title = serde_json::from_value::<LocalizedText>(source.get("names")?.clone()).ok()?;
+    let source = plan::RecipeSource { id: recipe_id.to_string(), value: source.clone(), title, skill, level };
+    plan::cook(&source, kitchen)
+}
+
+fn eligible_level(
+    graph: &Graph,
+    recipe: &crate::graph::serving::ServedRecipe,
+    tonight: &Tonight,
+) -> Option<(SavedId, u8)> {
+    graph.program.levels_for(&recipe.techniques).into_iter().find_map(|(skill, level)| {
+        let skill = SavedId::parse(&skill).ok()?;
+        tonight.open.contains(&skill, level).then_some((skill, level))
+    })
+}
+
+fn has_tracked_equipment(equipment: &EquipmentList, candidate: &Candidate, profile: &Profile) -> bool {
+    let available = profile.equipment.as_ref().unwrap_or(&equipment.standard_kitchen);
+    candidate
+        .equipment
+        .iter()
+        .filter_map(|id| id.strip_prefix("equipment/"))
+        .filter_map(|id| SavedId::parse(id).ok())
+        .filter(|id| equipment.knows(id))
+        .all(|id| available.contains(&id))
 }
 
 /// What the cook has, named as the graph names it.
@@ -85,15 +120,19 @@ fn graph_ids(available: &BTreeSet<SavedId>) -> BTreeSet<String> {
     available.iter().map(|id| format!("{}{id}", plan::INGREDIENT_PREFIX)).collect()
 }
 
-fn fits_kitchen_and_taste(library: &Library, lesson: &Lesson, profile: &Profile) -> bool {
-    if profile.cuisines_never.contains(&lesson.cuisine) {
+fn fits_cuisine(graph: &Graph, candidate: &Candidate, profile: &Profile) -> bool {
+    let Some(makes) = candidate.source_recipe.get("makes").and_then(Value::as_str) else {
         return false;
-    }
-    let kitchen = match &profile.equipment {
-        Some(answered) => answered,
-        None => &library.equipment.standard_kitchen,
     };
-    lesson.equipment.iter().all(|item| kitchen.contains(item))
+    let Some(cuisines) = graph.thing(makes).and_then(|dish| dish.get("belongs_to")).and_then(Value::as_array) else {
+        return true;
+    };
+    !cuisines
+        .iter()
+        .filter_map(|link| link.get("thing").and_then(Value::as_str))
+        .filter_map(|id| id.strip_prefix("cuisine/"))
+        .filter_map(|id| SavedId::parse(id).ok())
+        .any(|id| profile.cuisines_never.contains(&id))
 }
 
 /// The cook's restrictions as the ingredient table reads them.

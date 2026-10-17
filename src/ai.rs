@@ -46,7 +46,7 @@ pub trait Ai: Send + Sync {
     /// Stored with each kept photo, so the dataset says what labelled it.
     fn model_name(&self) -> &str;
     fn read_fridge<'a>(&'a self, question: FridgeQuestion<'a>) -> AiFuture<'a, Vec<ModelItem>>;
-    fn rank_lessons<'a>(&'a self, question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>>;
+    fn rank_recipes<'a>(&'a self, question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>>;
 }
 
 /// No model configured: the scan is unavailable and specials fall back to
@@ -62,7 +62,7 @@ impl Ai for NoAi {
         Box::pin(async { Err(AiError::NotConfigured) })
     }
 
-    fn rank_lessons<'a>(&'a self, _question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>> {
+    fn rank_recipes<'a>(&'a self, _question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>> {
         Box::pin(async { Err(AiError::NotConfigured) })
     }
 }

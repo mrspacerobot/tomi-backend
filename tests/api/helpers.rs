@@ -65,7 +65,7 @@ pub fn server_with(pool: PgPool, mut setup: Setup) -> Router {
     app(state)
 }
 
-/// A small excerpt of a real graph release (`scripts/make-graph-fixture.py`), loaded as the server loads one.
+/// A small recipe and program excerpt of a real graph release, loaded like production.
 pub fn fixture_graph() -> Graph {
     let config = GraphConfig { dir: Some("tests/fixtures/graph".to_string()), allow_draft: true, required: true };
     files::start(include_str!("../fixtures/graph/graph.lock"), &config).unwrap().unwrap()
@@ -73,11 +73,11 @@ pub fn fixture_graph() -> Graph {
 
 fn shipped_library() -> Library {
     let files = tomi_api::library::files::read(Path::new("library")).unwrap();
-    Library::parse(&files).unwrap().0
+    Library::parse(&files).unwrap()
 }
 
-/// The shipped library with every prerequisite removed, so a comfortable
-/// cook can reach every lesson. Tests about food use it; tests about
+/// The shipped progression catalog with prerequisites removed so a comfortable
+/// cook can reach every skill level. Tests about food use it; tests about
 /// progress use the shipped one.
 pub fn library_without_prerequisites() -> Library {
     let mut files = tomi_api::library::files::read(Path::new("library")).unwrap();
@@ -86,7 +86,7 @@ pub fn library_without_prerequisites() -> Library {
         skill["prerequisites"] = json!([]);
     }
     files.catalog = catalog.to_string();
-    Library::parse(&files).unwrap().0
+    Library::parse(&files).unwrap()
 }
 
 pub fn now() -> u64 {
@@ -143,5 +143,5 @@ pub async fn scan(app: &Router, token: &str, upload: (&str, Vec<u8>)) -> Reply {
 
 pub async fn special(app: &Router, token: &str, body: Value) -> Reply {
     let body = Some(("application/json", body.to_string().into_bytes()));
-    call(app, Call { method: Method::POST, path: "/v1/lessons/suggest", token: Some(token), body }).await
+    call(app, Call { method: Method::POST, path: "/v2/recipes/recommend", token: Some(token), body }).await
 }

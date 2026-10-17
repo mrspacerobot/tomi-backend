@@ -4,7 +4,6 @@
 //! access log. A photo is sent in the request body and never logged.
 
 use super::{prompts, Ai, AiError, AiFuture, FridgeQuestion, RankQuestion};
-use crate::kernel::ids::SavedId;
 use crate::scans::fridge::ModelItem;
 use crate::special::Ranked;
 use serde::Deserialize;
@@ -34,7 +33,7 @@ struct RankAnswer {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RankChoice {
-    lesson_id: String,
+    recipe_id: String,
     reason: String,
 }
 
@@ -69,7 +68,7 @@ impl Ai for Gemini {
         })
     }
 
-    fn rank_lessons<'a>(&'a self, question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>> {
+    fn rank_recipes<'a>(&'a self, question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>> {
         let body = prompts::rank_request(&question);
         Box::pin(async move {
             let text = self.generate(body).await?;
@@ -84,14 +83,12 @@ pub(super) fn answer_text(answer: &Value) -> Option<String> {
     text.as_str().map(ToString::to_string)
 }
 
-/// An id the model made up is skipped here and ignored again in `domain`.
+/// An id the model made up is ignored again when it is matched to candidates.
 pub(super) fn parse_ranking(text: &str) -> Result<Vec<Ranked>, AiError> {
     let answer: RankAnswer = serde_json::from_str(text).map_err(|_| AiError::Unreadable)?;
     let mut ranked = Vec::new();
     for choice in answer.ranking {
-        if let Ok(lesson_id) = SavedId::parse(&choice.lesson_id) {
-            ranked.push(Ranked { lesson_id, reason: Some(choice.reason) });
-        }
+        ranked.push(Ranked { recipe_id: choice.recipe_id, reason: Some(choice.reason) });
     }
     Ok(ranked)
 }

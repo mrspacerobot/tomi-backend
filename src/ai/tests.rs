@@ -1,6 +1,7 @@
 use super::gemini::{answer_text, parse_ranking};
 use super::prompts::{fridge_request, rank_request};
 use super::*;
+use crate::library::LocalizedText;
 use crate::scans::photo::Photo;
 use serde_json::json;
 
@@ -25,21 +26,26 @@ fn the_fridge_request_carries_the_photo_and_a_closed_list_of_ids_once() {
 
 #[test]
 fn the_rank_request_lists_only_the_candidates() {
-    let candidate = Candidate {
-        lesson_id: id("omelette"),
-        revision: 1,
-        title: "Omelette".into(),
-        minutes: 10,
-        skill: id("eggs"),
-        level: 3,
-        ingredients: vec![id("egg")],
-        swaps: vec![],
-        missing: vec![],
-    };
+    let candidate = candidate();
     let profile = Profile::default();
     let body = rank_request(&RankQuestion { candidates: &[candidate], profile: &profile });
     let schema = &body["generationConfig"]["response_schema"];
-    assert_eq!(schema["properties"]["ranking"]["items"]["properties"]["lessonId"]["enum"], json!(["omelette"]));
+    assert_eq!(schema["properties"]["ranking"]["items"]["properties"]["recipeId"]["enum"], json!(["recipe/omelette"]));
+}
+
+fn candidate() -> Candidate {
+    Candidate {
+        recipe_id: "recipe/omelette".into(),
+        source_recipe: json!({}),
+        title: serde_json::from_value::<LocalizedText>(json!({"en": "Omelette"})).unwrap(),
+        skill: id("eggs"),
+        level: 3,
+        ingredients: vec!["ingredient/egg".into()],
+        swaps: vec![],
+        omitted: vec![],
+        missing: vec![],
+        equipment: vec![],
+    }
 }
 
 #[test]
@@ -50,10 +56,15 @@ fn the_answer_text_is_read_from_the_first_candidate() {
 }
 
 #[test]
-fn a_ranking_skips_ids_that_cannot_be_ids() {
-    let text =
-        r#"{"ranking": [{"lessonId": "Not An Id", "reason": "x"}, {"lessonId": "omelette", "reason": "Quick"}]}"#;
+fn a_ranking_reads_graph_recipe_ids_as_strings() {
+    let text = r#"{"ranking": [{"recipeId": "Not A Recipe", "reason": "x"}, {"recipeId": "recipe/omelette", "reason": "Quick"}]}"#;
     let ranked = parse_ranking(text).unwrap();
-    assert_eq!(ranked, vec![Ranked { lesson_id: id("omelette"), reason: Some("Quick".into()) }]);
+    assert_eq!(
+        ranked,
+        vec![
+            Ranked { recipe_id: "Not A Recipe".into(), reason: Some("x".into()) },
+            Ranked { recipe_id: "recipe/omelette".into(), reason: Some("Quick".into()) },
+        ]
+    );
     assert!(parse_ranking("not json").is_err());
 }

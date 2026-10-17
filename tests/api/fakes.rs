@@ -35,7 +35,7 @@ impl Ai for FakeAi {
         Box::pin(async { Ok(self.seen.clone()) })
     }
 
-    fn rank_lessons<'a>(&'a self, _question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>> {
+    fn rank_recipes<'a>(&'a self, _question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>> {
         Box::pin(async { self.ranking.clone().ok_or(AiError::Unreachable) })
     }
 }
