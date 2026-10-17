@@ -165,11 +165,27 @@ cargo run
 Postgres they can create databases in (see the script). CI runs the same
 script on every pull request.
 
+## Debugging AI requests
+
+Search Cloud Run logs for `jsonPayload.fields.message="AI request failed"`.
+Each failure carries `error_code`, `model`, `operation` (`fridge_scan` or
+`recipe_ranking`), and `provider_http_status` for provider rejections. The
+request span carries `request_id`, matching the response's `x-request-id`.
+
+For example, HTTP 400 is `ai_provider_invalid_request`; authentication failures,
+missing models, rate limits and provider outages have separate codes. Local
+timeouts use `ai_timeout`, connection failures `ai_transport_error`, and bad
+JSON, invalid model content, empty responses, blocked responses and exhausted
+output limits also have distinct codes. Provider bodies and raw client errors
+are never logged. The app still receives the stable `503 ai_unavailable` response
+for scan failures, and recipe ranking falls back to ingredient overlap.
+
+The scan's allowed graph ingredient ids are supplied in the prompt, with a small
+response schema. Every returned ingredient id is checked against the graph;
+unrecognised ids remain plain labels for the cook to confirm or skip.
+
 ## Not built yet, and doubts
 
-- **The AI was not tried against the real Gemini API** from the session
-  that wrote it (no key). Request and answer shapes follow Google's
-  documentation and are unit tested; the first real scan will tell.
 - **Progress counts no cooks yet,** because the server has no cook log. New cooks see recipes at
   their first open level, and "comfortable" opens the first course.
 - **Serving sizes are not scaled:** the graph supplies source amounts, but the API does not adapt

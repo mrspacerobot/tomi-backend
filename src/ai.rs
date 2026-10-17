@@ -11,24 +11,16 @@ use crate::special::{Candidate, Ranked};
 use std::future::Future;
 use std::pin::Pin;
 
+mod error;
 mod gemini;
 mod prompts;
 #[cfg(test)]
 mod tests;
 
+pub use error::AiError;
 pub use gemini::Gemini;
 
 pub type AiFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, AiError>> + Send + 'a>>;
-
-#[derive(Debug, thiserror::Error)]
-pub enum AiError {
-    #[error("no AI model is configured")]
-    NotConfigured,
-    #[error("the model could not be reached")]
-    Unreachable,
-    #[error("the model's answer could not be read")]
-    Unreadable,
-}
 
 /// A fridge photo and the ingredient ids the model may name.
 pub struct FridgeQuestion<'a> {

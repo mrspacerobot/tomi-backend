@@ -20,6 +20,7 @@ pub mod storage;
 use ai::Ai;
 use auth::Verifier;
 use axum::extract::DefaultBodyLimit;
+use axum::extract::Request;
 use axum::http::HeaderName;
 use axum::Router;
 use error::AppError;
@@ -70,7 +71,12 @@ pub fn app(state: AppState) -> Router {
         .layer(DefaultBodyLimit::max(BODY_LIMIT_BYTES))
         // The default trace logs method, path, status and latency. It never
         // logs bodies, which may hold restrictions or a pantry.
-        .layer(TraceLayer::new_for_http())
+        .layer(TraceLayer::new_for_http().make_span_with(request_span))
         .layer(PropagateRequestIdLayer::new(REQUEST_ID))
         .layer(SetRequestIdLayer::new(REQUEST_ID, MakeRequestUuid))
+}
+
+fn request_span(request: &Request) -> tracing::Span {
+    let request_id = request.headers().get(&REQUEST_ID).and_then(|value| value.to_str().ok()).unwrap_or_default();
+    tracing::info_span!("request", request_id, method = %request.method(), path = request.uri().path())
 }
