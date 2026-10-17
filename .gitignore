@@ -25,6 +25,7 @@ rustc-ice-*.txt
 
 # Local settings with secrets
 .env
+gha-creds-*.json
 
 # The graph artifact is fetched or built by scripts/fetch-graph.sh, never committed.
 graph/*

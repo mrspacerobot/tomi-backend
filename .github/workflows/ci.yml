@@ -4,6 +4,10 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   check:
@@ -26,11 +30,13 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
 
-  # Fetches the graph release that graph.lock pins and builds the image with it.
-  # The token is read-only and sees only the graph repository. While graph.lock
-  # says none, the fetch does nothing and the image builds without a graph.
+  # Fetches and checks the pinned graph, then builds the image deployed after a merge.
+  # The token is read-only and sees only the graph repository. An unpinned build fails.
   graph:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.graph.outputs.version }}
+      channel: ${{ steps.graph.outputs.channel }}
     steps:
       - uses: actions/checkout@v4
       - name: The token can see the graph repository
@@ -45,12 +51,118 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GRAPH_READ_TOKEN }}
         run: ./scripts/fetch-graph.sh
+      - uses: dtolnay/rust-toolchain@1.97.0
+      - uses: Swatinem/rust-cache@v2
       - name: The server agrees with the graph's reference on every shipped case
         run: |
-          if [ -f graph/serving-vectors.json ]; then
-            cargo test --test graph_vectors -- --ignored
-          else
-            echo "graph.lock pins no graph, so there are no cases to check."
-          fi
+          cargo test --test graph_vectors -- --ignored
+      - name: Record the graph carried by this image
+        id: graph
+        run: |
+          python3 - <<'PY'
+          import json, os
+          graph = json.load(open('graph/manifest.json'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print('version=' + graph['graphVersion'], file=output)
+              print('channel=' + graph['channel'], file=output)
+          PY
       - name: Build the image
-        run: docker build -t tomi-api .
+        env:
+          GRAPH_VERSION: ${{ steps.graph.outputs.version }}
+        run: |
+          docker build -t tomi-api --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "io.tomi.graph.version=$GRAPH_VERSION" .
+      - name: Save the tested image for deployment
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: docker save tomi-api -o "$RUNNER_TEMP/tomi-api.tar"
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          name: tomi-api-image
+          path: ${{ runner.temp }}/tomi-api.tar
+          retention-days: 1
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [check, graph]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: tomi-api-cloud-run
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CLOUD_PROJECT: tomi-prod-9k3x7q
+      REGION: europe-west3
+      SERVICE: tomi-api
+      IMAGE: europe-west3-docker.pkg.dev/tomi-prod-9k3x7q/tomi-api/tomi-api
+      RUNTIME_ACCOUNT: tomi-api-runtime@tomi-prod-9k3x7q.iam.gserviceaccount.com
+      GRAPH_VERSION: ${{ needs.graph.outputs.version }}
+      GRAPH_CHANNEL: ${{ needs.graph.outputs.channel }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip superseded commits
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [ "$latest" = "$GITHUB_SHA" ]; then
+            echo 'deploy=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'A newer commit is already on main; skipping this deployment.'
+          fi
+      - name: Require deployment configuration
+        if: steps.current.outputs.deploy == 'true'
+        env:
+          PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          DEPLOY_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+        run: |
+          : "${PROVIDER:?Set repository variable GCP_WORKLOAD_IDENTITY_PROVIDER}"
+          : "${DEPLOY_ACCOUNT:?Set repository variable GCP_DEPLOY_SERVICE_ACCOUNT}"
+          : "${SUPABASE_URL:?Set repository variable SUPABASE_URL}"
+      - uses: actions/download-artifact@v4
+        if: steps.current.outputs.deploy == 'true'
+        with:
+          name: tomi-api-image
+          path: ${{ runner.temp }}
+      - name: Load the tested image
+        if: steps.current.outputs.deploy == 'true'
+        run: docker load -i "$RUNNER_TEMP/tomi-api.tar"
+      - uses: google-github-actions/auth@v3
+        if: steps.current.outputs.deploy == 'true'
+        with:
+          project_id: ${{ env.CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+        if: steps.current.outputs.deploy == 'true'
+      - name: Push the image and record its immutable digest
+        if: steps.current.outputs.deploy == 'true'
+        run: |
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker tag tomi-api "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:$GITHUB_SHA"
+          digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE:$GITHUB_SHA")
+          echo "DEPLOY_IMAGE=$digest" >> "$GITHUB_ENV"
+      - name: Deploy, check the graph, then send traffic
+        if: steps.current.outputs.deploy == 'true'
+        env:
+          ALLOW_DRAFT: ${{ needs.graph.outputs.channel == 'draft' }}
+        run: |
+          gcloud run deploy "$SERVICE" --project "$CLOUD_PROJECT" --region "$REGION" \
+            --image "$DEPLOY_IMAGE" --service-account "$RUNTIME_ACCOUNT" \
+            --update-env-vars "SUPABASE_URL=$SUPABASE_URL,GRAPH_REQUIRED=true,GRAPH_ALLOW_DRAFT=$ALLOW_DRAFT" \
+            --update-secrets 'DATABASE_URL=tomi-database-url:latest,GEMINI_API_KEY=tomi-gemini-key:latest,SUPABASE_SECRET_KEY=tomi-supabase-secret:latest' \
+            --allow-unauthenticated --no-traffic --tag candidate --quiet --format=json > "$RUNNER_TEMP/service.json"
+          url=$(jq -er '.status.traffic[] | select(.tag == "candidate") | .url' "$RUNNER_TEMP/service.json")
+          revision=$(jq -er '.status.traffic[] | select(.tag == "candidate") | .revisionName' "$RUNNER_TEMP/service.json")
+          curl --fail --silent --show-error "$url/readyz"
+          curl --fail --silent --show-error "$url/v1/bootstrap" > "$RUNNER_TEMP/bootstrap.json"
+          jq -e --arg version "$GRAPH_VERSION" --arg channel "$GRAPH_CHANNEL" \
+            '.graphArtifactVersion == $version and .graphChannel == $channel' "$RUNNER_TEMP/bootstrap.json"
+          gcloud run services update-traffic "$SERVICE" --project "$CLOUD_PROJECT" --region "$REGION" \
+            --to-revisions "$revision=100" --quiet
+          printf 'Deployed `%s` with graph `%s` (%s).\n' "$GITHUB_SHA" "$GRAPH_VERSION" "$GRAPH_CHANNEL" >> "$GITHUB_STEP_SUMMARY"

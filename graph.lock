@@ -1,3 +1,4 @@
-# The graph this build serves. `none` pins no graph.
-# scripts/fetch-graph.sh writes a version and a sha256 line here. A change is a reviewed change.
-none
+# The graph this build serves, pinned by scripts/bump-graph.sh or fetch-graph.sh.
+# A change is a reviewed change.
+version 2026.10.17-49388b2
+sha256 f9209c77b0bdb04b0169769b9f8477d2b03e6b58ea9546915de05c708729b0f8
