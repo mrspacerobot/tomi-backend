@@ -25,7 +25,9 @@ pub fn fridge_request(question: &FridgeQuestion) -> Value {
     let text = format!("{FRIDGE_INSTRUCTIONS}\n\nAllowed ingredient ids: {}", json!(ids));
     let image = base64::engine::general_purpose::STANDARD.encode(&question.photo.bytes);
     let image_part = json!({ "inline_data": { "mime_type": question.photo.kind.mime_type(), "data": image } });
-    request(vec![json!({ "text": text }), image_part], fridge_schema())
+    let mut body = request(vec![json!({ "text": text }), image_part], fridge_schema());
+    body["generationConfig"]["thinkingConfig"] = json!({ "thinkingLevel": "low" });
+    body
 }
 
 fn fridge_schema() -> Value {
