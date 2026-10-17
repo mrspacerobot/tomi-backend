@@ -1,7 +1,7 @@
 //! What Tomi asks the model, and the JSON shape the answer must take.
 //!
-//! The shapes use closed lists of ids, so the model cannot name an
-//! ingredient or a lesson that does not exist. `domain` checks again.
+//! Allowed ids go in the prompt for scans and the schema for short recipe lists.
+//! The server checks returned ids against the graph before anyone trusts them.
 
 use super::{FridgeQuestion, RankQuestion};
 use crate::special::Candidate;
@@ -22,17 +22,18 @@ Never say a dish is safe, healthy or cooked through. Use only the recipe ids giv
 
 pub fn fridge_request(question: &FridgeQuestion) -> Value {
     let ids: Vec<&str> = question.ingredients.iter().map(|id| id.as_str()).collect();
+    let text = format!("{FRIDGE_INSTRUCTIONS}\n\nAllowed ingredient ids: {}", json!(ids));
     let image = base64::engine::general_purpose::STANDARD.encode(&question.photo.bytes);
     let image_part = json!({ "inline_data": { "mime_type": question.photo.kind.mime_type(), "data": image } });
-    request(vec![json!({ "text": FRIDGE_INSTRUCTIONS }), image_part], fridge_schema(&ids))
+    request(vec![json!({ "text": text }), image_part], fridge_schema())
 }
 
-fn fridge_schema(ingredient_ids: &[&str]) -> Value {
+fn fridge_schema() -> Value {
     let item = json!({
         "type": "OBJECT",
         "properties": {
             "label": { "type": "STRING" },
-            "ingredient": { "type": "STRING", "enum": ingredient_ids, "nullable": true },
+            "ingredient": { "type": "STRING", "nullable": true },
             "confidence": { "type": "NUMBER" }
         },
         "required": ["label", "confidence"]

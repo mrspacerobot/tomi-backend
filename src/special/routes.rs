@@ -129,7 +129,10 @@ async fn model_order(state: &AppState, by_overlap: &[Candidate], profile: &Profi
     let question = RankQuestion { candidates: short_list, profile };
     match state.ai.rank_recipes(question).await {
         Ok(model) => (model, "model"),
-        Err(_) => (Vec::new(), "overlap"),
+        Err(error) => {
+            error.log(state.ai.model_name(), "recipe_ranking");
+            (Vec::new(), "overlap")
+        }
     }
 }
 

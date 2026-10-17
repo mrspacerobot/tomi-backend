@@ -75,6 +75,9 @@ async fn read_fridge(state: &AppState, photo: &Photo) -> Result<Vec<SeenItem>, A
     let ingredients = graph.foods.ids();
     let question = FridgeQuestion { photo, ingredients: &ingredients };
     let answer = state.ai.read_fridge(question).await;
-    let items = answer.map_err(|_| AppError::AiUnavailable)?;
+    let items = answer.map_err(|error| {
+        error.log(state.ai.model_name(), "fridge_scan");
+        AppError::AiUnavailable
+    })?;
     Ok(fridge::checked(items, &graph.foods))
 }

@@ -18,9 +18,9 @@ fn the_fridge_request_carries_the_photo_and_a_closed_list_of_ids_once() {
     assert_eq!(parts[1]["inline_data"]["mime_type"], "image/jpeg");
     assert_eq!(parts[1]["inline_data"]["data"], "/9j/2Q==");
     let schema = &body["generationConfig"]["response_schema"];
-    assert_eq!(schema["properties"]["items"]["items"]["properties"]["ingredient"]["enum"], json!(["egg", "leek"]));
+    assert!(schema["properties"]["items"]["items"]["properties"]["ingredient"].get("enum").is_none());
     let text = parts[0]["text"].as_str().unwrap();
-    assert!(!text.contains("leek"), "the ids are listed once, as the allowed values, not again in the text");
+    assert!(text.contains(r#"["egg","leek"]"#), "the closed vocabulary belongs in the prompt");
     assert!(text.contains("allowed values"));
 }
 
