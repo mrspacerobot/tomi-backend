@@ -1,12 +1,14 @@
 # Where this library comes from
 
 A copy of Tomi's reviewed library, `Tomi/Resources/Library` in the
-`mrspacerobot/tomi` repository at commit `f9775dc`: the catalog, the equipment
-list and the lessons. Lessons are copied flat.
+`mrspacerobot/tomi` repository at commit `f9775dc`: the catalog and equipment
+list. The copied recipe lessons have been removed because they duplicated graph
+recipe content and incorrectly gated which graph recipes could be offered.
 
 Never edit those files here. Change them in the Tomi repository, where a
 person reviews them, and copy them again. Until the library is delivered
-as a versioned release, this copy is how the server knows the lessons.
+as a versioned release, this copy supplies progression and kitchen option
+metadata only. Recipe identity, content, and food facts come from the pinned graph.
 
 The ingredient table of that commit is not copied. Every food fact now comes
 from the cooking graph, and the diets and avoid items are defined over its facts

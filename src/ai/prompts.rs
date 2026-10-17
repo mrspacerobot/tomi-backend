@@ -14,11 +14,11 @@ the matching ingredient id, one of the allowed values, only if the item is clear
 and how sure you are, from 0 to 1. Do not guess at hidden or unreadable items. \
 Never judge freshness, doneness or whether food is safe to eat.";
 
-const RANK_INSTRUCTIONS: &str = "You help a home cook choose tonight's cooking lesson. \
-Rank the lessons below, best first. Prefer lessons that use what the cook has and need little shopping, \
+const RANK_INSTRUCTIONS: &str = "You help a home cook choose tonight's recipe. \
+Rank the recipes below, best first. Prefer recipes that use what the cook has and need little shopping, \
 then ones that fit the cook's experience, loved cuisines and focus skill. \
-For each lesson give a reason of at most 15 words, warm and plain, spoken to the cook. \
-Never say a dish is safe, healthy or cooked through. Use only the lesson ids given.";
+For each recipe give a reason of at most 15 words, warm and plain, spoken to the cook. \
+Never say a dish is safe, healthy or cooked through. Use only the recipe ids given.";
 
 pub fn fridge_request(question: &FridgeQuestion) -> Value {
     let ids: Vec<&str> = question.ingredients.iter().map(|id| id.as_str()).collect();
@@ -41,22 +41,21 @@ fn fridge_schema(ingredient_ids: &[&str]) -> Value {
 }
 
 pub fn rank_request(question: &RankQuestion) -> Value {
-    let lessons: Vec<Value> = question.candidates.iter().map(lesson_summary).collect();
+    let recipes: Vec<Value> = question.candidates.iter().map(recipe_summary).collect();
     let cook = json!({
         "experience": question.profile.experience,
         "cuisinesLoved": question.profile.cuisines_loved,
         "focusSkill": question.profile.focus_skill,
     });
-    let text = format!("{RANK_INSTRUCTIONS}\n\nThe cook: {cook}\n\nLessons: {}", Value::from(lessons));
-    let ids: Vec<&str> = question.candidates.iter().map(|candidate| candidate.lesson_id.as_str()).collect();
+    let text = format!("{RANK_INSTRUCTIONS}\n\nThe cook: {cook}\n\nRecipes: {}", Value::from(recipes));
+    let ids: Vec<&str> = question.candidates.iter().map(|candidate| candidate.recipe_id.as_str()).collect();
     request(vec![json!({ "text": text })], rank_schema(&ids))
 }
 
-fn lesson_summary(candidate: &Candidate) -> Value {
+fn recipe_summary(candidate: &Candidate) -> Value {
     json!({
-        "lessonId": candidate.lesson_id,
-        "title": candidate.title,
-        "minutes": candidate.minutes,
+        "recipeId": candidate.recipe_id,
+        "title": candidate.title.english(),
         "skill": candidate.skill,
         "level": candidate.level,
         "toBuy": candidate.missing,
@@ -64,14 +63,14 @@ fn lesson_summary(candidate: &Candidate) -> Value {
     })
 }
 
-fn rank_schema(lesson_ids: &[&str]) -> Value {
+fn rank_schema(recipe_ids: &[&str]) -> Value {
     let choice = json!({
         "type": "OBJECT",
         "properties": {
-            "lessonId": { "type": "STRING", "enum": lesson_ids },
+            "recipeId": { "type": "STRING", "enum": recipe_ids },
             "reason": { "type": "STRING" }
         },
-        "required": ["lessonId", "reason"]
+        "required": ["recipeId", "reason"]
     });
     json!({ "type": "OBJECT", "properties": { "ranking": { "type": "ARRAY", "items": choice } }, "required": ["ranking"] })
 }

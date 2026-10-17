@@ -4,7 +4,6 @@
 //! up is ignored, and every candidate it left out keeps its overlap place.
 
 use super::Candidate;
-use crate::kernel::ids::SavedId;
 use serde::Serialize;
 use std::collections::BTreeSet;
 
@@ -16,17 +15,16 @@ pub const MODEL_SHORT_LIST: usize = 10;
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Ranked {
-    pub lesson_id: SavedId,
+    pub recipe_id: String,
     pub reason: Option<String>,
 }
 
-/// Fewest missing ingredients first, then most of what the cook has, then
-/// by lesson id so the same input always gives the same order.
+/// Fewest missing foods first, then most of what the cook has, then by recipe id.
 pub fn overlap_order(mut candidates: Vec<Candidate>) -> Vec<Candidate> {
     candidates.sort_by(|left, right| {
         let by_missing = left.missing.len().cmp(&right.missing.len());
         let by_at_hand = at_hand(right).cmp(&at_hand(left));
-        by_missing.then(by_at_hand).then(left.lesson_id.cmp(&right.lesson_id))
+        by_missing.then(by_at_hand).then(left.recipe_id.cmp(&right.recipe_id))
     });
     candidates
 }
@@ -37,17 +35,17 @@ fn at_hand(candidate: &Candidate) -> usize {
 
 /// The model's order over the overlap order, as (candidate, reason) pairs.
 pub fn ranked(by_overlap: Vec<Candidate>, model: &[Ranked]) -> Vec<(Candidate, Option<String>)> {
-    let mut placed: BTreeSet<SavedId> = BTreeSet::new();
+    let mut placed: BTreeSet<String> = BTreeSet::new();
     let mut result = Vec::new();
     for choice in model {
-        let found = by_overlap.iter().find(|candidate| candidate.lesson_id == choice.lesson_id);
+        let found = by_overlap.iter().find(|candidate| candidate.recipe_id == choice.recipe_id);
         let Some(candidate) = found else { continue };
-        if placed.insert(candidate.lesson_id.clone()) {
+        if placed.insert(candidate.recipe_id.clone()) {
             result.push((candidate.clone(), choice.reason.clone()));
         }
     }
     for candidate in by_overlap {
-        if !placed.contains(&candidate.lesson_id) {
+        if !placed.contains(&candidate.recipe_id) {
             result.push((candidate, None));
         }
     }

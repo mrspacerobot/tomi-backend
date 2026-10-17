@@ -1,5 +1,5 @@
 use super::*;
-use crate::special::links::tests::fixture_graph;
+use crate::graph::test_helpers::fixture_graph;
 
 fn item(label: &str, ingredient: Option<&str>, confidence: f64) -> ModelItem {
     ModelItem { label: label.into(), ingredient: ingredient.map(Into::into), confidence }

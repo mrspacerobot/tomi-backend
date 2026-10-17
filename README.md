@@ -16,7 +16,7 @@ profile, then the AI functions (fridge scan and tonight's special).
 | `GET /v1/options` | no | Every list the app offers (diets, things to avoid, cuisines, equipment, experience, units, ingredients, the skill menu) with names in the cook's language |
 | `POST /v1/ingredients/resolve` | yes | Typed text to ingredients: `exact`, `ambiguous` (the cook chooses) or `none` |
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
-| `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, tonight's special and up to two alternatives out |
+| `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, a safe graph recipe and up to two alternatives out |
 
 Sign-in is Supabase Auth. The app sends the Supabase access token as
 `Authorization: Bearer <token>`. The API checks the signature, issuer,
@@ -80,15 +80,29 @@ falls back to typing. Without a graph it is `503 graph_unavailable`.
 
 The cook's cupboard staples are added (the assumed ones until they have answered the cupboard
 question), less any in `staplesLeftOut` for tonight. A staple left out never removes something
-the cook confirmed. Code filters the library by "never"
-cuisines and kitchen, and the cooking graph says whether the lesson's recipe can be made
-safely for the cook's diet and avoid list, with the swaps it allows. Without a graph the
+the cook confirmed. The backend filters recipes by open skill levels and "never" cuisines, then
+the cooking graph selects a safe plan for the cook's restrictions and ingredients. Without a graph the
 answer is `503 graph_unavailable`. The model then reorders the short
-list and writes a one-line reason; it cannot add a lesson. Without a model,
+list and writes a one-line reason; it cannot add a recipe. Without a model,
 or when it fails, the order is by fewest ingredients to buy
-(`rankedBy: "overlap"`). Each offer carries the final ingredients, the
-swaps used and what is missing. With a `scanId` of a kept photo, the
-confirmed ingredients are recorded with it as the dataset's labels.
+(`rankedBy: "overlap"`). Each offer carries `recipeId`, `sourceRecipe` from the graph, and a
+`safePlan` with checked ingredients, allowed substitutions (including ratios and caveats),
+omissions, missing ingredients, and required equipment. `sourceRecipe` preserves the graph's
+original instructions and amounts; it is not rewritten when `safePlan` applies a substitution or
+omission. The app must present `safePlan` alongside source instructions and must not describe the
+source instructions as adapted. `sourceRecipe` keeps the graph's raw field names, including
+snake_case step fields; the surrounding API uses camelCase. Each response includes `graphVersion`
+and `graphChannel`.
+With a `scanId` of a kept photo, the confirmed ingredients are recorded with it as the dataset's labels.
+
+This preproduction endpoint now returns graph-native recipes in place of the earlier lesson-shaped
+offers. It has no lesson ID, lesson revision, or aggregate minutes because the graph supplies none of
+those values. Existing skill IDs and profile progress fields remain in use. The backend no longer
+loads copied lesson JSON; recipe identity, content, ingredients, techniques, and equipment come
+from the pinned graph. `/v1/specials` remains an unsupported old alias.
+An explicitly missing appliance from the existing kitchen profile filters a recipe. Equipment
+the profile does not yet track, such as pans and utensils, stays visible in `safePlan.equipment`
+as a requirement.
 
 ### The app holds no lists
 
@@ -99,7 +113,7 @@ checked it against: the app hides an offer checked against less than the
 cook's own restrictions. Scan items name their ingredient as `{id, name}`;
 swaps read `{removed, added}`, as in the app's `AppliedSwap`.
 
-Specials offer only lessons at skill levels the cook has reached, by
+Recipes are offered only at skill levels the cook has reached, by
 Tomi's `ProgressRules`. The server has no cook log yet, so for now only the
 onboarding answer counts: "comfortable" opens the whole first course.
 
@@ -152,11 +166,10 @@ script on every pull request.
 - **The AI was not tried against the real Gemini API** from the session
   that wrote it (no key). Request and answer shapes follow Google's
   documentation and are unit tested; the first real scan will tell.
-- **Progress counts no cooks yet,** because the server has no cook log. With
-  the two shipped lessons (eggs level 3, pan sauce level 1 behind searing),
-  a new cook is offered nothing and a "comfortable" cook only the omelette.
-  Cook events, or more level-1 lessons, will change that.
-- **Serving sizes are not scaled:** lessons have no base serving count yet.
+- **Progress counts no cooks yet,** because the server has no cook log. New cooks see recipes at
+  their first open level, and "comfortable" opens the first course.
+- **Serving sizes are not scaled:** the graph supplies source amounts, but the API does not adapt
+  them to the cook's saved serving count.
 - **Ids are checked for shape, not existence.** The spec wants an
   unknown id refused. That needs the reviewed library and safety snapshot,
   which do not exist yet.
@@ -168,5 +181,4 @@ script on every pull request.
   limits come with the next slice.
 - **The Docker image was not built here** (no Docker daemon in the session
   that wrote it). The binary and all tests were.
-- Next slices, from the spec: cook events and progress, then the library
-  and the graph artifact, then active lesson, ratings and leaderboard.
+- Next slices, from the spec: cook events and progress, then active recipe, ratings and leaderboard.

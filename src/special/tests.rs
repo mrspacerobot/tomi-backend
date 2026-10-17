@@ -1,14 +1,14 @@
 use super::*;
+use crate::graph::test_helpers::fixture_graph;
 use crate::library::tests::shipped_files;
 use crate::library::Library;
-use crate::special::links::tests::fixture_graph;
 use crate::special::progress::OpenLevels;
 
-const OMELETTE: &str = "spinach-hard-cheese-omelette";
-const PAN_SAUCE: &str = "seared-chicken-lemon-butter-pan-sauce";
+const OMELETTE: &str = "recipe/spinach-and-cheese-omelette";
+const PAN_SAUCE: &str = "recipe/seared-chicken-thighs-with-lemon-butter-pan-sauce";
 
 fn library() -> Library {
-    Library::parse(&shipped_files()).unwrap().0
+    Library::parse(&shipped_files()).unwrap()
 }
 
 fn id(raw: &str) -> SavedId {
@@ -37,48 +37,55 @@ fn offered(profile: &Profile, available: &[&str]) -> Vec<Candidate> {
 }
 
 #[test]
-fn a_lesson_at_a_locked_level_is_never_offered() {
+fn a_recipe_at_a_locked_level_is_never_offered() {
     let library = library();
     let open = OpenLevels::from_levels([(id("eggs"), 1)]);
     let tonight = Tonight { profile: &Profile::default(), available: BTreeSet::new(), open: &open };
-    assert!(candidates(&library, &fixture_graph(), &tonight).is_empty(), "the omelette is eggs level 3");
+    assert_eq!(candidate_ids(&candidates(&library, &fixture_graph(), &tonight)), vec!["recipe/soft-scrambled-eggs"]);
 }
 
-fn lesson_ids(found: &[Candidate]) -> Vec<String> {
-    found.iter().map(|candidate| candidate.lesson_id.to_string()).collect()
+fn candidate_ids(found: &[Candidate]) -> Vec<String> {
+    found.iter().map(|candidate| candidate.recipe_id.clone()).collect()
 }
 
 #[test]
-fn a_cook_without_restrictions_is_offered_every_lesson() {
+fn a_cook_without_restrictions_is_offered_graph_recipes() {
     let found = offered(&Profile::default(), &["egg"]);
-    assert_eq!(lesson_ids(&found), vec![PAN_SAUCE, OMELETTE]);
+    assert_eq!(candidate_ids(&found), vec![PAN_SAUCE, "recipe/soft-scrambled-eggs", OMELETTE]);
 }
 
 #[test]
 fn a_vegetarian_is_never_offered_chicken() {
     let profile = Profile { diet: Some(id("vegetarian")), ..Profile::default() };
-    assert_eq!(lesson_ids(&offered(&profile, &[])), vec![OMELETTE]);
+    assert_eq!(candidate_ids(&offered(&profile, &[])), vec!["recipe/soft-scrambled-eggs", OMELETTE]);
 }
 
 #[test]
-fn a_swap_the_graph_allows_makes_a_lesson_safe() {
+fn a_graph_allowed_swap_is_applied_to_a_safe_recipe_plan() {
     let profile = Profile { avoid: ids(&["alcohol"]), ..Profile::default() };
     let pan_sauce = offered(&profile, &[]).remove(0);
-    assert_eq!(pan_sauce.lesson_id, id(PAN_SAUCE));
-    let swap = AppliedSwap { removed: id("white-wine"), added: id("chicken-stock") };
+    assert_eq!(pan_sauce.recipe_id, PAN_SAUCE);
+    let swap = AppliedSwap {
+        removed: "ingredient/white-wine".into(),
+        added: "ingredient/chicken-stock".into(),
+        ratio: Some(crate::graph::serving::Ratio { by: "volume".into(), original: 1.0, stand_in: 1.0 }),
+        caveat: Some(
+            "Stock has none of the sharpness of wine. A squeeze of lemon at the end brings some of it back.".into(),
+        ),
+    };
     assert_eq!(pan_sauce.swaps, vec![swap]);
-    assert!(!pan_sauce.ingredients.contains(&id("white-wine")));
+    assert!(!pan_sauce.ingredients.contains(&"ingredient/white-wine".to_string()));
 }
 
 #[test]
-fn a_lesson_with_no_safe_swap_is_left_out() {
+fn a_recipe_with_no_safe_swap_is_left_out() {
     // The omelette's cheese is milk and its only swap, parmesan, is milk too. The pan sauce's butter has no swap.
     let profile = Profile { avoid: ids(&["dairy"]), ..Profile::default() };
     assert!(offered(&profile, &[]).is_empty());
 }
 
 #[test]
-fn a_lesson_the_graph_cannot_match_to_one_recipe_is_never_offered() {
+fn a_graph_recipe_missing_from_the_serving_section_is_never_offered() {
     let library = library();
     let open = all_open(&library);
     let mut graph = fixture_graph();
@@ -99,11 +106,19 @@ fn a_fact_a_restriction_names_that_the_graph_lacks_offers_nothing() {
 }
 
 #[test]
-fn a_swap_at_hand_is_used_for_a_missing_ingredient() {
-    let omelette = offered(&Profile::default(), &["olive-oil", "egg"]).remove(1);
-    let swap = AppliedSwap { removed: id("butter"), added: id("olive-oil") };
-    assert_eq!(omelette.swaps, vec![swap]);
-    assert!(!omelette.missing.contains(&id("olive-oil")));
+fn a_swap_at_hand_is_used_for_a_missing_graph_ingredient() {
+    let pan_sauce = offered(&Profile::default(), &["olive-oil", "egg"])
+        .into_iter()
+        .find(|candidate| candidate.recipe_id == PAN_SAUCE)
+        .unwrap();
+    let swap = AppliedSwap {
+        removed: "ingredient/sunflower-oil".into(),
+        added: "ingredient/olive-oil".into(),
+        ratio: Some(crate::graph::serving::Ratio { by: "volume".into(), original: 1.0, stand_in: 1.0 }),
+        caveat: Some("Its fruity flavour changes the finish. Keep it below the point where it smokes.".into()),
+    };
+    assert_eq!(pan_sauce.swaps, vec![swap]);
+    assert!(!pan_sauce.missing.contains(&"ingredient/olive-oil".to_string()));
 }
 
 #[test]
@@ -113,30 +128,38 @@ fn an_unknown_restriction_offers_nothing() {
 }
 
 #[test]
-fn cuisine_never_and_missing_equipment_leave_lessons_out() {
+fn cuisine_preferences_filter_and_equipment_requirements_are_returned() {
     let never_french = Profile { cuisines_never: ids(&["french"]), ..Profile::default() };
     assert!(offered(&never_french, &[]).is_empty());
-    let no_stove = Profile { equipment: Some(ids(&["oven"])), ..Profile::default() };
-    assert!(offered(&no_stove, &[]).is_empty());
+    let recipes = offered(&Profile::default(), &[]);
+    assert!(recipes.iter().all(|candidate| !candidate.equipment.is_empty()));
+}
+
+#[test]
+fn an_explicitly_missing_tracked_appliance_filters_the_recipe() {
+    let no_stovetop = Profile { equipment: Some(BTreeSet::new()), ..Profile::default() };
+    assert!(offered(&no_stovetop, &[]).is_empty());
+    let stovetop = Profile { equipment: Some(ids(&["stovetop"])), ..Profile::default() };
+    assert!(!offered(&stovetop, &[]).is_empty());
 }
 
 #[test]
 fn overlap_order_puts_fewest_missing_first() {
     let at_home = ["egg", "spinach", "vegetarian-hard-cheese", "butter", "salt", "black-pepper"];
     let order = overlap_order(offered(&Profile::default(), &at_home));
-    assert_eq!(lesson_ids(&order), vec![OMELETTE, PAN_SAUCE]);
+    assert_eq!(candidate_ids(&order), vec![OMELETTE, "recipe/soft-scrambled-eggs", PAN_SAUCE]);
 }
 
 #[test]
 fn a_model_may_only_reorder_the_list() {
     let by_overlap = overlap_order(offered(&Profile::default(), &[]));
     let model = [
-        Ranked { lesson_id: id("made-up-lesson"), reason: Some("invented".into()) },
-        Ranked { lesson_id: id(OMELETTE), reason: Some("quick tonight".into()) },
-        Ranked { lesson_id: id(OMELETTE), reason: None },
+        Ranked { recipe_id: "recipe/made-up".into(), reason: Some("invented".into()) },
+        Ranked { recipe_id: OMELETTE.into(), reason: Some("quick tonight".into()) },
+        Ranked { recipe_id: OMELETTE.into(), reason: None },
     ];
     let order = ranked(by_overlap, &model);
-    let order_ids: Vec<String> = order.iter().map(|(candidate, _)| candidate.lesson_id.to_string()).collect();
-    assert_eq!(order_ids, vec![OMELETTE, PAN_SAUCE]);
+    let order_ids: Vec<String> = order.iter().map(|(candidate, _)| candidate.recipe_id.clone()).collect();
+    assert_eq!(order_ids, vec![OMELETTE, "recipe/soft-scrambled-eggs", PAN_SAUCE]);
     assert_eq!(order[0].1.as_deref(), Some("quick tonight"));
 }

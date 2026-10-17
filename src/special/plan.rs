@@ -1,80 +1,108 @@
-//! Planning one lesson for tonight: the graph's plan for its recipe, as the lesson's own ingredients.
-//!
-//! The graph decides what is safe and which swaps are allowed. Here that answer is read back onto the lesson.
+//! Plans a graph recipe for tonight using the graph's safe choices.
 
-use super::links::recipe_for;
 use super::{AppliedSwap, Candidate, Tonight};
 use crate::graph::serving::{CookFacts, RecipePlan, ServedRecipe};
 use crate::graph::Graph;
 use crate::kernel::ids::SavedId;
-use crate::library::Lesson;
+use crate::library::LocalizedText;
+use serde_json::Value;
+
+#[cfg(test)]
+mod tests;
 
 pub const INGREDIENT_PREFIX: &str = "ingredient/";
 
-/// What a lesson is planned against: the graph, what this cook avoids and has, and the rest of tonight.
+/// The facts the graph checks and the rest of tonight's data.
 pub struct Kitchen<'a> {
     pub graph: &'a Graph,
     pub facts: &'a CookFacts,
     pub tonight: &'a Tonight<'a>,
 }
 
-/// The lesson as it would be cooked tonight, or `None` when the graph finds no safe way to make its recipe.
-pub fn cook(lesson: &Lesson, kitchen: &Kitchen) -> Option<Candidate> {
-    let recipe_id = recipe_for(lesson, kitchen.graph).ok()?;
-    let plan = match kitchen.graph.serving.plan(&recipe_id, kitchen.facts) {
-        Ok(Some(plan)) => plan,
-        _ => return None,
-    };
-    let recipe = kitchen.graph.serving.recipes.get(&recipe_id)?;
-    let planned = Planned::read(lesson, recipe, &plan)?;
-    Some(planned.into_candidate(lesson, kitchen.tonight))
+pub struct RecipeSource {
+    pub id: String,
+    pub value: Value,
+    pub title: LocalizedText,
+    pub skill: SavedId,
+    pub level: u8,
+}
+
+/// A graph recipe with its safe plan, or `None` when a required line has no safe way.
+pub fn cook(source: &RecipeSource, kitchen: &Kitchen) -> Option<Candidate> {
+    let plan = kitchen.graph.serving.plan(&source.id, kitchen.facts).ok()??;
+    let recipe = kitchen.graph.serving.recipes.get(&source.id)?;
+    let planned = Planned::read(recipe, &plan);
+    Some(planned.into_candidate(source, kitchen.tonight))
 }
 
 #[derive(Default)]
 struct Planned {
-    ingredients: Vec<SavedId>,
+    ingredients: Vec<String>,
     swaps: Vec<AppliedSwap>,
+    omitted: Vec<String>,
 }
 
 impl Planned {
-    /// The lesson's ingredients after the plan's swaps, without the optional parts it leaves out. `None` when a swap
-    /// is something this server cannot name as an ingredient: better no offer than a wrong one.
-    fn read(lesson: &Lesson, recipe: &ServedRecipe, plan: &RecipePlan) -> Option<Planned> {
+    fn read(recipe: &ServedRecipe, plan: &RecipePlan) -> Planned {
         let mut planned = Planned::default();
-        for original in lesson.ingredient_ids() {
-            let thing = format!("{INGREDIENT_PREFIX}{original}");
-            let line = recipe.lines.iter().find(|line| line.thing == thing)?;
+        for line in &recipe.lines {
             if plan.left_out.contains(&line.part) {
+                planned.omitted.push(line.part.clone());
                 continue;
             }
-            match plan.swaps.iter().find(|swap| swap.original == thing) {
-                Some(swap) => planned.swap(original, &swap.instead)?,
-                None => planned.ingredients.push(original.clone()),
+            match plan.swaps.iter().find(|swap| swap.original == line.thing) {
+                Some(swap) => planned.swap(&line.thing, swap),
+                None => planned.add(&line.thing),
             }
         }
-        Some(planned)
+        planned
     }
 
-    fn swap(&mut self, original: &SavedId, instead: &str) -> Option<()> {
-        let slug = instead.strip_prefix(INGREDIENT_PREFIX)?;
-        let added = SavedId::parse(slug).ok()?;
-        self.swaps.push(AppliedSwap { removed: original.clone(), added: added.clone() });
-        self.ingredients.push(added);
-        Some(())
+    fn add(&mut self, thing: &str) {
+        self.ingredients.push(thing.to_string());
     }
 
-    fn into_candidate(self, lesson: &Lesson, tonight: &Tonight) -> Candidate {
-        let missing = self.ingredients.iter().filter(|id| !tonight.available.contains(*id));
+    fn swap(&mut self, original: &str, swap: &crate::graph::serving::PlannedSwap) {
+        self.swaps.push(AppliedSwap {
+            removed: original.to_string(),
+            added: swap.instead.clone(),
+            ratio: swap.ratio.clone(),
+            caveat: swap.caveat.clone(),
+        });
+        self.add(&swap.instead)
+    }
+
+    fn into_candidate(self, source: &RecipeSource, tonight: &Tonight) -> Candidate {
+        let missing = self.missing(tonight);
+        let equipment = equipment(&source.value);
         Candidate {
-            lesson_id: lesson.id.clone(),
-            revision: lesson.revision,
-            title: lesson.title.english().to_string(),
-            minutes: lesson.minutes,
-            skill: lesson.skill.clone(),
-            level: lesson.level,
-            missing: missing.cloned().collect(),
+            recipe_id: source.id.clone(),
+            source_recipe: source.value.clone(),
+            title: source.title.clone(),
+            skill: source.skill.clone(),
+            level: source.level,
+            missing,
             ingredients: self.ingredients,
             swaps: self.swaps,
+            omitted: self.omitted,
+            equipment,
         }
     }
+
+    fn missing(&self, tonight: &Tonight) -> Vec<String> {
+        let available: std::collections::BTreeSet<String> =
+            tonight.available.iter().map(|id| format!("{INGREDIENT_PREFIX}{id}")).collect();
+        self.ingredients.iter().filter(|id| !available.contains(*id)).cloned().collect()
+    }
+}
+
+fn equipment(source: &Value) -> Vec<String> {
+    source
+        .get("equipment")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(str::to_string)
+        .collect()
 }
