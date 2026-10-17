@@ -44,11 +44,10 @@ async fn an_unknown_ingredient_is_refused_before_a_scan_is_confirmed(pool: PgPoo
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn the_legacy_special_paths_are_gone(pool: PgPool) {
+async fn the_old_special_alias_is_gone(pool: PgPool) {
     let app = open_server(pool, FakeAi::default());
     let token = new_cook();
     assert_path_is_gone(&app, &token, "/v1/specials").await;
-    assert_path_is_gone(&app, &token, "/v1/lessons/suggest").await;
 }
 
 async fn assert_path_is_gone(app: &Router, token: &str, path: &str) {

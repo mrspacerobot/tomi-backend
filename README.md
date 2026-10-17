@@ -16,7 +16,7 @@ profile, then the AI functions (fridge scan and tonight's special).
 | `GET /v1/options` | no | Every list the app offers (diets, things to avoid, cuisines, equipment, experience, units, ingredients, the skill menu) with names in the cook's language |
 | `POST /v1/ingredients/resolve` | yes | Typed text to ingredients: `exact`, `ambiguous` (the cook chooses) or `none` |
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
-| `POST /v2/recipes/recommend` | yes | Confirmed ingredients in, a safe graph recipe and up to two alternatives out |
+| `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, a safe graph recipe and up to two alternatives out |
 
 Sign-in is Supabase Auth. The app sends the Supabase access token as
 `Authorization: Bearer <token>`. The API checks the signature, issuer,
@@ -95,11 +95,11 @@ snake_case step fields; the surrounding API uses camelCase. Each response includ
 and `graphChannel`.
 With a `scanId` of a kept photo, the confirmed ingredients are recorded with it as the dataset's labels.
 
-This is a new v2 contract. `/v1/lessons/suggest` and `/v1/specials` are not served. The current iOS
-`Offer` and `SpecialsResponse` models must migrate before calling v2: `lessonId`, lesson revision,
-and aggregate minutes are absent because the graph supplies none of those values. Existing skill
-IDs and profile progress fields remain in use. The backend no longer loads copied lesson JSON;
-recipe identity, content, ingredients, techniques, and equipment come from the pinned graph.
+This preproduction endpoint now returns graph-native recipes in place of the earlier lesson-shaped
+offers. It has no lesson ID, lesson revision, or aggregate minutes because the graph supplies none of
+those values. Existing skill IDs and profile progress fields remain in use. The backend no longer
+loads copied lesson JSON; recipe identity, content, ingredients, techniques, and equipment come
+from the pinned graph. `/v1/specials` remains an unsupported old alias.
 An explicitly missing appliance from the existing kitchen profile filters a recipe. Equipment
 the profile does not yet track, such as pans and utensils, stays visible in `safePlan.equipment`
 as a requirement.
