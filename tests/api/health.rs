@@ -6,6 +6,7 @@ use sqlx::PgPool;
 #[sqlx::test(migrations = "./migrations")]
 async fn health_checks_need_no_sign_in(pool: PgPool) {
     let app = server(pool);
+    assert_eq!(get(&app, "/health", None).await.status, StatusCode::OK);
     assert_eq!(get(&app, "/healthz", None).await.status, StatusCode::OK);
     assert_eq!(get(&app, "/readyz", None).await.status, StatusCode::OK);
 }

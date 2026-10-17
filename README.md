@@ -8,7 +8,7 @@ profile, then the AI functions (fridge scan and tonight's special).
 
 | Route | Sign-in | What it does |
 |---|---|---|
-| `GET /healthz` | no | The process is up |
+| `GET /health` | no | The process is up (`/healthz` remains a local alias; Google Frontend intercepts it on Cloud Run) |
 | `GET /readyz` | no | The database answers |
 | `GET /v1/bootstrap` | no | API versions, minimum app version, and the graph version and channel (`graphArtifactVersion`, `graphChannel`). Library and safety versions are `null`: none is published yet. Both graph fields are `null` while `graph.lock` pins no graph |
 | `GET /v1/profile` | yes | The cook's profile and its version. A new cook gets the defaults at version 0 |
@@ -138,8 +138,9 @@ merges. `scripts/fetch-graph.sh` fetches the pinned release, or with `--from <ch
 
 See `docs/local-development.md` to run it. Merges into `main` automatically deploy the backend and
 the graph pinned in `graph.lock` together to Cloud Run, after the normal checks and graph reference
-tests pass. The new revision must report the expected graph version and pass readiness before it
-receives traffic. See `docs/cloud-run-deployment.md` for the deployment identity, secrets and rollback.
+tests pass. Existing traffic moves only after the candidate reports the expected graph version and
+passes readiness. Cloud Run assigns initial traffic automatically on the first service creation.
+See `docs/cloud-run-deployment.md` for the deployment identity, secrets and rollback.
 
 ## Layout and rules
 

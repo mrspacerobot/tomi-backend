@@ -18,13 +18,25 @@ label identifies the graph. Cloud Run receives the immutable image digest.
    GitHub Actions artifact, without rebuilding it during deployment.
 4. After both checks pass, authenticate to Google through Workload Identity
    Federation and push the image to Artifact Registry.
-5. Deploy a revision tagged `candidate` without switching existing traffic.
-6. Call its `/readyz` and `/v1/bootstrap`. The bootstrap response must name the
-   expected graph version and channel. Only then route traffic to that revision.
+5. Look up the service. For an existing service, deploy a revision tagged
+   `candidate` with `--no-traffic`. For the first creation, omit that flag:
+   Cloud Run rejects it and assigns initial traffic automatically. A failed
+   lookup stops deployment rather than being treated as a missing service.
+6. Call its `/health`, `/readyz` and `/v1/bootstrap`. The bootstrap response must name the
+   expected graph version and channel. Only then move existing traffic to that
+   revision. On the first creation, these probes verify the initial deployment;
+   there is no previous revision to keep serving if a probe fails.
 
 Deployments are serialized. A queued run whose commit is no longer `main` is
 skipped, so an older completed build cannot replace a newer deployment. If a
-check or candidate probe fails, the workflow stops before moving traffic.
+check or candidate probe fails, the workflow stops before moving existing traffic.
+The deployment script's regression tests run in `./scripts/check.sh` and cover
+first creation, existing services, failed lookups, failed health/readiness, and incorrect
+graph versions and channels.
+
+Use `/health` for public process checks. Google Frontend intercepts `/healthz`
+with a 404 before it reaches the application; the old path remains available
+locally for compatibility.
 
 The server also verifies the embedded graph pin at startup, with
 `GRAPH_REQUIRED=true`. `GRAPH_ALLOW_DRAFT` is true only when the pinned graph is
