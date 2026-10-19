@@ -1,4 +1,4 @@
 # The graph this build serves, pinned by scripts/bump-graph.sh or fetch-graph.sh.
 # A change is a reviewed change.
-version 2026.10.17-49388b2
-sha256 f9209c77b0bdb04b0169769b9f8477d2b03e6b58ea9546915de05c708729b0f8
+version 2026.10.18-9d1532c
+sha256 dc554ef41a51e71887147627a8c13a11915bf08fdc827d4f305645ddd9eea3d2
