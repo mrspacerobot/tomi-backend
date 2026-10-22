@@ -44,7 +44,10 @@ fn section() -> Serving {
         "ingredients": [], "equipment": [], "unsafe_for": [], "optional_parts": [], "lines": omelette_lines()
     });
     let facts = ["fact/egg", "fact/milk", "fact/slaughter-product"];
-    serde_json::from_value(json!({ "facts": facts, "recipes": { "recipe/omelette": recipe } })).unwrap()
+    serde_json::from_value(
+        json!({ "facts": facts, "step_text": { "proper_name_words": [] }, "recipes": { "recipe/omelette": recipe } }),
+    )
+    .unwrap()
 }
 
 fn avoiding(facts: &[&str]) -> BTreeSet<String> {

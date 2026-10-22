@@ -4,7 +4,7 @@
     scripts/make-graph-fixture.py ../cooking-graph/out/release
 
 It keeps sample recipes, the whole program, every fact (and its thing), the ingredients those recipes and
-their swaps name, and the cupboard staples. Everything is copied unchanged from the release; only the selection is ours. Run it again when the
+their swaps name, and the cupboard staples, and the step text cases of the sample recipes. Everything is copied unchanged from the release; only the selection is ours. Run it again when the
 graph's artifact schema changes, and commit the result.
 """
 import hashlib
@@ -40,7 +40,7 @@ def staples():
 
 def excerpt(release):
     artifact = json.load(open(os.path.join(release, "graph-artifact.json")))
-    serving = {"facts": artifact["serving"]["facts"],
+    serving = {"facts": artifact["serving"]["facts"], "step_text": artifact["serving"]["step_text"],
                "recipes": {one: artifact["serving"]["recipes"][one] for one in RECIPES}}
     wanted = recipe_things_named(serving) | staples()
     dish_ids = {recipe["makes"] for recipe in serving["recipes"].values()}
@@ -49,9 +49,18 @@ def excerpt(release):
     things = {key: value for key, value in artifact["things"].items()
               if key in wanted or key.startswith(("program/", "fact/", "technique/"))}
     for recipe_id in RECIPES:
+        wanted_forms = {form for line in artifact["things"][recipe_id]["ingredients"] for form in line["forms"]}
+        things.update({form: artifact["things"][form] for form in wanted_forms})
         things[recipe_id] = artifact["things"][recipe_id]
     return {"artifactSchemaVersion": artifact["artifactSchemaVersion"], "channel": "draft", "things": things,
             "serving": serving}
+
+
+def write_vectors(release):
+    """The step text cases of the sample recipes, so that the renderer is proven in every run, not only on request."""
+    vectors = json.load(open(os.path.join(release, "serving-vectors.json")))
+    cases = [case for case in vectors["step_text_cases"] if case["recipe"] in RECIPES]
+    open(os.path.join(OUT, "serving-vectors.json"), "wb").write(encode({"step_text_cases": cases}))
 
 
 def main(release):
@@ -62,6 +71,7 @@ def main(release):
     os.makedirs(OUT, exist_ok=True)
     open(os.path.join(OUT, "graph-artifact.json"), "wb").write(body)
     open(os.path.join(OUT, "manifest.json"), "wb").write(encode(manifest))
+    write_vectors(release)
     open(os.path.join(OUT, "graph.lock"), "w").write("version fixture\nsha256 %s\n" % digest)
     print("fixture:", len(body), "bytes,", len(json.loads(body)["things"]), "things")
 

@@ -1,19 +1,20 @@
 use super::*;
-use crate::graph::serving::ServedRecipe;
+use crate::special::adapted::{AdaptedLine, Amount, Unit};
 
 #[test]
-fn preparation_ids_survive_the_graph_safe_plan() {
-    let recipe: ServedRecipe = serde_json::from_value(recipe_with_preparation()).unwrap();
-    let found = Planned::read(&recipe, &RecipePlan::default());
-    assert_eq!(found.ingredients, vec!["preparation/garam-masala"]);
-}
-
-fn recipe_with_preparation() -> Value {
-    serde_json::json!({
-        "makes": "dish/test", "tier": "drafted", "techniques": [],
-        "ingredients": ["preparation/garam-masala"], "equipment": [],
-        "unsafe_for": [], "optional_parts": [],
-        "lines": [{"thing": "preparation/garam-masala", "part": "garam-masala",
-            "optional": false, "unsafe_for": [], "swaps": []}]
-    })
+fn preparation_ids_survive_the_adapted_plan() {
+    let line = AdaptedLine {
+        part: "spice".into(),
+        food: "preparation/garam-masala".into(),
+        amount: Amount { value: 1.0, unit: Unit::Teaspoon },
+        forms: Vec::new(),
+    };
+    let adapted = Adapted {
+        yields: Amount { value: 2.0, unit: Unit::Serving },
+        lines: vec![line],
+        steps: Vec::new(),
+        swaps: Vec::new(),
+        left_out: Vec::new(),
+    };
+    assert_eq!(food_ids(&adapted), vec!["preparation/garam-masala"]);
 }

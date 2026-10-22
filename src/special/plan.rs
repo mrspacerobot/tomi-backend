@@ -1,10 +1,11 @@
-//! Plans a graph recipe for tonight using the graph's safe choices.
+//! Plans a graph recipe for tonight using the graph's safe choices, then adapts it for the cook.
 
+use super::adapted::{adapt, Adapted, Basis};
 use super::{AppliedSwap, Candidate, Tonight};
-use crate::graph::serving::{CookFacts, RecipePlan, ServedRecipe};
+use crate::graph::serving::{CookFacts, PlannedSwap};
 use crate::graph::Graph;
 use crate::kernel::ids::SavedId;
-use crate::library::LocalizedText;
+use crate::library::{EquipmentList, LocalizedText};
 use serde_json::Value;
 
 #[cfg(test)]
@@ -17,6 +18,7 @@ pub struct Kitchen<'a> {
     pub graph: &'a Graph,
     pub facts: &'a CookFacts,
     pub tonight: &'a Tonight<'a>,
+    pub equipment: &'a EquipmentList,
 }
 
 pub struct RecipeSource {
@@ -27,76 +29,63 @@ pub struct RecipeSource {
     pub level: u8,
 }
 
-/// A graph recipe with its safe plan, or `None` when a required line has no safe way.
+/// A graph recipe with its safe plan, adapted for the cook. `None` when a required line has no safe way, or when
+/// the recipe cannot be adapted cleanly: a recipe that cannot be written for the cook is not offered.
 pub fn cook(source: &RecipeSource, kitchen: &Kitchen) -> Option<Candidate> {
     let plan = kitchen.graph.serving.plan(&source.id, kitchen.facts).ok()??;
-    let recipe = kitchen.graph.serving.recipes.get(&source.id)?;
-    let planned = Planned::read(recipe, &plan);
-    Some(planned.into_candidate(source, kitchen.tonight))
-}
-
-#[derive(Default)]
-struct Planned {
-    ingredients: Vec<String>,
-    swaps: Vec<AppliedSwap>,
-    omitted: Vec<String>,
-}
-
-impl Planned {
-    fn read(recipe: &ServedRecipe, plan: &RecipePlan) -> Planned {
-        let mut planned = Planned::default();
-        for line in &recipe.lines {
-            if plan.left_out.contains(&line.part) {
-                planned.omitted.push(line.part.clone());
-                continue;
-            }
-            match plan.swaps.iter().find(|swap| swap.original == line.thing) {
-                Some(swap) => planned.swap(&line.thing, swap),
-                None => planned.add(&line.thing),
-            }
-        }
-        planned
-    }
-
-    fn add(&mut self, thing: &str) {
-        self.ingredients.push(thing.to_string());
-    }
-
-    fn swap(&mut self, original: &str, swap: &crate::graph::serving::PlannedSwap) {
-        self.swaps.push(AppliedSwap {
-            removed: original.to_string(),
-            added: swap.instead.clone(),
-            ratio: swap.ratio.clone(),
-            caveat: swap.caveat.clone(),
-        });
-        self.add(&swap.instead)
-    }
-
-    fn into_candidate(self, source: &RecipeSource, tonight: &Tonight) -> Candidate {
-        let missing = self.missing(tonight);
-        let equipment = equipment(&source.value);
-        Candidate {
-            recipe_id: source.id.clone(),
-            source_recipe: source.value.clone(),
-            title: source.title.clone(),
-            skill: source.skill.clone(),
-            level: source.level,
-            missing,
-            ingredients: self.ingredients,
-            swaps: self.swaps,
-            omitted: self.omitted,
-            equipment,
+    let basis = Basis { graph: kitchen.graph, avoided: &kitchen.facts.avoided };
+    match adapt(&source.id, &plan, &basis) {
+        Ok(adapted) => Some(into_candidate(source, adapted, kitchen.tonight)),
+        Err(error) => {
+            log_not_adapted(&source.id, error.reason());
+            None
         }
     }
+}
 
-    fn missing(&self, tonight: &Tonight) -> Vec<String> {
-        let available: std::collections::BTreeSet<String> =
-            tonight.available.iter().map(|id| format!("{INGREDIENT_PREFIX}{id}")).collect();
-        self.ingredients.iter().filter(|id| !available.contains(*id)).cloned().collect()
+/// Only the recipe and why: never a food, a restriction or the cook.
+#[expect(clippy::cognitive_complexity, reason = "tracing's macro expands into branches no reader sees")]
+fn log_not_adapted(recipe: &str, reason: &str) {
+    tracing::warn!(recipe, reason, "a recipe could not be adapted and is not offered");
+}
+
+fn into_candidate(source: &RecipeSource, adapted: Adapted, tonight: &Tonight) -> Candidate {
+    let ingredients = food_ids(&adapted);
+    Candidate {
+        recipe_id: source.id.clone(),
+        source_recipe: source.value.clone(),
+        title: source.title.clone(),
+        skill: source.skill.clone(),
+        level: source.level,
+        missing: missing(&ingredients, tonight),
+        swaps: adapted.swaps.iter().map(applied).collect(),
+        omitted: adapted.left_out.iter().map(|left_out| left_out.part.clone()).collect(),
+        equipment: equipment(&source.value),
+        ingredients,
+        adapted,
     }
 }
 
-fn equipment(source: &Value) -> Vec<String> {
+fn food_ids(adapted: &Adapted) -> Vec<String> {
+    adapted.lines.iter().map(|line| line.food.clone()).collect()
+}
+
+fn applied(swap: &PlannedSwap) -> AppliedSwap {
+    AppliedSwap {
+        removed: swap.original.clone(),
+        added: swap.instead.clone(),
+        ratio: swap.ratio.clone(),
+        caveat: swap.caveat.clone(),
+    }
+}
+
+fn missing(ingredients: &[String], tonight: &Tonight) -> Vec<String> {
+    let available: std::collections::BTreeSet<String> =
+        tonight.available.iter().map(|id| format!("{INGREDIENT_PREFIX}{id}")).collect();
+    ingredients.iter().filter(|id| !available.contains(*id)).cloned().collect()
+}
+
+pub fn equipment(source: &Value) -> Vec<String> {
     source
         .get("equipment")
         .and_then(Value::as_array)

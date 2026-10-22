@@ -8,6 +8,9 @@ use crate::library::LocalizedText;
 use crate::profile::Profile;
 use serde::Serialize;
 use serde_json::Value;
+
+mod recipe;
+use recipe::{Changes, ShownRecipe};
 use std::collections::BTreeSet;
 
 #[derive(Debug, Serialize)]
@@ -16,6 +19,9 @@ pub struct Offer {
     pub recipe_id: String,
     pub title: String,
     pub source_recipe: Value,
+    /// The recipe written for this cook, in code, and checked again against their restrictions.
+    pub recipe: ShownRecipe,
+    pub changes: Changes,
     pub skill: ShownSkill,
     pub level: ShownLevel,
     pub safe_plan: SafePlan,
@@ -74,22 +80,34 @@ pub struct OfferContext<'a> {
 
 impl Offer {
     pub fn new(candidate: Candidate, reason: Option<String>, context: &OfferContext) -> Option<Self> {
-        let skill = context.graph.program.skill(candidate.skill.as_str())?;
-        let level = context.graph.program.level(candidate.skill.as_str(), candidate.level)?;
-        let skill_name = localized(skill.name.as_ref()?, context.language);
-        let level_name = localized(level.name.as_ref()?, context.language);
+        let (skill, level) = shown_place(&candidate, context)?;
         let safe_plan = safe_plan(&candidate, context.graph, context.language)?;
+        let (recipe, changes) = recipe::adaptation(&candidate, context.graph, context.language)?;
         Some(Offer {
-            recipe_id: candidate.recipe_id,
             title: localized(&candidate.title, context.language),
+            recipe_id: candidate.recipe_id,
             source_recipe: candidate.source_recipe,
-            skill: ShownSkill { id: candidate.skill.to_string(), name: skill_name },
-            level: ShownLevel { number: candidate.level, name: level_name },
+            recipe,
+            changes,
+            skill,
+            level,
             safe_plan,
             reason,
             checked: Checked { diet: context.profile.diet.clone(), avoid: context.profile.avoid.clone() },
         })
     }
+}
+
+/// The skill and level the recipe teaches, named for the cook.
+fn shown_place(candidate: &Candidate, context: &OfferContext) -> Option<(ShownSkill, ShownLevel)> {
+    let skill = context.graph.program.skill(candidate.skill.as_str())?;
+    let level = context.graph.program.level(candidate.skill.as_str(), candidate.level)?;
+    let skill_name = localized(skill.name.as_ref()?, context.language);
+    let level_name = localized(level.name.as_ref()?, context.language);
+    Some((
+        ShownSkill { id: candidate.skill.to_string(), name: skill_name },
+        ShownLevel { number: candidate.level, name: level_name },
+    ))
 }
 
 fn safe_plan(candidate: &Candidate, graph: &Graph, language: &Language) -> Option<SafePlan> {

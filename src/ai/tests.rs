@@ -3,6 +3,7 @@ use super::prompts::{fridge_request, rank_request};
 use super::*;
 use crate::library::LocalizedText;
 use crate::scans::photo::Photo;
+use crate::special::adapted::{Adapted, Amount, Unit};
 use serde_json::json;
 
 fn id(raw: &str) -> SavedId {
@@ -33,6 +34,11 @@ fn the_rank_request_lists_only_the_candidates() {
     assert_eq!(schema["properties"]["ranking"]["items"]["properties"]["recipeId"]["enum"], json!(["recipe/omelette"]));
 }
 
+fn no_adaptation() -> Adapted {
+    let yields = Amount { value: 1.0, unit: Unit::Serving };
+    Adapted { yields, lines: vec![], steps: vec![], swaps: vec![], left_out: vec![] }
+}
+
 fn candidate() -> Candidate {
     Candidate {
         recipe_id: "recipe/omelette".into(),
@@ -45,6 +51,7 @@ fn candidate() -> Candidate {
         omitted: vec![],
         missing: vec![],
         equipment: vec![],
+        adapted: no_adaptation(),
     }
 }
 

@@ -88,11 +88,42 @@ or when it fails, the order is by fewest ingredients to buy
 (`rankedBy: "overlap"`). Each offer carries `recipeId`, `sourceRecipe` from the graph, and a
 `safePlan` with checked ingredients, allowed substitutions (including ratios and caveats),
 omissions, missing ingredients, and required equipment. `sourceRecipe` preserves the graph's
-original instructions and amounts; it is not rewritten when `safePlan` applies a substitution or
-omission. The app must present `safePlan` alongside source instructions and must not describe the
-source instructions as adapted. `sourceRecipe` keeps the graph's raw field names, including
-snake_case step fields; the surrounding API uses camelCase. Each response includes `graphVersion`
-and `graphChannel`.
+original instructions and amounts; it is never rewritten. It stays for now because the app still reads it, and
+the app must not describe it as adapted. It keeps the graph's raw field names, including snake_case step fields;
+the surrounding API uses camelCase. Each response includes `graphVersion` and `graphChannel`.
+
+Each offer also carries the recipe already adapted for the cook, built in code and never by a model:
+
+- `recipe.yields`: `{value, unit}`.
+- `recipe.ingredients`: `{part, id, name, amount: {value, unit}, forms: [{id, name}]}`, the foods in use (a
+  stand-in where one was swapped in), the amount scaled by the swap's ratio where it has one, no left-out part.
+- `recipe.steps`: `{number, text, time, temperature, safetyPoints}`. `text` has the foods in use written in, singular
+  or plural, in English (step text is English only for now); the clauses of left-out parts and the steps that were
+  only about them are gone and the rest are numbered again from 1. Time, temperature and safety points are the
+  graph's, unchanged.
+- `changes.swaps`: `{removed, added, ratio, caveat}` for each swap made. `changes.leftOut`: `{part, name,
+  ingredients}` for each optional part the cook goes without, `name` being the first food it would have held.
+
+The steps are written from the graph's step format (`docs/recipe-steps.md` in the graph repository), then the
+adapted ingredient list is checked again against the cook's diet and avoid list. A recipe that cannot be adapted
+cleanly (a placeholder with no line, a plural the graph lacks, a ratio other than 1 that measures a line another way, a food
+the graph does not list for its line, an unsafe food, a required part left out) is not offered, and the server logs
+the recipe id and a reason word, never a food. Example, soft scrambled eggs when the cook has crème fraîche but
+no cream:
+
+```json
+{ "changes": { "swaps": [{ "removed": { "id": "ingredient/cream", "name": "Cream" },
+                           "added": { "id": "ingredient/creme-fraiche", "name": "Crème fraîche" },
+                           "ratio": null, "caveat": null }], "leftOut": [] },
+  "recipe": { "yields": { "value": 2, "unit": "serving" },
+    "ingredients": [{ "part": "enrichment", "id": "ingredient/creme-fraiche", "name": "Crème fraîche",
+                      "amount": { "value": 1, "unit": "tablespoon" }, "forms": [] }],
+    "steps": [{ "number": 3, "time": null, "temperature": null, "safetyPoints": ["raw-or-lightly-cooked-egg"],
+                "text": "While the eggs still look wet and loose, take the pan off the heat and stir in the cold butter and the crème fraîche to stop the cooking. Serve at once on warm plates." }] } }
+```
+
+(`ingredients` and `steps` are cut to one entry here.) An optional part, such as spinach in the lemon-butter pan
+sauce, appears under `changes.leftOut` and its clauses and steps are gone when the cook cannot have it.
 With a `scanId` of a kept photo, the confirmed ingredients are recorded with it as the dataset's labels.
 
 This preproduction endpoint now returns graph-native recipes in place of the earlier lesson-shaped
@@ -132,7 +163,8 @@ into memory. A pin that cannot be loaded stops the start. With no pin the API st
 (scans and suggestions answer `503 graph_unavailable`), unless `GRAPH_REQUIRED=true`, which a deployment sets so that
 such a build does not start at all.
 A `draft` graph is refused unless `GRAPH_ALLOW_DRAFT=true`; the graph repository can build nothing else yet.
-The `bump-graph` workflow checks daily (and on demand) for a newer graph release. When there is one it pins it in
+The artifact layout this build reads is schema 3 (steps in the placeholder format, plural names, `serving.step_text`). An older
+layout is refused at start: its steps would still name a food after it was swapped out. The `bump-graph` workflow checks daily (and on demand) for a newer graph release. When there is one it pins it in
 `graph.lock`, runs the conformance tests against that graph, and only then opens a pull request, which a person
 merges. `scripts/fetch-graph.sh` fetches the pinned release, or with `--from <checkout>` builds and pins one locally.
 

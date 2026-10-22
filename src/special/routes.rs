@@ -146,7 +146,7 @@ struct Answer<'a> {
 fn response(graph: &Graph, order: Vec<(Candidate, Option<String>)>, answer: Answer) -> SpecialResponse {
     let context = OfferContext { graph, profile: answer.profile, language: answer.language };
     let to_offer = |(candidate, reason): (Candidate, Option<String>)| Offer::new(candidate, reason, &context);
-    let mut offers = order.into_iter().take(OFFERS).filter_map(to_offer);
+    let mut offers = order.into_iter().filter_map(to_offer).take(OFFERS);
     SpecialResponse {
         graph_version: graph.version.clone(),
         graph_channel: graph.channel.as_str(),

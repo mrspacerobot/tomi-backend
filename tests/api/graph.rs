@@ -11,12 +11,12 @@ use uuid::Uuid;
 const VERSION: &str = "2026.10.11-1102817";
 
 fn files(channel: &str) -> GraphFiles {
-    let serving = json!({ "facts": [], "recipes": {} });
+    let serving = json!({ "facts": [], "step_text": { "proper_name_words": [] }, "recipes": {} });
     let things = json!({ "technique/sear": { "tier": "drafted" } });
-    let artifact = json!({ "artifactSchemaVersion": 2, "channel": channel, "things": things, "serving": serving });
+    let artifact = json!({ "artifactSchemaVersion": 3, "channel": channel, "things": things, "serving": serving });
     let artifact = artifact.to_string();
     let manifest = json!({
-        "artifactSchemaVersion": 2, "graphVersion": VERSION, "sourceCommit": "1102817",
+        "artifactSchemaVersion": 3, "graphVersion": VERSION, "sourceCommit": "1102817",
         "channel": channel, "contentSha256": sha256_hex(&artifact),
     });
     GraphFiles { manifest: manifest.to_string(), artifact }
