@@ -11,8 +11,10 @@ use crate::kernel::ids::SavedId;
 use crate::kernel::language::Language;
 use crate::profile::{read as read_profile, Profile};
 use crate::scans::{self, Confirmation};
-use crate::special::progress::{open_levels, CookCounts};
-use crate::special::{self, overlap_order, ranked, Candidate, Offer, OfferContext, Ranked, Tonight, MODEL_SHORT_LIST};
+use crate::suggestions::progress::{open_levels, CookCounts};
+use crate::suggestions::{
+    self, overlap_order, ranked, Candidate, Offer, OfferContext, Ranked, Tonight, MODEL_SHORT_LIST,
+};
 use crate::AppState;
 use axum::extract::rejection::JsonRejection;
 use axum::routing::post;
@@ -26,12 +28,12 @@ const OFFERS: usize = 3;
 const MAX_INGREDIENTS: usize = 200;
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/v1/lessons/suggest", post(special))
+    Router::new().route("/v1/lessons/suggest", post(suggest))
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct SpecialRequest {
+struct SuggestionRequest {
     /// What the cook confirmed or typed. Cupboard staples are added here.
     ingredients: BTreeSet<SavedId>,
     /// The scan these came from, if any, so a kept photo learns the answer.
@@ -43,7 +45,7 @@ struct SpecialRequest {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct SpecialResponse {
+struct SuggestionResponse {
     graph_version: String,
     graph_channel: &'static str,
     /// `model` or `overlap`, so the app can tell how the order was made.
@@ -52,11 +54,11 @@ struct SpecialResponse {
     alternatives: Vec<Offer>,
 }
 
-async fn special(
+async fn suggest(
     caller: Caller,
     CookLanguage(language): CookLanguage,
-    body: Result<Json<SpecialRequest>, JsonRejection>,
-) -> Result<Json<SpecialResponse>, AppError> {
+    body: Result<Json<SuggestionRequest>, JsonRejection>,
+) -> Result<Json<SuggestionResponse>, AppError> {
     let Caller { state, user_id } = caller;
     let request = json_body(body)?;
     validate_size(&request)?;
@@ -71,14 +73,14 @@ async fn special(
     Ok(Json(response(graph, order, Answer { ranked_by, profile: &profile, language: &language })))
 }
 
-fn validate_size(request: &SpecialRequest) -> Result<(), AppError> {
+fn validate_size(request: &SuggestionRequest) -> Result<(), AppError> {
     if request.ingredients.len() <= MAX_INGREDIENTS {
         return Ok(());
     }
     Err(AppError::Invalid(vec![format!("send at most {MAX_INGREDIENTS} ingredients")]))
 }
 
-fn validate_ingredients(graph: &Graph, request: &SpecialRequest) -> Result<(), AppError> {
+fn validate_ingredients(graph: &Graph, request: &SuggestionRequest) -> Result<(), AppError> {
     let mut listed = request.ingredients.iter().chain(&request.staples_left_out);
     if listed.all(|id| graph.foods.knows(id)) {
         return Ok(());
@@ -89,7 +91,7 @@ fn validate_ingredients(graph: &Graph, request: &SpecialRequest) -> Result<(), A
 /// Every recipe the cook may make tonight, fewest to buy first. Until the
 /// server keeps the cook log, only experience grants open levels.
 struct CandidateInput<'a> {
-    request: &'a SpecialRequest,
+    request: &'a SuggestionRequest,
     profile: &'a Profile,
 }
 
@@ -97,11 +99,11 @@ fn candidates(state: &AppState, graph: &Graph, input: CandidateInput) -> Vec<Can
     let open = open_levels(&state.library.catalog, input.profile.experience, &CookCounts::default());
     let ingredients = available(state, input.request, input.profile);
     let tonight = Tonight { profile: input.profile, available: ingredients, open: &open };
-    overlap_order(special::candidates(&state.library, graph, &tonight))
+    overlap_order(suggestions::candidates(&state.library, graph, &tonight))
 }
 
 /// A kept photo learns which ingredients the cook confirmed for it.
-async fn confirm_scan(state: &AppState, user_id: Uuid, request: &SpecialRequest) -> Result<(), AppError> {
+async fn confirm_scan(state: &AppState, user_id: Uuid, request: &SuggestionRequest) -> Result<(), AppError> {
     let Some(scan_id) = request.scan_id else {
         return Ok(());
     };
@@ -112,7 +114,7 @@ async fn confirm_scan(state: &AppState, user_id: Uuid, request: &SpecialRequest)
 
 /// What the cook has tonight: what they confirmed, and their staples less any they leave out. Until they answer
 /// the cupboard question the staples a kitchen is taken to have stand in for theirs.
-fn available(state: &AppState, request: &SpecialRequest, profile: &Profile) -> BTreeSet<SavedId> {
+fn available(state: &AppState, request: &SuggestionRequest, profile: &Profile) -> BTreeSet<SavedId> {
     let usual =
         if profile.cupboard_answered { profile.cupboard_staples.clone() } else { state.library.staples.assumed() };
     let at_home = usual.into_iter().filter(|staple| !request.staples_left_out.contains(staple));
@@ -143,11 +145,11 @@ struct Answer<'a> {
     language: &'a Language,
 }
 
-fn response(graph: &Graph, order: Vec<(Candidate, Option<String>)>, answer: Answer) -> SpecialResponse {
+fn response(graph: &Graph, order: Vec<(Candidate, Option<String>)>, answer: Answer) -> SuggestionResponse {
     let context = OfferContext { graph, profile: answer.profile, language: answer.language };
     let to_offer = |(candidate, reason): (Candidate, Option<String>)| Offer::new(candidate, reason, &context);
     let mut offers = order.into_iter().filter_map(to_offer).take(OFFERS);
-    SpecialResponse {
+    SuggestionResponse {
         graph_version: graph.version.clone(),
         graph_channel: graph.channel.as_str(),
         ranked_by: answer.ranked_by,

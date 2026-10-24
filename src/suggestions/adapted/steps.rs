@@ -5,7 +5,7 @@ use super::lines::UsedLine;
 use super::source::SourceRecipe;
 use super::AdaptedStep;
 use crate::graph::foods::english_name;
-use crate::graph::steps::{self, Mention, RenderContext, StepError};
+use crate::graph::steps::{self, IngredientPlaceholder, RenderContext, StepError};
 use crate::graph::Graph;
 use std::collections::BTreeSet;
 
@@ -38,7 +38,7 @@ fn written(kit: &StepKit, text: &str) -> Result<String, AdaptError> {
 }
 
 /// The English name of the food the cook uses where the mention stands.
-fn name_of(kit: &StepKit, mention: &Mention) -> Result<String, StepError> {
+fn name_of(kit: &StepKit, mention: &IngredientPlaceholder) -> Result<String, StepError> {
     let found = kit.lines.iter().find(|line| stands_for(line, mention));
     let Some(line) = found else {
         return Err(StepError::UnknownPlaceholder(mention.part.clone()));
@@ -49,7 +49,7 @@ fn name_of(kit: &StepKit, mention: &Mention) -> Result<String, StepError> {
     english_name(line.food, food, mention.plural)
 }
 
-fn stands_for(line: &UsedLine, mention: &Mention) -> bool {
+fn stands_for(line: &UsedLine, mention: &IngredientPlaceholder) -> bool {
     if line.source.part != mention.part {
         return false;
     }

@@ -22,7 +22,7 @@ pub fn router() -> Router<AppState> {
         .merge(crate::ingredients::router())
         .merge(crate::profile::router())
         .merge(crate::scans::router())
-        .merge(crate::special::router())
+        .merge(crate::suggestions::router())
 }
 
 /// A JSON body, or the reason it could not be read as a refusal.

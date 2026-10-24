@@ -14,8 +14,8 @@ pub mod meta;
 pub mod options;
 pub mod profile;
 pub mod scans;
-pub mod special;
 pub mod storage;
+pub mod suggestions;
 
 use ai::Ai;
 use auth::Verifier;

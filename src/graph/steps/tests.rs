@@ -50,7 +50,14 @@ fn a_step_that_is_only_a_left_out_clause_is_empty() {
 #[test]
 fn the_name_resolver_decides_plural_and_unknown_parts() {
     let pieces = parse("the {egg:plural}").unwrap();
-    assert_eq!(pieces[1], Piece::Mention(Mention { part: "egg".into(), ingredient: None, plural: true }));
+    assert_eq!(
+        pieces[1],
+        StepFragment::IngredientPlaceholder(IngredientPlaceholder {
+            part: "egg".into(),
+            ingredient: None,
+            plural: true
+        })
+    );
     let context = RenderContext { left_out: &BTreeSet::new(), proper_name_words: &[] };
     let refused = render(&pieces, &context, |mention| Err(StepError::UnknownPlaceholder(mention.part.clone())));
     assert_eq!(refused, Err(StepError::UnknownPlaceholder("egg".into())));
@@ -70,6 +77,10 @@ fn an_ingredient_slug_is_read() {
     let pieces = parse("{roux.butter:plural}").unwrap();
     assert_eq!(
         pieces,
-        vec![Piece::Mention(Mention { part: "roux".into(), ingredient: Some("butter".into()), plural: true })]
+        vec![StepFragment::IngredientPlaceholder(IngredientPlaceholder {
+            part: "roux".into(),
+            ingredient: Some("butter".into()),
+            plural: true
+        })]
     );
 }

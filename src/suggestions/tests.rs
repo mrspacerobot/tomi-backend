@@ -2,7 +2,7 @@ use super::*;
 use crate::graph::test_helpers::fixture_graph;
 use crate::library::tests::shipped_files;
 use crate::library::Library;
-use crate::special::progress::OpenLevels;
+use crate::suggestions::progress::OpenLevels;
 
 const OMELETTE: &str = "recipe/spinach-and-cheese-omelette";
 const PAN_SAUCE: &str = "recipe/seared-chicken-thighs-with-lemon-butter-pan-sauce";

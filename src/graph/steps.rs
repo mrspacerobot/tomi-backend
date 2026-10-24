@@ -3,12 +3,12 @@
 //! The format is the graph repository's `docs/recipe-steps.md`; its `tools/step_text.py` is the reference and the
 //! release's `step_text_cases` prove this code writes the same words.
 
-mod parse;
+mod parser;
 mod render;
 #[cfg(test)]
 mod tests;
 
-pub use parse::{parse, Clause, Mention, Piece};
+pub use parser::{parse, Clause, IngredientPlaceholder, StepFragment};
 pub use render::{render, RenderContext};
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]

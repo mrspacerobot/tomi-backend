@@ -8,7 +8,7 @@
 use crate::kernel::ids::SavedId;
 use crate::library::{Catalog, Skill};
 use crate::profile::Experience;
-use crate::special::game::COOKS_TO_COMPLETE_LEVEL;
+use crate::suggestions::game::COOKS_TO_COMPLETE_LEVEL;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[cfg(test)]

@@ -14,7 +14,7 @@ const FORBIDDEN_IN_RULES: [&str; 9] =
     ["axum", "sqlx", "reqwest", "tokio", "tower", "SystemTime::now", "Instant::now", "Utc::now", "Local::now"];
 
 /// The features whose files are pure rules, except the ones in `TALKS_TO_THE_OUTSIDE`.
-const FEATURES: [&str; 8] = ["graph", "ingredients", "kernel", "library", "options", "profile", "scans", "special"];
+const FEATURES: [&str; 8] = ["graph", "ingredients", "kernel", "library", "options", "profile", "scans", "suggestions"];
 
 /// The files of a feature that talk to the web, the database, the disk or storage on purpose.
 const TALKS_TO_THE_OUTSIDE: [&str; 4] = ["routes.rs", "db.rs", "files.rs", "keep.rs"];

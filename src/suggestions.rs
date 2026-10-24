@@ -10,7 +10,7 @@ use crate::graph::Graph;
 use crate::kernel::ids::SavedId;
 use crate::library::{EquipmentList, Library, LocalizedText, Restrictions};
 use crate::profile::Profile;
-use crate::special::progress::OpenLevels;
+use crate::suggestions::progress::OpenLevels;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeSet;

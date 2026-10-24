@@ -2,7 +2,7 @@
 
 The Rust backend the Tomi iPhone app talks to. It follows the Tomi Rust
 backend specification of 8 October 2026, slice by slice: sign-in and the
-profile, then the AI functions (fridge scan and tonight's special).
+profile, then the AI functions (fridge scan and tonight's suggestions).
 
 ## What exists
 
@@ -72,7 +72,7 @@ Nothing asks the cook yet. A consent step must come before real cooks use it.
 Without a model configured the answer is `503 ai_unavailable`, and the app
 falls back to typing. Without a graph it is `503 graph_unavailable`.
 
-### Tonight's special
+### Tonight's suggestions
 
 ```json
 { "ingredients": ["egg", "spinach"], "scanId": "…", "staplesLeftOut": ["flour"] }
@@ -177,7 +177,7 @@ See `docs/cloud-run-deployment.md` for the deployment identity, secrets and roll
 ## Layout and rules
 
 `AGENTS.md` has the layout and the coding rules, with examples. In short:
-one folder per feature (`src/profile`, `src/scans`, `src/special` and so on), each with its
+one folder per feature (`src/profile`, `src/scans`, `src/suggestions` and so on), each with its
 `routes.rs`, `db.rs` and pure rules, shared HTTP pieces in `src/http.rs`, API tests as one
 binary in `tests/api`.
 

@@ -1,5 +1,5 @@
 use super::*;
-use crate::special::adapted::{AdaptedLine, Amount, Unit};
+use crate::suggestions::adapted::{AdaptedLine, Amount, Unit};
 
 #[test]
 fn preparation_ids_survive_the_adapted_plan() {

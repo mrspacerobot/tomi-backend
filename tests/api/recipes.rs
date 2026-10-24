@@ -1,18 +1,18 @@
 use crate::fakes::FakeAi;
 use crate::helpers::*;
-use crate::specials::{comfortable_cook, open_server};
+use crate::suggestions::{comfortable_cook, open_server};
 use axum::http::{Method, StatusCode};
 use axum::Router;
 use serde_json::{json, Value};
 use sqlx::PgPool;
-use tomi_api::special::Ranked;
+use tomi_api::suggestions::Ranked;
 
 #[sqlx::test(migrations = "./migrations")]
 async fn a_graph_recipe_is_offered_without_a_copied_lesson(pool: PgPool) {
     let ranking = vec![Ranked { recipe_id: "recipe/soft-scrambled-eggs".into(), reason: None }];
     let app = open_server(pool, FakeAi { ranking: Some(ranking), ..FakeAi::default() });
     let cook = comfortable_cook(&app, json!({})).await;
-    let reply = special(&app, &cook, json!({"ingredients": ["egg"]})).await;
+    let reply = suggest(&app, &cook, json!({"ingredients": ["egg"]})).await;
     let offer = &reply.body["special"];
     assert_eq!(offer["recipeId"], "recipe/soft-scrambled-eggs");
     assert!(!offer.as_object().unwrap().contains_key("lessonId"));
@@ -35,7 +35,7 @@ async fn an_unknown_ingredient_is_refused_before_a_scan_is_confirmed(pool: PgPoo
     let cook = new_cook();
     let scanned = scan(&app, &cook, jpeg()).await;
     let body = json!({"ingredients": ["made-up"], "scanId": scanned.body["scanId"]});
-    let reply = special(&app, &cook, body).await;
+    let reply = suggest(&app, &cook, body).await;
     assert_eq!(reply.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(reply.body["error"]["code"], "invalid_request");
     let confirmed: Option<Value> =

@@ -10,7 +10,7 @@ use std::path::Path;
 use tomi_api::graph::files;
 use tomi_api::graph::serving::{CookFacts, PlannedSwap, RecipePlan};
 use tomi_api::graph::{Graph, GraphPin, GraphPolicy};
-use tomi_api::special::adapted::{adapt, Basis};
+use tomi_api::suggestions::adapted::{adapt, Basis};
 
 #[derive(Deserialize)]
 struct Vectors {

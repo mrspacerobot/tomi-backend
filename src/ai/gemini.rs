@@ -5,7 +5,7 @@
 
 use super::{prompts, Ai, AiError, AiFuture, FridgeQuestion, RankQuestion};
 use crate::scans::fridge::ModelItem;
-use crate::special::Ranked;
+use crate::suggestions::Ranked;
 use serde::Deserialize;
 use serde_json::Value;
 use std::time::Duration;

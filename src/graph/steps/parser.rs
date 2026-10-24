@@ -4,7 +4,7 @@ use super::StepError;
 
 /// `{part}`, `{part.ingredient}`, either with `:plural`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Mention {
+pub struct IngredientPlaceholder {
     pub part: String,
     pub ingredient: Option<String>,
     pub plural: bool,
@@ -14,44 +14,44 @@ pub struct Mention {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Clause {
     pub part: String,
-    pub pieces: Vec<Piece>,
+    pub pieces: Vec<StepFragment>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Piece {
+pub enum StepFragment {
     Text(String),
-    Mention(Mention),
+    IngredientPlaceholder(IngredientPlaceholder),
     Clause(Clause),
 }
 
 enum Token {
-    Mention(Mention),
+    IngredientPlaceholder(IngredientPlaceholder),
     Open(String),
     Close,
 }
 
 /// The pieces of a text, or why it is not written in the step format.
-pub fn parse(text: &str) -> Result<Vec<Piece>, StepError> {
-    let mut reading = Reading { pieces: Vec::new(), open: None };
+pub fn parse(text: &str) -> Result<Vec<StepFragment>, StepError> {
+    let mut parser = Parser { pieces: Vec::new(), open: None };
     let mut rest = text;
     while let Some(at) = rest.find(['{', '}', '[', ']']) {
-        reading.add(Piece::Text(rest[..at].to_string()));
+        parser.add(StepFragment::Text(rest[..at].to_string()));
         let (token, length) = token_at(&rest[at..])?;
-        reading.take(token)?;
+        parser.take(token)?;
         rest = &rest[at + length..];
     }
-    reading.add(Piece::Text(rest.to_string()));
-    reading.finish()
+    parser.add(StepFragment::Text(rest.to_string()));
+    parser.finish()
 }
 
-struct Reading {
-    pieces: Vec<Piece>,
+struct Parser {
+    pieces: Vec<StepFragment>,
     open: Option<Clause>,
 }
 
-impl Reading {
-    fn add(&mut self, piece: Piece) {
-        if matches!(&piece, Piece::Text(text) if text.is_empty()) {
+impl Parser {
+    fn add(&mut self, piece: StepFragment) {
+        if matches!(&piece, StepFragment::Text(text) if text.is_empty()) {
             return;
         }
         match &mut self.open {
@@ -62,7 +62,7 @@ impl Reading {
 
     fn take(&mut self, token: Token) -> Result<(), StepError> {
         match token {
-            Token::Mention(mention) => self.add(Piece::Mention(mention)),
+            Token::IngredientPlaceholder(mention) => self.add(StepFragment::IngredientPlaceholder(mention)),
             Token::Open(part) => self.open_clause(part)?,
             Token::Close => self.close_clause()?,
         }
@@ -81,11 +81,11 @@ impl Reading {
         let Some(clause) = self.open.take() else {
             return Err(StepError::Malformed("a `]` closes no clause"));
         };
-        self.pieces.push(Piece::Clause(clause));
+        self.pieces.push(StepFragment::Clause(clause));
         Ok(())
     }
 
-    fn finish(self) -> Result<Vec<Piece>, StepError> {
+    fn finish(self) -> Result<Vec<StepFragment>, StepError> {
         if self.open.is_some() {
             return Err(StepError::Malformed("a clause is never closed"));
         }
@@ -113,12 +113,12 @@ fn mention_token(rest: &str) -> Result<(Token, usize), StepError> {
         return Err(stray);
     }
     match mention_of(body) {
-        Some(mention) => Ok((Token::Mention(mention), end + 1)),
+        Some(mention) => Ok((Token::IngredientPlaceholder(mention), end + 1)),
         None => Err(stray),
     }
 }
 
-fn mention_of(body: &str) -> Option<Mention> {
+fn mention_of(body: &str) -> Option<IngredientPlaceholder> {
     let (named, plural) = match body.strip_suffix(":plural") {
         Some(named) => (named, true),
         None => (body, false),
@@ -130,7 +130,7 @@ fn mention_of(body: &str) -> Option<Mention> {
     if !is_slug(part) || !ingredient.is_none_or(is_slug) {
         return None;
     }
-    Some(Mention { part: part.to_string(), ingredient: ingredient.map(str::to_string), plural })
+    Some(IngredientPlaceholder { part: part.to_string(), ingredient: ingredient.map(str::to_string), plural })
 }
 
 fn clause_token(rest: &str) -> Result<(Token, usize), StepError> {

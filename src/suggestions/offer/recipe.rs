@@ -3,8 +3,8 @@
 use super::{named_thing, shown_swaps, NamedThing, ShownSwap};
 use crate::graph::Graph;
 use crate::kernel::language::Language;
-use crate::special::adapted::{Adapted, AdaptedLine, AdaptedStep, Amount, LeftOutPart};
-use crate::special::Candidate;
+use crate::suggestions::adapted::{Adapted, AdaptedLine, AdaptedStep, Amount, LeftOutPart};
+use crate::suggestions::Candidate;
 use serde::Serialize;
 
 /// The recipe made for this cook: what to buy and measure, and what to do.

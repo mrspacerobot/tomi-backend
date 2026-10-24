@@ -3,7 +3,7 @@ use super::prompts::{fridge_request, rank_request};
 use super::*;
 use crate::library::LocalizedText;
 use crate::scans::photo::Photo;
-use crate::special::adapted::{Adapted, Amount, Unit};
+use crate::suggestions::adapted::{Adapted, Amount, Unit};
 use serde_json::json;
 
 fn id(raw: &str) -> SavedId {

@@ -19,4 +19,4 @@ mod options;
 mod profile;
 mod recipes;
 mod scans;
-mod specials;
+mod suggestions;

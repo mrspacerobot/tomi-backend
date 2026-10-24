@@ -1,6 +1,6 @@
 //! Writes the text a cook reads from the pieces of a step, once each placeholder has the name of the food in use.
 
-use super::{Clause, Mention, Piece, StepError};
+use super::{Clause, IngredientPlaceholder, StepError, StepFragment};
 use std::collections::BTreeSet;
 
 const VOWELS: &str = "aeiouAEIOU";
@@ -14,9 +14,9 @@ pub struct RenderContext<'a> {
 }
 
 /// The text, or an empty text when the whole step goes. `name_of` gives the English name of the food in use.
-pub fn render<F>(pieces: &[Piece], context: &RenderContext, name_of: F) -> Result<String, StepError>
+pub fn render<F>(pieces: &[StepFragment], context: &RenderContext, name_of: F) -> Result<String, StepError>
 where
-    F: Fn(&Mention) -> Result<String, StepError>,
+    F: Fn(&IngredientPlaceholder) -> Result<String, StepError>,
 {
     let mut writing = Writing { context, name_of, written: String::new() };
     writing.add_pieces(pieces)?;
@@ -29,19 +29,19 @@ struct Writing<'a, F> {
     written: String,
 }
 
-impl<F: Fn(&Mention) -> Result<String, StepError>> Writing<'_, F> {
-    fn add_pieces(&mut self, pieces: &[Piece]) -> Result<(), StepError> {
+impl<F: Fn(&IngredientPlaceholder) -> Result<String, StepError>> Writing<'_, F> {
+    fn add_pieces(&mut self, pieces: &[StepFragment]) -> Result<(), StepError> {
         for piece in pieces {
             match piece {
-                Piece::Text(text) => self.written.push_str(text),
-                Piece::Mention(mention) => self.add_mention(mention)?,
-                Piece::Clause(clause) => self.add_clause(clause)?,
+                StepFragment::Text(text) => self.written.push_str(text),
+                StepFragment::IngredientPlaceholder(mention) => self.add_mention(mention)?,
+                StepFragment::Clause(clause) => self.add_clause(clause)?,
             }
         }
         Ok(())
     }
 
-    fn add_mention(&mut self, mention: &Mention) -> Result<(), StepError> {
+    fn add_mention(&mut self, mention: &IngredientPlaceholder) -> Result<(), StepError> {
         let name = (self.name_of)(mention)?;
         let name = self.as_written(&name);
         self.agree_article(&name);
