@@ -4,7 +4,7 @@
 //! The server checks returned ids against the graph before anyone trusts them.
 
 use super::{FridgeQuestion, RankQuestion};
-use crate::special::Candidate;
+use crate::suggestions::Candidate;
 use base64::Engine;
 use serde_json::{json, Value};
 

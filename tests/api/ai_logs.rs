@@ -8,7 +8,7 @@ use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 use tomi_api::ai::{Ai, AiError, AiFuture, FridgeQuestion, NoAi, RankQuestion};
 use tomi_api::scans::fridge::ModelItem;
-use tomi_api::special::Ranked;
+use tomi_api::suggestions::Ranked;
 use tracing::instrument::WithSubscriber;
 
 #[derive(Clone, Default)]
@@ -86,9 +86,9 @@ async fn failed_recipe_ranking_logs_the_cause_and_keeps_the_overlap_fallback(poo
     let ai = Arc::new(FailingAi(AiError::Rejected { status: 429 }));
     let setup = Setup { ai, library: library_without_prerequisites(), ..Setup::default() };
     let app = server_with(pool, setup);
-    let cook = crate::specials::comfortable_cook(&app, json!({})).await;
+    let cook = crate::suggestions::comfortable_cook(&app, json!({})).await;
     let buffer = LogBuffer::default();
-    let reply = special(&app, &cook, json!({"ingredients": []})).with_subscriber(buffer.subscriber()).await;
+    let reply = suggest(&app, &cook, json!({"ingredients": []})).with_subscriber(buffer.subscriber()).await;
     assert_eq!(reply.status, StatusCode::OK);
     assert_eq!(reply.body["rankedBy"], "overlap");
     let logs = buffer.text();

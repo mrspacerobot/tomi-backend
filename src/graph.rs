@@ -11,11 +11,12 @@ use std::collections::HashMap;
 mod checksum;
 pub mod facts;
 pub mod files;
-mod foods;
+pub mod foods;
 mod manifest;
 mod pin;
 mod program;
 pub mod serving;
+pub mod steps;
 #[cfg(test)]
 pub(crate) mod test_helpers;
 #[cfg(test)]
@@ -28,8 +29,10 @@ pub use pin::{GraphPin, PinError};
 pub use program::Program;
 pub use serving::Serving;
 
-/// The only artifact layout this build can read.
-pub const ARTIFACT_SCHEMA_VERSION: u64 = 2;
+/// The only artifact layout this build can read. Layout 3 added the step text format: a step names its foods by
+/// placeholder, which is what lets a recipe be adapted in code. Layout 2 steps are plain prose that would still
+/// name a swapped-out food, so they are refused rather than adapted by guesswork.
+pub const ARTIFACT_SCHEMA_VERSION: u64 = 3;
 
 /// The graph's files as text. Reading them from disk is the caller's job.
 pub struct GraphFiles {

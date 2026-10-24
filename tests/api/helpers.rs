@@ -141,7 +141,7 @@ pub async fn scan(app: &Router, token: &str, upload: (&str, Vec<u8>)) -> Reply {
     call(app, Call { method: Method::POST, path: "/v1/scans", token: Some(token), body }).await
 }
 
-pub async fn special(app: &Router, token: &str, body: Value) -> Reply {
+pub async fn suggest(app: &Router, token: &str, body: Value) -> Reply {
     let body = Some(("application/json", body.to_string().into_bytes()));
     call(app, Call { method: Method::POST, path: "/v1/lessons/suggest", token: Some(token), body }).await
 }

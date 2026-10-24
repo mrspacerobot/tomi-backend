@@ -5,6 +5,7 @@
 
 #![expect(clippy::unwrap_used, reason = "a failed unwrap in a test is a failed test, not a crash")]
 
+mod adapted;
 mod ai_logs;
 mod auth;
 mod client;
@@ -18,4 +19,4 @@ mod options;
 mod profile;
 mod recipes;
 mod scans;
-mod specials;
+mod suggestions;

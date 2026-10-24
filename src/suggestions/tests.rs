@@ -2,7 +2,7 @@ use super::*;
 use crate::graph::test_helpers::fixture_graph;
 use crate::library::tests::shipped_files;
 use crate::library::Library;
-use crate::special::progress::OpenLevels;
+use crate::suggestions::progress::OpenLevels;
 
 const OMELETTE: &str = "recipe/spinach-and-cheese-omelette";
 const PAN_SAUCE: &str = "recipe/seared-chicken-thighs-with-lemon-butter-pan-sauce";
@@ -68,7 +68,7 @@ fn a_graph_allowed_swap_is_applied_to_a_safe_recipe_plan() {
     let swap = AppliedSwap {
         removed: "ingredient/white-wine".into(),
         added: "ingredient/chicken-stock".into(),
-        ratio: Some(crate::graph::serving::Ratio { by: "volume".into(), original: 1.0, stand_in: 1.0 }),
+        ratio: Some(crate::graph::serving::SwapRatio { by: "volume".into(), original: 1.0, stand_in: 1.0 }),
         caveat: Some(
             "Stock has none of the sharpness of wine. A squeeze of lemon at the end brings some of it back.".into(),
         ),
@@ -114,7 +114,7 @@ fn a_swap_at_hand_is_used_for_a_missing_graph_ingredient() {
     let swap = AppliedSwap {
         removed: "ingredient/sunflower-oil".into(),
         added: "ingredient/olive-oil".into(),
-        ratio: Some(crate::graph::serving::Ratio { by: "volume".into(), original: 1.0, stand_in: 1.0 }),
+        ratio: Some(crate::graph::serving::SwapRatio { by: "volume".into(), original: 1.0, stand_in: 1.0 }),
         caveat: Some("Its fruity flavour changes the finish. Keep it below the point where it smokes.".into()),
     };
     assert_eq!(pan_sauce.swaps, vec![swap]);
@@ -162,4 +162,27 @@ fn a_model_may_only_reorder_the_list() {
     let order_ids: Vec<String> = order.iter().map(|(candidate, _)| candidate.recipe_id.clone()).collect();
     assert_eq!(order_ids, vec![OMELETTE, "recipe/soft-scrambled-eggs", PAN_SAUCE]);
     assert_eq!(order[0].1.as_deref(), Some("quick tonight"));
+}
+
+#[test]
+fn a_recipe_that_cannot_be_adapted_cleanly_is_not_offered() {
+    let library = library();
+    let open = all_open(&library);
+    let mut graph = fixture_graph();
+    crate::graph::test_helpers::change_thing(&mut graph, "recipe/soft-scrambled-eggs", |recipe| {
+        recipe["steps"][0]["text"] = serde_json::json!("Crack the {yolk:plural} into a bowl.");
+    });
+    let tonight = Tonight { profile: &Profile::default(), available: BTreeSet::new(), open: &open };
+    let found = candidate_ids(&candidates(&library, &graph, &tonight));
+    assert_eq!(found, vec![PAN_SAUCE, OMELETTE]);
+}
+
+#[test]
+fn an_offered_candidate_carries_the_recipe_written_for_the_cook() {
+    let profile = Profile { avoid: ids(&["alcohol"]), ..Profile::default() };
+    let pan_sauce = offered(&profile, &[]).remove(0);
+    let lines: Vec<&str> = pan_sauce.recipe.lines.iter().map(|line| line.food.as_str()).collect();
+    assert!(lines.contains(&"ingredient/chicken-stock"));
+    assert!(!lines.contains(&"ingredient/white-wine"));
+    assert!(pan_sauce.recipe.steps.iter().any(|step| step.text.starts_with("Pour in the chicken stock")));
 }

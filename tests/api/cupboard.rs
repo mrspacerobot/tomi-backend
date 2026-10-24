@@ -1,8 +1,8 @@
 //! What the cook has tonight: their staples, the ones assumed until they answer, and any left out for the night.
 
 use crate::fakes::FakeAi;
-use crate::helpers::special;
-use crate::specials::{comfortable_cook, open_server, OMELETTE};
+use crate::helpers::suggest;
+use crate::suggestions::{comfortable_cook, open_server, OMELETTE};
 use serde_json::{json, Value};
 use sqlx::PgPool;
 
@@ -10,7 +10,7 @@ use sqlx::PgPool;
 async fn omelette_missing(pool: PgPool, answers: Value, tonight: Value) -> Vec<String> {
     let app = open_server(pool, FakeAi::default());
     let cook = comfortable_cook(&app, answers).await;
-    let reply = special(&app, &cook, tonight).await;
+    let reply = suggest(&app, &cook, tonight).await;
     let offer = reply.body["alternatives"].as_array().unwrap().iter().chain([&reply.body["special"]]);
     let omelette = offer.into_iter().find(|offer| offer["recipeId"] == OMELETTE).unwrap();
     omelette["safePlan"]["missing"]

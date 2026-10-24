@@ -10,24 +10,24 @@ use crate::graph::Graph;
 use crate::kernel::ids::SavedId;
 use crate::library::{EquipmentList, Library, LocalizedText, Restrictions};
 use crate::profile::Profile;
-use crate::special::progress::OpenLevels;
+use crate::suggestions::progress::OpenLevels;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeSet;
 
 pub mod game;
-mod offer;
 mod plan;
 pub mod progress;
 mod ranking;
 mod routes;
+mod suggestion;
 #[cfg(test)]
 mod tests;
 
 pub use routes::router;
 
-pub use offer::{Offer, OfferContext};
 pub use ranking::{overlap_order, ranked, Ranked, MODEL_SHORT_LIST};
+pub use suggestion::{Suggestion, SuggestionContext};
 
 /// A graph recipe that the cook may make tonight.
 #[derive(Debug, Clone)]
@@ -43,14 +43,16 @@ pub struct Candidate {
     pub omitted: Vec<String>,
     pub missing: Vec<String>,
     pub equipment: Vec<String>,
+    /// The recipe written for this cook: the steps, the amounts and what changed.
+    pub recipe: crate::recipe::PreparedRecipe,
 }
 
-/// A listed swap applied tonight, named as in the app's `AppliedSwap`.
+/// A graph-listed swap applied tonight, before the foods receive display names.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AppliedSwap {
     pub removed: String,
     pub added: String,
-    pub ratio: Option<crate::graph::serving::Ratio>,
+    pub ratio: Option<crate::graph::serving::SwapRatio>,
     pub caveat: Option<String>,
 }
 
@@ -69,25 +71,20 @@ pub fn candidates(library: &Library, graph: &Graph, tonight: &Tonight) -> Vec<Ca
         return Vec::new();
     };
     let facts = CookFacts { avoided, at_hand: graph_ids(&tonight.available) };
-    let kitchen = plan::Kitchen { graph, facts: &facts, tonight };
-    let found =
-        graph.serving.recipes.iter().filter_map(|(recipe_id, recipe)| candidate((recipe_id, recipe), graph, &kitchen));
-    found
-        .filter(|candidate| {
-            fits_cuisine(graph, candidate, tonight.profile)
-                && has_tracked_equipment(&library.equipment, candidate, tonight.profile)
-        })
-        .collect()
+    let kitchen = plan::Kitchen { graph, facts: &facts, tonight, equipment: &library.equipment };
+    let recipes = graph.serving.recipes.iter();
+    recipes.filter_map(|(recipe_id, recipe)| candidate((recipe_id, recipe), &kitchen)).collect()
 }
 
-fn candidate(
-    recipe: (&str, &crate::graph::serving::ServedRecipe),
-    graph: &Graph,
-    kitchen: &plan::Kitchen,
-) -> Option<Candidate> {
+/// The recipe for this cook, when their level, cuisines and kitchen allow it and it can be adapted for them.
+fn candidate(recipe: (&str, &crate::graph::serving::ServedRecipe), kitchen: &plan::Kitchen) -> Option<Candidate> {
     let (recipe_id, recipe) = recipe;
-    let (skill, level) = eligible_level(graph, recipe, kitchen.tonight)?;
-    let source = graph.thing(recipe_id)?;
+    let (skill, level) = eligible_level(kitchen.graph, recipe, kitchen.tonight)?;
+    let source = kitchen.graph.thing(recipe_id)?;
+    let profile = kitchen.tonight.profile;
+    if !fits_cuisine(kitchen.graph, source, profile) || !has_tracked_equipment(kitchen.equipment, source, profile) {
+        return None;
+    }
     let title = serde_json::from_value::<LocalizedText>(source.get("names")?.clone()).ok()?;
     let source = plan::RecipeSource { id: recipe_id.to_string(), value: source.clone(), title, skill, level };
     plan::cook(&source, kitchen)
@@ -104,10 +101,9 @@ fn eligible_level(
     })
 }
 
-fn has_tracked_equipment(equipment: &EquipmentList, candidate: &Candidate, profile: &Profile) -> bool {
+fn has_tracked_equipment(equipment: &EquipmentList, source: &Value, profile: &Profile) -> bool {
     let available = profile.equipment.as_ref().unwrap_or(&equipment.standard_kitchen);
-    candidate
-        .equipment
+    plan::equipment(source)
         .iter()
         .filter_map(|id| id.strip_prefix("equipment/"))
         .filter_map(|id| SavedId::parse(id).ok())
@@ -120,8 +116,8 @@ fn graph_ids(available: &BTreeSet<SavedId>) -> BTreeSet<String> {
     available.iter().map(|id| format!("{}{id}", plan::INGREDIENT_PREFIX)).collect()
 }
 
-fn fits_cuisine(graph: &Graph, candidate: &Candidate, profile: &Profile) -> bool {
-    let Some(makes) = candidate.source_recipe.get("makes").and_then(Value::as_str) else {
+fn fits_cuisine(graph: &Graph, source: &Value, profile: &Profile) -> bool {
+    let Some(makes) = source.get("makes").and_then(Value::as_str) else {
         return false;
     };
     let Some(cuisines) = graph.thing(makes).and_then(|dish| dish.get("belongs_to")).and_then(Value::as_array) else {

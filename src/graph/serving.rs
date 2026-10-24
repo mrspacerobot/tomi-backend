@@ -13,7 +13,16 @@ mod tests;
 #[serde(deny_unknown_fields)]
 pub struct Serving {
     pub facts: BTreeSet<String>,
+    pub step_text: StepText,
     pub recipes: BTreeMap<String, ServedRecipe>,
+}
+
+/// What writing a step needs besides the foods.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StepText {
+    /// Words that keep their capital inside a sentence, such as Dijon.
+    pub proper_name_words: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -52,7 +61,7 @@ pub struct ServedSwap {
     pub thing: String,
     pub unsafe_for: BTreeSet<String>,
     pub basis: String,
-    pub ratio: Option<Ratio>,
+    pub ratio: Option<SwapRatio>,
     pub caveat: Option<String>,
     pub tier: String,
 }
@@ -60,7 +69,7 @@ pub struct ServedSwap {
 /// How much of the swap replaces how much of the original, by weight, volume or count.
 #[derive(Debug, Clone, PartialEq, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct Ratio {
+pub struct SwapRatio {
     pub stand_in: f64,
     pub original: f64,
     pub by: String,
@@ -77,9 +86,10 @@ pub enum ServingError {
 /// A swap to apply to one line, as the graph allows it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlannedSwap {
+    pub part: String,
     pub original: String,
     pub instead: String,
-    pub ratio: Option<Ratio>,
+    pub ratio: Option<SwapRatio>,
     pub caveat: Option<String>,
 }
 
@@ -123,7 +133,7 @@ impl ServedRecipe {
         for line in &self.lines {
             match line.decide(cook) {
                 Decision::Keep => {}
-                Decision::Swap(swap) => plan.swaps.push(swap.replacing(&line.thing)),
+                Decision::Swap(swap) => plan.swaps.push(swap.replacing(line)),
                 Decision::LeaveOut => plan.left_out.push(line.part.clone()),
                 Decision::Refuse => return None,
             }
@@ -160,9 +170,10 @@ impl ServedLine {
 }
 
 impl ServedSwap {
-    fn replacing(&self, original: &str) -> PlannedSwap {
+    fn replacing(&self, line: &ServedLine) -> PlannedSwap {
         PlannedSwap {
-            original: original.to_string(),
+            part: line.part.clone(),
+            original: line.thing.clone(),
             instead: self.thing.clone(),
             ratio: self.ratio.clone(),
             caveat: self.caveat.clone(),

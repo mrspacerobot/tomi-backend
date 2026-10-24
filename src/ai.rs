@@ -7,7 +7,7 @@ use crate::kernel::ids::SavedId;
 use crate::profile::Profile;
 use crate::scans::fridge::ModelItem;
 use crate::scans::photo::Photo;
-use crate::special::{Candidate, Ranked};
+use crate::suggestions::{Candidate, Ranked};
 use std::future::Future;
 use std::pin::Pin;
 
