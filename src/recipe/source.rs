@@ -6,22 +6,22 @@ use serde::{Deserialize, Serialize, Serializer};
 pub struct SourceRecipe {
     pub ingredients: Vec<SourceLine>,
     pub steps: Vec<SourceStep>,
-    pub yields: Amount,
+    pub yields: RecipeAmount,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct SourceLine {
     pub part: String,
     pub thing: String,
-    pub amount: Amount,
+    pub amount: RecipeAmount,
     pub forms: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct SourceStep {
     pub text: String,
-    pub time: Option<Time>,
-    pub temperature: Option<Temperature>,
+    pub time: Option<StepTime>,
+    pub temperature: Option<StepTemperature>,
     pub safety_points: Vec<String>,
 }
 
@@ -64,7 +64,7 @@ impl Unit {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Amount {
+pub struct RecipeAmount {
     #[serde(serialize_with = "plain_number")]
     pub value: f64,
     pub unit: Unit,
@@ -73,7 +73,7 @@ pub struct Amount {
 /// Minutes or seconds, as a span or a single number.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum Time {
+pub enum StepTime {
     Span {
         #[serde(serialize_with = "plain_number")]
         from: f64,
@@ -89,7 +89,7 @@ pub enum Time {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Temperature {
+pub struct StepTemperature {
     #[serde(serialize_with = "plain_number")]
     pub value: f64,
     pub unit: String,

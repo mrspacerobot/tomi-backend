@@ -1,11 +1,11 @@
 //! Plans a graph recipe for tonight using the graph's safe choices, then adapts it for the cook.
 
-use super::adapted::{adapt, Adapted, Basis};
 use super::{AppliedSwap, Candidate, Tonight};
 use crate::graph::serving::{CookFacts, PlannedSwap};
 use crate::graph::Graph;
 use crate::kernel::ids::SavedId;
 use crate::library::{EquipmentList, LocalizedText};
+use crate::recipe::{adapt, Basis, PreparedRecipe};
 use serde_json::Value;
 
 #[cfg(test)]
@@ -49,7 +49,7 @@ fn log_not_adapted(recipe: &str, reason: &str) {
     tracing::warn!(recipe, reason, "a recipe could not be adapted and is not offered");
 }
 
-fn into_candidate(source: &RecipeSource, adapted: Adapted, tonight: &Tonight) -> Candidate {
+fn into_candidate(source: &RecipeSource, adapted: PreparedRecipe, tonight: &Tonight) -> Candidate {
     let ingredients = food_ids(&adapted);
     Candidate {
         recipe_id: source.id.clone(),
@@ -62,11 +62,11 @@ fn into_candidate(source: &RecipeSource, adapted: Adapted, tonight: &Tonight) ->
         omitted: adapted.left_out.iter().map(|left_out| left_out.part.clone()).collect(),
         equipment: equipment(&source.value),
         ingredients,
-        adapted,
+        recipe: adapted,
     }
 }
 
-fn food_ids(adapted: &Adapted) -> Vec<String> {
+fn food_ids(adapted: &PreparedRecipe) -> Vec<String> {
     adapted.lines.iter().map(|line| line.food.clone()).collect()
 }
 

@@ -13,7 +13,7 @@ use crate::profile::{read as read_profile, Profile};
 use crate::scans::{self, Confirmation};
 use crate::suggestions::progress::{open_levels, CookCounts};
 use crate::suggestions::{
-    self, overlap_order, ranked, Candidate, Offer, OfferContext, Ranked, Tonight, MODEL_SHORT_LIST,
+    self, overlap_order, ranked, Candidate, Ranked, Suggestion, SuggestionContext, Tonight, MODEL_SHORT_LIST,
 };
 use crate::AppState;
 use axum::extract::rejection::JsonRejection;
@@ -24,7 +24,7 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 
 /// A special and two alternatives, as on Tomi's home screen.
-const OFFERS: usize = 3;
+const MAX_SUGGESTIONS: usize = 3;
 const MAX_INGREDIENTS: usize = 200;
 
 pub fn router() -> Router<AppState> {
@@ -33,7 +33,7 @@ pub fn router() -> Router<AppState> {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct SuggestionRequest {
+struct SuggestionsRequest {
     /// What the cook confirmed or typed. Cupboard staples are added here.
     ingredients: BTreeSet<SavedId>,
     /// The scan these came from, if any, so a kept photo learns the answer.
@@ -45,20 +45,20 @@ struct SuggestionRequest {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct SuggestionResponse {
+struct SuggestionsResponse {
     graph_version: String,
     graph_channel: &'static str,
     /// `model` or `overlap`, so the app can tell how the order was made.
     ranked_by: &'static str,
-    special: Option<Offer>,
-    alternatives: Vec<Offer>,
+    special: Option<Suggestion>,
+    alternatives: Vec<Suggestion>,
 }
 
 async fn suggest(
     caller: Caller,
     CookLanguage(language): CookLanguage,
-    body: Result<Json<SuggestionRequest>, JsonRejection>,
-) -> Result<Json<SuggestionResponse>, AppError> {
+    body: Result<Json<SuggestionsRequest>, JsonRejection>,
+) -> Result<Json<SuggestionsResponse>, AppError> {
     let Caller { state, user_id } = caller;
     let request = json_body(body)?;
     validate_size(&request)?;
@@ -73,14 +73,14 @@ async fn suggest(
     Ok(Json(response(graph, order, Answer { ranked_by, profile: &profile, language: &language })))
 }
 
-fn validate_size(request: &SuggestionRequest) -> Result<(), AppError> {
+fn validate_size(request: &SuggestionsRequest) -> Result<(), AppError> {
     if request.ingredients.len() <= MAX_INGREDIENTS {
         return Ok(());
     }
     Err(AppError::Invalid(vec![format!("send at most {MAX_INGREDIENTS} ingredients")]))
 }
 
-fn validate_ingredients(graph: &Graph, request: &SuggestionRequest) -> Result<(), AppError> {
+fn validate_ingredients(graph: &Graph, request: &SuggestionsRequest) -> Result<(), AppError> {
     let mut listed = request.ingredients.iter().chain(&request.staples_left_out);
     if listed.all(|id| graph.foods.knows(id)) {
         return Ok(());
@@ -91,7 +91,7 @@ fn validate_ingredients(graph: &Graph, request: &SuggestionRequest) -> Result<()
 /// Every recipe the cook may make tonight, fewest to buy first. Until the
 /// server keeps the cook log, only experience grants open levels.
 struct CandidateInput<'a> {
-    request: &'a SuggestionRequest,
+    request: &'a SuggestionsRequest,
     profile: &'a Profile,
 }
 
@@ -103,7 +103,7 @@ fn candidates(state: &AppState, graph: &Graph, input: CandidateInput) -> Vec<Can
 }
 
 /// A kept photo learns which ingredients the cook confirmed for it.
-async fn confirm_scan(state: &AppState, user_id: Uuid, request: &SuggestionRequest) -> Result<(), AppError> {
+async fn confirm_scan(state: &AppState, user_id: Uuid, request: &SuggestionsRequest) -> Result<(), AppError> {
     let Some(scan_id) = request.scan_id else {
         return Ok(());
     };
@@ -114,7 +114,7 @@ async fn confirm_scan(state: &AppState, user_id: Uuid, request: &SuggestionReque
 
 /// What the cook has tonight: what they confirmed, and their staples less any they leave out. Until they answer
 /// the cupboard question the staples a kitchen is taken to have stand in for theirs.
-fn available(state: &AppState, request: &SuggestionRequest, profile: &Profile) -> BTreeSet<SavedId> {
+fn available(state: &AppState, request: &SuggestionsRequest, profile: &Profile) -> BTreeSet<SavedId> {
     let usual =
         if profile.cupboard_answered { profile.cupboard_staples.clone() } else { state.library.staples.assumed() };
     let at_home = usual.into_iter().filter(|staple| !request.staples_left_out.contains(staple));
@@ -145,15 +145,15 @@ struct Answer<'a> {
     language: &'a Language,
 }
 
-fn response(graph: &Graph, order: Vec<(Candidate, Option<String>)>, answer: Answer) -> SuggestionResponse {
-    let context = OfferContext { graph, profile: answer.profile, language: answer.language };
-    let to_offer = |(candidate, reason): (Candidate, Option<String>)| Offer::new(candidate, reason, &context);
-    let mut offers = order.into_iter().filter_map(to_offer).take(OFFERS);
-    SuggestionResponse {
+fn response(graph: &Graph, order: Vec<(Candidate, Option<String>)>, answer: Answer) -> SuggestionsResponse {
+    let context = SuggestionContext { graph, profile: answer.profile, language: answer.language };
+    let to_suggestion = |(candidate, reason): (Candidate, Option<String>)| Suggestion::new(candidate, reason, &context);
+    let mut suggestions = order.into_iter().filter_map(to_suggestion).take(MAX_SUGGESTIONS);
+    SuggestionsResponse {
         graph_version: graph.version.clone(),
         graph_channel: graph.channel.as_str(),
         ranked_by: answer.ranked_by,
-        special: offers.next(),
-        alternatives: offers.collect(),
+        special: suggestions.next(),
+        alternatives: suggestions.collect(),
     }
 }

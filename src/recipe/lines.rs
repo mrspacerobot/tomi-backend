@@ -1,9 +1,9 @@
 //! The lines of a recipe as this cook makes it: kept, swapped (with the amount scaled) or left out.
 
 use super::error::AdaptError;
-use super::source::{Amount, Measure, SourceLine, SourceRecipe};
-use super::AdaptedLine;
-use crate::graph::serving::{PlannedSwap, Ratio, RecipePlan, ServedRecipe};
+use super::source::{Measure, RecipeAmount, SourceLine, SourceRecipe};
+use super::PreparedIngredient;
+use crate::graph::serving::{PlannedSwap, RecipePlan, ServedRecipe, SwapRatio};
 use std::collections::BTreeSet;
 
 /// A line that stays, with the food the cook uses for it.
@@ -51,12 +51,12 @@ fn use_line<'a>(index: usize, line: &'a SourceLine, plan: &'a RecipePlan) -> Use
     UsedLine { index, source: line, food, swap }
 }
 
-pub fn adapted_line(used: &UsedLine) -> Result<AdaptedLine, AdaptError> {
+pub fn adapted_line(used: &UsedLine) -> Result<PreparedIngredient, AdaptError> {
     let amount = match used.swap.and_then(|swap| swap.ratio.as_ref()) {
         Some(ratio) => scaled(&used.source.amount, ratio)?,
         None => used.source.amount.clone(),
     };
-    Ok(AdaptedLine {
+    Ok(PreparedIngredient {
         part: used.source.part.clone(),
         food: used.food.to_string(),
         amount,
@@ -66,7 +66,7 @@ pub fn adapted_line(used: &UsedLine) -> Result<AdaptedLine, AdaptError> {
 
 /// The stand-in amount for the original amount. A ratio of one changes nothing, however it is measured; any other
 /// ratio needs the line to be measured the same way, or there is no honest amount.
-fn scaled(amount: &Amount, ratio: &Ratio) -> Result<Amount, AdaptError> {
+fn scaled(amount: &RecipeAmount, ratio: &SwapRatio) -> Result<RecipeAmount, AdaptError> {
     let usable =
         ratio.original > 0.0 && ratio.stand_in > 0.0 && ratio.original.is_finite() && ratio.stand_in.is_finite();
     if !usable {
@@ -79,7 +79,7 @@ fn scaled(amount: &Amount, ratio: &Ratio) -> Result<Amount, AdaptError> {
         return Err(AdaptError::Ratio);
     }
     let value = amount.value * ratio.stand_in / ratio.original;
-    Ok(Amount { value: (value * 1000.0).round() / 1000.0, unit: amount.unit })
+    Ok(RecipeAmount { value: (value * 1000.0).round() / 1000.0, unit: amount.unit })
 }
 
 fn measure_of(by: &str) -> Result<Measure, AdaptError> {

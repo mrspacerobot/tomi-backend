@@ -13,6 +13,7 @@ pub mod library;
 pub mod meta;
 pub mod options;
 pub mod profile;
+pub mod recipe;
 pub mod scans;
 pub mod storage;
 pub mod suggestions;

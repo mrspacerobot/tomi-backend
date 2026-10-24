@@ -61,7 +61,7 @@ pub struct ServedSwap {
     pub thing: String,
     pub unsafe_for: BTreeSet<String>,
     pub basis: String,
-    pub ratio: Option<Ratio>,
+    pub ratio: Option<SwapRatio>,
     pub caveat: Option<String>,
     pub tier: String,
 }
@@ -69,7 +69,7 @@ pub struct ServedSwap {
 /// How much of the swap replaces how much of the original, by weight, volume or count.
 #[derive(Debug, Clone, PartialEq, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct Ratio {
+pub struct SwapRatio {
     pub stand_in: f64,
     pub original: f64,
     pub by: String,
@@ -89,7 +89,7 @@ pub struct PlannedSwap {
     pub part: String,
     pub original: String,
     pub instead: String,
-    pub ratio: Option<Ratio>,
+    pub ratio: Option<SwapRatio>,
     pub caveat: Option<String>,
 }
 

@@ -15,20 +15,19 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeSet;
 
-pub mod adapted;
 pub mod game;
-mod offer;
 mod plan;
 pub mod progress;
 mod ranking;
 mod routes;
+mod suggestion;
 #[cfg(test)]
 mod tests;
 
 pub use routes::router;
 
-pub use offer::{Offer, OfferContext};
 pub use ranking::{overlap_order, ranked, Ranked, MODEL_SHORT_LIST};
+pub use suggestion::{Suggestion, SuggestionContext};
 
 /// A graph recipe that the cook may make tonight.
 #[derive(Debug, Clone)]
@@ -45,15 +44,15 @@ pub struct Candidate {
     pub missing: Vec<String>,
     pub equipment: Vec<String>,
     /// The recipe written for this cook: the steps, the amounts and what changed.
-    pub adapted: adapted::Adapted,
+    pub recipe: crate::recipe::PreparedRecipe,
 }
 
-/// A listed swap applied tonight, named as in the app's `AppliedSwap`.
+/// A graph-listed swap applied tonight, before the foods receive display names.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AppliedSwap {
     pub removed: String,
     pub added: String,
-    pub ratio: Option<crate::graph::serving::Ratio>,
+    pub ratio: Option<crate::graph::serving::SwapRatio>,
     pub caveat: Option<String>,
 }
 

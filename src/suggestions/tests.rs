@@ -68,7 +68,7 @@ fn a_graph_allowed_swap_is_applied_to_a_safe_recipe_plan() {
     let swap = AppliedSwap {
         removed: "ingredient/white-wine".into(),
         added: "ingredient/chicken-stock".into(),
-        ratio: Some(crate::graph::serving::Ratio { by: "volume".into(), original: 1.0, stand_in: 1.0 }),
+        ratio: Some(crate::graph::serving::SwapRatio { by: "volume".into(), original: 1.0, stand_in: 1.0 }),
         caveat: Some(
             "Stock has none of the sharpness of wine. A squeeze of lemon at the end brings some of it back.".into(),
         ),
@@ -114,7 +114,7 @@ fn a_swap_at_hand_is_used_for_a_missing_graph_ingredient() {
     let swap = AppliedSwap {
         removed: "ingredient/sunflower-oil".into(),
         added: "ingredient/olive-oil".into(),
-        ratio: Some(crate::graph::serving::Ratio { by: "volume".into(), original: 1.0, stand_in: 1.0 }),
+        ratio: Some(crate::graph::serving::SwapRatio { by: "volume".into(), original: 1.0, stand_in: 1.0 }),
         caveat: Some("Its fruity flavour changes the finish. Keep it below the point where it smokes.".into()),
     };
     assert_eq!(pan_sauce.swaps, vec![swap]);
@@ -181,8 +181,8 @@ fn a_recipe_that_cannot_be_adapted_cleanly_is_not_offered() {
 fn an_offered_candidate_carries_the_recipe_written_for_the_cook() {
     let profile = Profile { avoid: ids(&["alcohol"]), ..Profile::default() };
     let pan_sauce = offered(&profile, &[]).remove(0);
-    let lines: Vec<&str> = pan_sauce.adapted.lines.iter().map(|line| line.food.as_str()).collect();
+    let lines: Vec<&str> = pan_sauce.recipe.lines.iter().map(|line| line.food.as_str()).collect();
     assert!(lines.contains(&"ingredient/chicken-stock"));
     assert!(!lines.contains(&"ingredient/white-wine"));
-    assert!(pan_sauce.adapted.steps.iter().any(|step| step.text.starts_with("Pour in the chicken stock")));
+    assert!(pan_sauce.recipe.steps.iter().any(|step| step.text.starts_with("Pour in the chicken stock")));
 }

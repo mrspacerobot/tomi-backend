@@ -13,7 +13,7 @@ mod steps;
 mod tests;
 
 pub use error::AdaptError;
-pub use source::{Amount, Temperature, Time, Unit};
+pub use source::{RecipeAmount, StepTemperature, StepTime, Unit};
 
 use crate::graph::serving::{PlannedSwap, RecipePlan};
 use crate::graph::Graph;
@@ -25,21 +25,21 @@ use steps::{adapted_steps, StepKit};
 
 /// The recipe for this cook, with graph ids where a food is meant. Names are put in when it is shown.
 #[derive(Debug, Clone)]
-pub struct Adapted {
-    pub yields: Amount,
-    pub lines: Vec<AdaptedLine>,
+pub struct PreparedRecipe {
+    pub yields: RecipeAmount,
+    pub lines: Vec<PreparedIngredient>,
     pub steps: Vec<AdaptedStep>,
     /// The swaps of lines that stay, in the recipe's order.
     pub swaps: Vec<PlannedSwap>,
-    pub left_out: Vec<LeftOutPart>,
+    pub left_out: Vec<OmittedPart>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct AdaptedLine {
+pub struct PreparedIngredient {
     pub part: String,
     /// The graph id of the food in use: the recipe's own, or its stand-in.
     pub food: String,
-    pub amount: Amount,
+    pub amount: RecipeAmount,
     pub forms: Vec<String>,
 }
 
@@ -49,14 +49,14 @@ pub struct AdaptedStep {
     /// Counted again from one, so a dropped step leaves no gap.
     pub number: usize,
     pub text: String,
-    pub time: Option<Time>,
-    pub temperature: Option<Temperature>,
+    pub time: Option<StepTime>,
+    pub temperature: Option<StepTemperature>,
     pub safety_points: Vec<String>,
 }
 
 /// A part the cook goes without, and the foods the recipe would have used for it.
 #[derive(Debug, Clone, PartialEq)]
-pub struct LeftOutPart {
+pub struct OmittedPart {
     pub part: String,
     pub foods: Vec<String>,
 }
@@ -67,7 +67,7 @@ pub struct Basis<'a> {
     pub avoided: &'a BTreeSet<String>,
 }
 
-pub fn adapt(recipe_id: &str, plan: &RecipePlan, basis: &Basis) -> Result<Adapted, AdaptError> {
+pub fn adapt(recipe_id: &str, plan: &RecipePlan, basis: &Basis) -> Result<PreparedRecipe, AdaptError> {
     let graph = basis.graph;
     let Some(served) = graph.serving.recipes.get(recipe_id) else {
         return Err(AdaptError::UnknownRecipe);
@@ -80,7 +80,7 @@ pub fn adapt(recipe_id: &str, plan: &RecipePlan, basis: &Basis) -> Result<Adapte
     let lines = used.iter().map(adapted_line).collect::<Result<Vec<_>, _>>()?;
     let swaps = used.iter().filter_map(|line| line.swap.cloned()).collect();
     let left_out = left_out_with_foods(&source, &left_out);
-    Ok(Adapted { yields: source.yields.clone(), lines, steps, swaps, left_out })
+    Ok(PreparedRecipe { yields: source.yields.clone(), lines, steps, swaps, left_out })
 }
 
 fn read_source(graph: &Graph, recipe_id: &str) -> Result<SourceRecipe, AdaptError> {
@@ -90,12 +90,12 @@ fn read_source(graph: &Graph, recipe_id: &str) -> Result<SourceRecipe, AdaptErro
     serde_json::from_value(thing.clone()).map_err(|_| AdaptError::Unreadable)
 }
 
-fn left_out_with_foods(source: &SourceRecipe, left_out: &BTreeSet<String>) -> Vec<LeftOutPart> {
+fn left_out_with_foods(source: &SourceRecipe, left_out: &BTreeSet<String>) -> Vec<OmittedPart> {
     left_out
         .iter()
         .map(|part| {
             let foods = source.ingredients.iter().filter(|line| &line.part == part);
-            LeftOutPart { part: part.clone(), foods: foods.map(|line| line.thing.clone()).collect() }
+            OmittedPart { part: part.clone(), foods: foods.map(|line| line.thing.clone()).collect() }
         })
         .collect()
 }

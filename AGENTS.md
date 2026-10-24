@@ -26,10 +26,11 @@ Report honestly: if a check fails or you skipped a step, say so.
 
 ```
 src/
-  profile.rs  scans.rs  suggestions.rs  options.rs  ingredients.rs  library.rs  graph.rs   one folder per feature
+  profile.rs  scans.rs  suggestions.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs   one folder per feature
   profile/      routes.rs (HTTP handlers), db.rs (queries), the pure rules, and their tests
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
-  suggestions/  routes.rs, the lesson rules, progress.rs and game.rs
+  suggestions/  routes.rs, suggestion.rs (the API answer), ranking, progress.rs and game.rs
+  recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
   kernel/       the vocabulary several features share: ids, language, display names
@@ -143,7 +144,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 
 ## The adapted recipe
 
-- **The cook's recipe is built in code, never by a model.** `suggestions::adapted` takes a graph recipe and its safe plan and writes the steps from the graph's step format (placeholders, plurals, clauses of left-out parts), scales amounts by the swap's ratio, and drops steps that end up empty. A model only reorders; it never writes, rewrites or checks a step.
+- **The cook's recipe is built in code, never by a model.** `recipe::adapt` takes a graph recipe and its safe plan and writes the steps from the graph's step format (placeholders, plurals, clauses of left-out parts), scales amounts by the swap's ratio, and drops steps that end up empty. A model only reorders; it never writes, rewrites or checks a step.
 - **It is checked again, and fails closed.** The finished ingredient list is compared with the cook's avoided facts using the graph's own lists, and a swap or left-out part the graph does not list is refused. A recipe that cannot be adapted cleanly is not offered; it is logged with the recipe id and a reason word, never a food.
 - **The renderer matches the graph's reference.** `tests/graph_vectors.rs` writes every `step_text_cases` vector of the pinned release and of the committed fixture and compares the words exactly. A change to the step format means a new artifact schema version here too.
 - **The artifact schema is read exactly.** This build reads schema 3 only. An older graph is refused at start, because its steps are prose that would still name a swapped-out food.

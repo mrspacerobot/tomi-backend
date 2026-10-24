@@ -1,5 +1,5 @@
 use super::*;
-use crate::graph::serving::{PlannedSwap, Ratio};
+use crate::graph::serving::{PlannedSwap, SwapRatio};
 use crate::graph::steps::StepError;
 use crate::graph::test_helpers::{change_thing, fixture_graph};
 use serde_json::json;
@@ -20,11 +20,11 @@ fn avoiding(facts: &[&str]) -> BTreeSet<String> {
     facts.iter().map(|fact| fact.to_string()).collect()
 }
 
-fn adapted(graph: &Graph, recipe: &str, plan: &RecipePlan) -> Result<Adapted, AdaptError> {
+fn adapted(graph: &Graph, recipe: &str, plan: &RecipePlan) -> Result<PreparedRecipe, AdaptError> {
     adapt(recipe, plan, &Basis { graph, avoided: &BTreeSet::new() })
 }
 
-fn texts(adapted: &Adapted) -> Vec<&str> {
+fn texts(adapted: &PreparedRecipe) -> Vec<&str> {
     adapted.steps.iter().map(|step| step.text.as_str()).collect()
 }
 
@@ -59,7 +59,7 @@ fn a_swap_is_written_into_every_step_that_used_the_food() {
 
 #[test]
 fn a_swap_is_listed_with_its_caveat_and_ratio() {
-    let ratio = Ratio { stand_in: 1.0, original: 1.0, by: "volume".into() };
+    let ratio = SwapRatio { stand_in: 1.0, original: 1.0, by: "volume".into() };
     let wine = PlannedSwap {
         ratio: Some(ratio),
         caveat: Some("less sharp".into()),
@@ -91,29 +91,29 @@ fn a_part_left_out_leaves_no_line_no_number_gap_and_is_listed() {
     assert_eq!(numbers, (1..=8).collect::<Vec<_>>());
     assert_eq!(
         without.left_out,
-        vec![LeftOutPart { part: "spinach".into(), foods: vec!["ingredient/spinach".into()] }]
+        vec![OmittedPart { part: "spinach".into(), foods: vec!["ingredient/spinach".into()] }]
     );
 }
 
 #[test]
 fn a_ratio_scales_the_amount_and_a_missing_ratio_leaves_it() {
     let graph = fixture_graph();
-    let oil = |ratio: Option<Ratio>| PlannedSwap {
+    let oil = |ratio: Option<SwapRatio>| PlannedSwap {
         ratio,
         ..swap("sunflower-oil", "ingredient/sunflower-oil", "ingredient/olive-oil")
     };
     let amount_of =
-        |made: &Adapted| made.lines.iter().find(|line| line.part == "sunflower-oil").unwrap().amount.clone();
+        |made: &PreparedRecipe| made.lines.iter().find(|line| line.part == "sunflower-oil").unwrap().amount.clone();
     let own = amount_of(&adapted(&graph, PAN_SAUCE, &RecipePlan::default()).unwrap());
-    let half = Some(Ratio { stand_in: 1.0, original: 2.0, by: "volume".into() });
+    let half = Some(SwapRatio { stand_in: 1.0, original: 2.0, by: "volume".into() });
     let scaled = amount_of(&adapted(&graph, PAN_SAUCE, &plan(vec![oil(half)], &[])).unwrap());
-    assert_eq!(scaled, Amount { value: own.value / 2.0, unit: own.unit });
+    assert_eq!(scaled, RecipeAmount { value: own.value / 2.0, unit: own.unit });
     assert_eq!(amount_of(&adapted(&graph, PAN_SAUCE, &plan(vec![oil(None)], &[])).unwrap()), own);
 }
 
 #[test]
 fn a_ratio_that_measures_the_line_another_way_is_refused() {
-    let ratio = Some(Ratio { stand_in: 2.0, original: 1.0, by: "weight".into() });
+    let ratio = Some(SwapRatio { stand_in: 2.0, original: 1.0, by: "weight".into() });
     let oil = PlannedSwap { ratio, ..swap("sunflower-oil", "ingredient/sunflower-oil", "ingredient/olive-oil") };
     let found = adapted(&fixture_graph(), PAN_SAUCE, &plan(vec![oil], &[]));
     assert_eq!(found.unwrap_err(), AdaptError::Ratio);
@@ -121,7 +121,7 @@ fn a_ratio_that_measures_the_line_another_way_is_refused() {
 
 #[test]
 fn a_ratio_of_one_changes_no_amount_however_it_is_measured() {
-    let ratio = Some(Ratio { stand_in: 1.0, original: 1.0, by: "weight".into() });
+    let ratio = Some(SwapRatio { stand_in: 1.0, original: 1.0, by: "weight".into() });
     let oil = PlannedSwap { ratio, ..swap("sunflower-oil", "ingredient/sunflower-oil", "ingredient/olive-oil") };
     let own = adapted(&fixture_graph(), PAN_SAUCE, &RecipePlan::default()).unwrap();
     let made = adapted(&fixture_graph(), PAN_SAUCE, &plan(vec![oil], &[])).unwrap();
@@ -130,7 +130,7 @@ fn a_ratio_of_one_changes_no_amount_however_it_is_measured() {
 
 #[test]
 fn a_ratio_that_is_not_a_positive_number_is_refused() {
-    let ratio = Some(Ratio { stand_in: 1.0, original: 0.0, by: "volume".into() });
+    let ratio = Some(SwapRatio { stand_in: 1.0, original: 0.0, by: "volume".into() });
     let oil = PlannedSwap { ratio, ..swap("sunflower-oil", "ingredient/sunflower-oil", "ingredient/olive-oil") };
     let found = adapted(&fixture_graph(), PAN_SAUCE, &plan(vec![oil], &[]));
     assert_eq!(found.unwrap_err(), AdaptError::Ratio);
