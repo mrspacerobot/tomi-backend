@@ -1,7 +1,7 @@
 //! Teaching introductions and quizzes read unchanged from the pinned graph.
 
 use super::Candidate;
-use crate::graph::Graph;
+use crate::graph::{Channel, Graph};
 use crate::kernel::language::Language;
 use serde::Serialize;
 
@@ -58,6 +58,10 @@ fn from_technique(id: &str, graph: &Graph, language: &Language) -> Option<Teachi
     if !source.permitted(graph.channel, language) {
         return None;
     }
+    let quiz = quiz::read(thing, id, graph.channel);
+    if !quiz_requirement_met(graph.channel, quiz.is_some()) {
+        return None;
+    }
     Some(Teaching {
         schema_version: 1,
         graph_version: graph.version.clone(),
@@ -65,6 +69,15 @@ fn from_technique(id: &str, graph: &Graph, language: &Language) -> Option<Teachi
         language: "en",
         technique: source.identity(id, language),
         introduction: source.intro,
-        quiz: quiz::read(thing, id, graph.channel),
+        quiz,
     })
+}
+
+/// Production teaches a technique only with its reviewed quiz, so a gap in the content is refused, not shown.
+/// A draft graph may still lack one while the content is being written.
+fn quiz_requirement_met(channel: Channel, has_quiz: bool) -> bool {
+    match channel {
+        Channel::Draft => true,
+        Channel::Production => has_quiz,
+    }
 }
