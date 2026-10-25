@@ -1,9 +1,7 @@
 //! `POST /v1/lessons/suggest`: graph recipes the cook can make tonight.
 //!
-//! Code decides what may be offered. The model only reorders the short
-//! list; without it, or when it fails, the order is by what the cook has.
+//! Code selects and ranks eligible dishes from the cook's confirmed foods and pantry.
 
-use crate::ai::RankQuestion;
 use crate::error::AppError;
 use crate::graph::Graph;
 use crate::http::{json_body, Caller, CookLanguage};
@@ -12,9 +10,7 @@ use crate::kernel::language::Language;
 use crate::profile::{read as read_profile, Profile};
 use crate::scans::{self, Confirmation};
 use crate::suggestions::progress::{open_levels, CookCounts};
-use crate::suggestions::{
-    self, overlap_order, ranked, Candidate, Ranked, Suggestion, SuggestionContext, Tonight, MODEL_SHORT_LIST,
-};
+use crate::suggestions::{self, overlap_order, Candidate, Suggestion, SuggestionContext, Tonight};
 use crate::AppState;
 use axum::extract::rejection::JsonRejection;
 use axum::routing::post;
@@ -48,7 +44,7 @@ struct SuggestionsRequest {
 struct SuggestionsResponse {
     graph_version: String,
     graph_channel: &'static str,
-    /// `model` or `overlap`, so the app can tell how the order was made.
+    /// Kept for API compatibility. This value is always `overlap`.
     ranked_by: &'static str,
     special: Option<Suggestion>,
     alternatives: Vec<Suggestion>,
@@ -68,9 +64,7 @@ async fn suggest(
     let profile = read_profile(&state.db, user_id).await?.profile;
     let input = CandidateInput { request: &request, profile: &profile };
     let by_overlap = candidates(&state, graph, input);
-    let (model, ranked_by) = model_order(&state, &by_overlap, &profile).await;
-    let order = ranked(by_overlap, &model);
-    Ok(Json(response(graph, order, Answer { ranked_by, profile: &profile, language: &language })))
+    Ok(Json(response(graph, by_overlap, Answer { profile: &profile, language: &language })))
 }
 
 fn validate_size(request: &SuggestionsRequest) -> Result<(), AppError> {
@@ -88,8 +82,7 @@ fn validate_ingredients(graph: &Graph, request: &SuggestionsRequest) -> Result<(
     Err(AppError::Invalid(vec!["ingredients must be listed by the cooking graph".into()]))
 }
 
-/// Every recipe the cook may make tonight, fewest to buy first. Until the
-/// server keeps the cook log, only experience grants open levels.
+/// Every eligible dish, deterministically ordered by confirmed ingredients and pantry overlap.
 struct CandidateInput<'a> {
     request: &'a SuggestionsRequest,
     profile: &'a Profile,
@@ -126,38 +119,20 @@ fn available(state: &AppState, request: &SuggestionsRequest, profile: &Profile) 
     request.ingredients.iter().cloned().chain(at_home).collect()
 }
 
-/// The model's order over the short list, or none when there is nothing to
-/// choose between or the model is unavailable.
-async fn model_order(state: &AppState, by_overlap: &[Candidate], profile: &Profile) -> (Vec<Ranked>, &'static str) {
-    if by_overlap.len() < 2 {
-        return (Vec::new(), "overlap");
-    }
-    let short_list = &by_overlap[..by_overlap.len().min(MODEL_SHORT_LIST)];
-    let question = RankQuestion { candidates: short_list, profile };
-    match state.ai.rank_recipes(question).await {
-        Ok(model) => (model, "model"),
-        Err(error) => {
-            error.log(state.ai.model_name(), "recipe_ranking");
-            (Vec::new(), "overlap")
-        }
-    }
-}
-
 /// How the answer was made, and for whom.
 struct Answer<'a> {
-    ranked_by: &'static str,
     profile: &'a Profile,
     language: &'a Language,
 }
 
-fn response(graph: &Graph, order: Vec<(Candidate, Option<String>)>, answer: Answer) -> SuggestionsResponse {
+fn response(graph: &Graph, order: Vec<Candidate>, answer: Answer) -> SuggestionsResponse {
     let context = SuggestionContext { graph, profile: answer.profile, language: answer.language };
-    let to_suggestion = |(candidate, reason): (Candidate, Option<String>)| Suggestion::new(candidate, reason, &context);
+    let to_suggestion = |candidate: Candidate| Suggestion::new(candidate, None, &context);
     let mut suggestions = order.into_iter().filter_map(to_suggestion).take(MAX_SUGGESTIONS);
     SuggestionsResponse {
         graph_version: graph.version.clone(),
         graph_channel: graph.channel.as_str(),
-        ranked_by: answer.ranked_by,
+        ranked_by: "overlap",
         special: suggestions.next(),
         alternatives: suggestions.collect(),
     }

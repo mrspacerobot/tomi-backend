@@ -2,16 +2,14 @@
 
 use std::collections::BTreeMap;
 use std::sync::Mutex;
-use tomi_api::ai::{Ai, AiError, AiFuture, FridgeQuestion, RankQuestion};
+use tomi_api::ai::{Ai, AiFuture, FridgeQuestion};
 use tomi_api::scans::fridge::ModelItem;
 use tomi_api::storage::{PhotoStore, StoreFuture, StoredFile};
-use tomi_api::suggestions::Ranked;
 
 /// Sees what it is told to see, and ranks as it is told. A ranking of
 /// `None` stands for a model that cannot be reached.
 pub struct FakeAi {
     pub seen: Vec<ModelItem>,
-    pub ranking: Option<Vec<Ranked>>,
 }
 
 impl Default for FakeAi {
@@ -22,7 +20,7 @@ impl Default for FakeAi {
             confidence: 0.9,
         };
         let seen = vec![item("eggs", Some("egg")), item("a jar of pesto", Some("pesto"))];
-        FakeAi { seen, ranking: None }
+        FakeAi { seen }
     }
 }
 
@@ -33,10 +31,6 @@ impl Ai for FakeAi {
 
     fn read_fridge<'a>(&'a self, _question: FridgeQuestion<'a>) -> AiFuture<'a, Vec<ModelItem>> {
         Box::pin(async { Ok(self.seen.clone()) })
-    }
-
-    fn rank_recipes<'a>(&'a self, _question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>> {
-        Box::pin(async { self.ranking.clone().ok_or(AiError::Unreachable) })
     }
 }
 

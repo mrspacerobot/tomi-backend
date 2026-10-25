@@ -1,6 +1,6 @@
 //! Graph recipes a cook may make tonight with their ingredients and restrictions.
 //!
-//! Code decides what may be offered; a model may only reorder that list.
+//! Code selects and ranks graph dishes using the cook's data.
 //! The steps follow Tomi's plan: filter by open skill level, cuisine,
 //! kitchen, diet and avoid list, apply only graph-listed swaps, check
 //! the final dish again, then rank.
@@ -26,7 +26,7 @@ mod tests;
 
 pub use routes::router;
 
-pub use ranking::{overlap_order, ranked, Ranked, MODEL_SHORT_LIST};
+pub use ranking::overlap_order;
 pub use suggestion::{Suggestion, SuggestionContext};
 
 /// A graph recipe that the cook may make tonight.

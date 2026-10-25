@@ -2,13 +2,11 @@
 
 use crate::helpers::*;
 use axum::http::StatusCode;
-use serde_json::json;
 use sqlx::PgPool;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
-use tomi_api::ai::{Ai, AiError, AiFuture, FridgeQuestion, NoAi, RankQuestion};
+use tomi_api::ai::{Ai, AiError, AiFuture, FridgeQuestion, NoAi};
 use tomi_api::scans::fridge::ModelItem;
-use tomi_api::suggestions::Ranked;
 use tracing::instrument::WithSubscriber;
 
 #[derive(Clone, Default)]
@@ -61,10 +59,6 @@ impl Ai for FailingAi {
     fn read_fridge<'a>(&'a self, _question: FridgeQuestion<'a>) -> AiFuture<'a, Vec<ModelItem>> {
         Box::pin(async { Err(self.0.clone()) })
     }
-
-    fn rank_recipes<'a>(&'a self, _question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>> {
-        Box::pin(async { Err(self.0.clone()) })
-    }
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -79,20 +73,4 @@ async fn a_rejected_scan_logs_http_status_and_its_specific_failure_code(pool: Pg
     assert!(logs.contains(r#""provider_http_status":400"#), "{logs}");
     assert!(logs.contains(r#""model":"fixture-model""#), "{logs}");
     assert!(!logs.contains("private-test-key"));
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn failed_recipe_ranking_logs_the_cause_and_keeps_the_overlap_fallback(pool: PgPool) {
-    let ai = Arc::new(FailingAi(AiError::Rejected { status: 429 }));
-    let setup = Setup { ai, library: library_without_prerequisites(), ..Setup::default() };
-    let app = server_with(pool, setup);
-    let cook = crate::suggestions::comfortable_cook(&app, json!({})).await;
-    let buffer = LogBuffer::default();
-    let reply = suggest(&app, &cook, json!({"ingredients": []})).with_subscriber(buffer.subscriber()).await;
-    assert_eq!(reply.status, StatusCode::OK);
-    assert_eq!(reply.body["rankedBy"], "overlap");
-    let logs = buffer.text();
-    assert!(logs.contains(r#""operation":"recipe_ranking""#), "{logs}");
-    assert!(logs.contains(r#""error_code":"ai_provider_rate_limited""#), "{logs}");
-    assert!(!logs.contains(&cook));
 }
