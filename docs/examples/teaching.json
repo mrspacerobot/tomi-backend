@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "graphVersion": "fixture",
+  "graphChannel": "draft",
+  "language": "en",
+  "technique": {
+    "id": "technique/scramble",
+    "name": "Scramble",
+    "tier": "drafted"
+  },
+  "introduction": {
+    "concept": "Gentle curds",
+    "what": "This gentle scramble method stirs beaten eggs into small, soft, creamy curds.",
+    "why": "It teaches you to respond to texture by stirring and moving the pan away from excess heat.",
+    "tier": "drafted"
+  },
+  "quiz": [
+    {
+      "id": "technique/scramble/quiz/purpose",
+      "question": "Which texture is the aim of this scramble method?",
+      "choices": [
+        "Small, soft, creamy curds.",
+        "Large, dry, rubbery curds.",
+        "A firm sheet for rolling."
+      ],
+      "answerIndex": 0,
+      "explanation": "This gentle method aims for small, soft, creamy curds rather than large, dry ones.",
+      "tier": "drafted"
+    },
+    {
+      "id": "technique/scramble/quiz/method",
+      "question": "How do you stir the eggs for this gentle scramble?",
+      "choices": [
+        "Only across the surface, leaving the base untouched.",
+        "Continuously, scraping the bottom and corners.",
+        "Only after a browned layer has formed."
+      ],
+      "answerIndex": 1,
+      "explanation": "Stir continuously and scrape the bottom and corners so you do not leave eggs sitting against the hot pan.",
+      "tier": "drafted"
+    },
+    {
+      "id": "technique/scramble/quiz/observation",
+      "question": "Which spoon trail matches the texture described here?",
+      "choices": [
+        "A dry gap that never closes.",
+        "No trail in a completely watery mixture.",
+        "A trail that closes slowly."
+      ],
+      "answerIndex": 2,
+      "explanation": "A spoon trail that closes slowly matches the thick, creamy texture of this scramble.",
+      "tier": "drafted"
+    },
+    {
+      "id": "technique/scramble/quiz/correction",
+      "question": "The curds are forming too fast. What would you do?",
+      "choices": [
+        "Lift the pan off the heat and keep stirring.",
+        "Keep the pan on the heat and stir faster.",
+        "Reduce stirring so the curds have time to join together."
+      ],
+      "answerIndex": 0,
+      "explanation": "Fast-forming curds signal too much heat for this gentle method. Lift the pan away and keep stirring.",
+      "tier": "drafted"
+    }
+  ]
+}

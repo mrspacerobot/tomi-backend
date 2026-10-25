@@ -21,6 +21,7 @@ pub mod progress;
 mod ranking;
 mod routes;
 mod suggestion;
+mod teaching;
 #[cfg(test)]
 mod tests;
 

@@ -1,0 +1,323 @@
+{
+  "recipeId": "recipe/soft-scrambled-eggs",
+  "title": "Soft scrambled eggs",
+  "sourceRecipe": {
+    "aliases": {
+      "fr": [
+        "Œufs brouillés"
+      ]
+    },
+    "equipment": [
+      "equipment/stovetop",
+      "equipment/saucepan",
+      "equipment/mixing-bowl",
+      "equipment/whisk",
+      "equipment/spatula"
+    ],
+    "id": "recipe/soft-scrambled-eggs",
+    "ingredients": [
+      {
+        "amount": {
+          "unit": "piece",
+          "value": 5
+        },
+        "forms": [],
+        "part": "egg",
+        "thing": "ingredient/egg"
+      },
+      {
+        "amount": {
+          "unit": "gram",
+          "value": 30
+        },
+        "forms": [],
+        "part": "butter",
+        "thing": "ingredient/butter"
+      },
+      {
+        "amount": {
+          "unit": "tablespoon",
+          "value": 1
+        },
+        "forms": [],
+        "part": "enrichment",
+        "thing": "ingredient/cream"
+      },
+      {
+        "amount": {
+          "unit": "teaspoon",
+          "value": 0.25
+        },
+        "forms": [],
+        "part": "salt",
+        "thing": "ingredient/salt"
+      }
+    ],
+    "makes": "dish/soft-scrambled-eggs",
+    "names": {
+      "en": "Soft scrambled eggs"
+    },
+    "steps": [
+      {
+        "makes": [],
+        "safety_points": [],
+        "technique": "technique/whisk",
+        "temperature": null,
+        "text": "Crack the {egg:plural} into a bowl, add the {salt} and whisk until no streaks of white are left.",
+        "time": null,
+        "with": [
+          "ingredient/salt"
+        ],
+        "works_on": [
+          "ingredient/egg"
+        ]
+      },
+      {
+        "makes": [],
+        "safety_points": [],
+        "technique": "technique/scramble",
+        "temperature": null,
+        "text": "Melt most of the {butter} in a small pan over low heat until it foams, and keep the rest cold. Pour in the {egg:plural} and stir without stopping, scraping the bottom and the corners. Lift the pan off the heat whenever curds form too fast.",
+        "time": {
+          "from": 4,
+          "to": 6,
+          "unit": "minute"
+        },
+        "with": [
+          "ingredient/butter"
+        ],
+        "works_on": [
+          "ingredient/egg"
+        ]
+      },
+      {
+        "makes": [],
+        "safety_points": [
+          "raw-or-lightly-cooked-egg"
+        ],
+        "technique": "technique/scramble",
+        "temperature": null,
+        "text": "While the {egg:plural} still look wet and loose, take the pan off the heat and stir in the cold {butter} and the {enrichment} to stop the cooking. Serve at once on warm plates.",
+        "time": null,
+        "with": [
+          "ingredient/butter",
+          "ingredient/cream"
+        ],
+        "works_on": [
+          "ingredient/egg"
+        ]
+      }
+    ],
+    "tier": "drafted",
+    "yields": {
+      "unit": "serving",
+      "value": 2
+    }
+  },
+  "recipe": {
+    "yields": {
+      "value": 2,
+      "unit": "serving"
+    },
+    "ingredients": [
+      {
+        "part": "egg",
+        "id": "ingredient/egg",
+        "name": "Egg",
+        "amount": {
+          "value": 5,
+          "unit": "piece"
+        },
+        "forms": []
+      },
+      {
+        "part": "butter",
+        "id": "ingredient/butter",
+        "name": "Butter",
+        "amount": {
+          "value": 30,
+          "unit": "gram"
+        },
+        "forms": []
+      },
+      {
+        "part": "enrichment",
+        "id": "ingredient/cream",
+        "name": "Cream",
+        "amount": {
+          "value": 1,
+          "unit": "tablespoon"
+        },
+        "forms": []
+      },
+      {
+        "part": "salt",
+        "id": "ingredient/salt",
+        "name": "Salt",
+        "amount": {
+          "value": 0.25,
+          "unit": "teaspoon"
+        },
+        "forms": []
+      }
+    ],
+    "steps": [
+      {
+        "number": 1,
+        "text": "Crack the eggs into a bowl, add the salt and whisk until no streaks of white are left.",
+        "time": null,
+        "temperature": null,
+        "safetyPoints": []
+      },
+      {
+        "number": 2,
+        "text": "Melt most of the butter in a small pan over low heat until it foams, and keep the rest cold. Pour in the eggs and stir without stopping, scraping the bottom and the corners. Lift the pan off the heat whenever curds form too fast.",
+        "time": {
+          "from": 4,
+          "to": 6,
+          "unit": "minute"
+        },
+        "temperature": null,
+        "safetyPoints": []
+      },
+      {
+        "number": 3,
+        "text": "While the eggs still look wet and loose, take the pan off the heat and stir in the cold butter and the cream to stop the cooking. Serve at once on warm plates.",
+        "time": null,
+        "temperature": null,
+        "safetyPoints": [
+          "raw-or-lightly-cooked-egg"
+        ]
+      }
+    ]
+  },
+  "changes": {
+    "swaps": [],
+    "leftOut": []
+  },
+  "skill": {
+    "id": "eggs",
+    "name": "Eggs"
+  },
+  "level": {
+    "number": 1,
+    "name": "Soft scramble"
+  },
+  "safePlan": {
+    "ingredients": [
+      {
+        "id": "ingredient/egg",
+        "name": "Egg"
+      },
+      {
+        "id": "ingredient/butter",
+        "name": "Butter"
+      },
+      {
+        "id": "ingredient/cream",
+        "name": "Cream"
+      },
+      {
+        "id": "ingredient/salt",
+        "name": "Salt"
+      }
+    ],
+    "substitutions": [],
+    "omittedParts": [],
+    "missing": [],
+    "equipment": [
+      {
+        "id": "equipment/stovetop",
+        "name": "Stovetop"
+      },
+      {
+        "id": "equipment/saucepan",
+        "name": "Saucepan"
+      },
+      {
+        "id": "equipment/mixing-bowl",
+        "name": "Mixing bowl"
+      },
+      {
+        "id": "equipment/whisk",
+        "name": "Whisk"
+      },
+      {
+        "id": "equipment/spatula",
+        "name": "Spatula"
+      }
+    ]
+  },
+  "reason": null,
+  "checked": {
+    "diet": null,
+    "avoid": []
+  },
+  "teaching": {
+    "schemaVersion": 1,
+    "graphVersion": "2026.10.22-8aa9532",
+    "graphChannel": "draft",
+    "language": "en",
+    "technique": {
+      "id": "technique/scramble",
+      "name": "Scramble",
+      "tier": "drafted"
+    },
+    "introduction": {
+      "concept": "Gentle curds",
+      "what": "This gentle scramble method stirs beaten eggs into small, soft, creamy curds.",
+      "why": "It teaches you to respond to texture by stirring and moving the pan away from excess heat.",
+      "tier": "drafted"
+    },
+    "quiz": [
+      {
+        "id": "technique/scramble/quiz/purpose",
+        "question": "Which texture is the aim of this scramble method?",
+        "choices": [
+          "Small, soft, creamy curds.",
+          "Large, dry, rubbery curds.",
+          "A firm sheet for rolling."
+        ],
+        "answerIndex": 0,
+        "explanation": "This gentle method aims for small, soft, creamy curds rather than large, dry ones.",
+        "tier": "drafted"
+      },
+      {
+        "id": "technique/scramble/quiz/method",
+        "question": "How do you stir the eggs for this gentle scramble?",
+        "choices": [
+          "Only across the surface, leaving the base untouched.",
+          "Continuously, scraping the bottom and corners.",
+          "Only after a browned layer has formed."
+        ],
+        "answerIndex": 1,
+        "explanation": "Stir continuously and scrape the bottom and corners so you do not leave eggs sitting against the hot pan.",
+        "tier": "drafted"
+      },
+      {
+        "id": "technique/scramble/quiz/observation",
+        "question": "Which spoon trail matches the texture described here?",
+        "choices": [
+          "A dry gap that never closes.",
+          "No trail in a completely watery mixture.",
+          "A trail that closes slowly."
+        ],
+        "answerIndex": 2,
+        "explanation": "A spoon trail that closes slowly matches the thick, creamy texture of this scramble.",
+        "tier": "drafted"
+      },
+      {
+        "id": "technique/scramble/quiz/correction",
+        "question": "The curds are forming too fast. What would you do?",
+        "choices": [
+          "Lift the pan off the heat and keep stirring.",
+          "Keep the pan on the heat and stir faster.",
+          "Reduce stirring so the curds have time to join together."
+        ],
+        "answerIndex": 0,
+        "explanation": "Fast-forming curds signal too much heat for this gentle method. Lift the pan away and keep stirring.",
+        "tier": "drafted"
+      }
+    ]
+  }
+}

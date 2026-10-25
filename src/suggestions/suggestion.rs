@@ -27,6 +27,8 @@ pub struct Suggestion {
     pub safe_plan: SafePlan,
     pub reason: Option<String>,
     pub checked: CheckedRestrictions,
+    /// Optional graph teaching; an unavailable introduction does not hide the checked recipe.
+    pub teaching: Option<super::teaching::Teaching>,
 }
 
 #[derive(Debug, Serialize)]
@@ -81,9 +83,10 @@ pub struct SuggestionContext<'a> {
 impl Suggestion {
     pub fn new(candidate: Candidate, reason: Option<String>, context: &SuggestionContext) -> Option<Self> {
         let (skill, level) = suggestion_skill_and_level(&candidate, context)?;
-        let safe_plan = safe_plan(&candidate, context.graph, context.language)?;
         let (recipe, changes) = recipe::adaptation(&candidate, context.graph, context.language)?;
         Some(Suggestion {
+            teaching: super::teaching::for_candidate(&candidate, context.graph, context.language),
+            safe_plan: safe_plan(&candidate, context.graph, context.language)?,
             title: localized(&candidate.title, context.language),
             recipe_id: candidate.recipe_id,
             source_recipe: candidate.source_recipe,
@@ -91,7 +94,6 @@ impl Suggestion {
             changes,
             skill,
             level,
-            safe_plan,
             reason,
             checked: CheckedRestrictions { diet: context.profile.diet.clone(), avoid: context.profile.avoid.clone() },
         })

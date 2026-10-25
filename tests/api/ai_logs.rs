@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use serde_json::json;
 use sqlx::PgPool;
 use std::io::{self, Write};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Once};
 use tomi_api::ai::{Ai, AiError, AiFuture, FridgeQuestion, NoAi, RankQuestion};
 use tomi_api::scans::fridge::ModelItem;
 use tomi_api::suggestions::Ranked;
@@ -16,6 +16,9 @@ struct LogBuffer(Arc<Mutex<Vec<u8>>>);
 
 impl LogBuffer {
     fn subscriber(&self) -> impl tracing::Subscriber + Send + Sync + 'static {
+        // A permanent registry keeps callsite interest enabled while parallel scoped captures come and go.
+        static LOGGING: Once = Once::new();
+        LOGGING.call_once(|| tracing::subscriber::set_global_default(tracing_subscriber::registry()).unwrap());
         let writer = self.clone();
         tracing_subscriber::fmt().json().with_writer(move || writer.clone()).finish()
     }

@@ -74,6 +74,12 @@ falls back to typing. Without a graph it is `503 graph_unavailable`.
 
 ### Tonight's suggestions
 
+Each suggestion can also carry optional graph teaching content for its offered technique: the introduction and
+validated quiz questions, with explicit content tiers and the graph identity. Missing teaching leaves the recipe
+browsable. Substitutions and omissions make teaching unavailable until their compatibility has been reviewed.
+See [the teaching contract](docs/teaching.md) and [its example](docs/examples/teaching.json). This first delivery
+supplies introduction/preparation content; guided sessions and completion remain separate deliveries.
+
 ```json
 { "ingredients": ["egg", "spinach"], "scanId": "…", "staplesLeftOut": ["flour"] }
 ```
