@@ -33,3 +33,26 @@ async fn an_invalid_question_identity_makes_the_quiz_unavailable(pool: PgPool) {
     assert!(teaching["introduction"].is_object());
     assert_eq!(teaching["quiz"], Value::Null);
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn a_malformed_technique_identity_refuses_teaching(pool: PgPool) {
+    let graph = fixtures::changed(|body| fixtures::with_variant(body, "technique/not valid"));
+    assert_eq!(offer(pool, graph).await["teaching"], Value::Null);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn an_unreadable_localized_technique_name_refuses_teaching(pool: PgPool) {
+    let graph = fixtures::changed(|body| body["things"][TECHNIQUE]["names"]["fr"] = json!(" "));
+    let app = server_with(pool, Setup { graph: Some(graph), ..Setup::default() });
+    let body = json!({"ingredients": ["egg", "butter", "cream", "salt"]}).to_string().into_bytes();
+    let cook = new_cook();
+    let request = Call {
+        method: axum::http::Method::POST,
+        path: "/v1/lessons/suggest",
+        token: Some(&cook),
+        body: Some(("application/json", body)),
+    };
+    let reply = call_in(&app, request, "fr").await;
+    assert!(reply.body["special"]["recipe"].is_object());
+    assert_eq!(reply.body["special"]["teaching"], Value::Null);
+}

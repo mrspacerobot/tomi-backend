@@ -50,7 +50,10 @@ pub fn reviewed(body: &mut Value) {
 }
 
 pub fn variant(body: &mut Value) {
-    let id = "technique/scramble-variant";
+    with_variant(body, "technique/scramble-variant");
+}
+
+pub fn with_variant(body: &mut Value, id: &str) {
     body["things"][id] = body["things"][TECHNIQUE].clone();
     body["things"][id]["variant_of"] = json!([{"thing": TECHNIQUE}]);
     body["things"][id]["id"] = json!(id);
