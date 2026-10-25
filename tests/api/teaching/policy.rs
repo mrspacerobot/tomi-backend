@@ -23,14 +23,32 @@ async fn an_unknown_intro_tier_refuses_teaching(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn a_production_quiz_below_reviewed_is_unavailable(pool: PgPool) {
+async fn a_production_quiz_below_reviewed_refuses_teaching(pool: PgPool) {
     let graph = fixtures::changed(|body| {
         fixtures::reviewed(body);
         body["things"][TECHNIQUE]["quiz"][0]["tier"] = json!("sourced");
     });
-    let teaching = &offer(pool, graph).await["teaching"];
-    assert!(teaching["introduction"].is_object());
-    assert_eq!(teaching["quiz"], Value::Null);
+    assert_eq!(offer(pool, graph).await["teaching"], Value::Null);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn a_production_technique_without_a_quiz_refuses_teaching(pool: PgPool) {
+    for quiz in [Value::Null, json!([])] {
+        let graph = fixtures::changed(|body| {
+            fixtures::reviewed(body);
+            body["things"][TECHNIQUE]["quiz"] = quiz.clone();
+        });
+        assert_eq!(offer(pool.clone(), graph).await["teaching"], Value::Null, "{quiz}");
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn a_production_technique_without_a_quiz_keeps_browsing(pool: PgPool) {
+    let graph = fixtures::changed(|body| {
+        fixtures::reviewed(body);
+        body["things"][TECHNIQUE]["quiz"] = Value::Null;
+    });
+    assert!(offer(pool, graph).await["recipe"]["steps"].is_array());
 }
 
 #[sqlx::test(migrations = "./migrations")]

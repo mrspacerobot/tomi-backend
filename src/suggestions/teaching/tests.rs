@@ -27,3 +27,11 @@ fn an_omitted_part_requires_reviewed_teaching_compatibility() {
     candidate.recipe.left_out.push(crate::recipe::OmittedPart { part: "garnish".into(), foods: vec![] });
     assert!(for_candidate(&candidate, &graph, &Language::english()).is_none());
 }
+
+#[test]
+fn production_requires_a_quiz_and_a_draft_does_not() {
+    assert!(!quiz_requirement_met(Channel::Production, false));
+    assert!(quiz_requirement_met(Channel::Production, true));
+    assert!(quiz_requirement_met(Channel::Draft, false));
+    assert!(quiz_requirement_met(Channel::Draft, true));
+}
