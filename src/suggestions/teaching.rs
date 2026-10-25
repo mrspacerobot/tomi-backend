@@ -54,10 +54,7 @@ fn compatible(candidate: &Candidate, graph: &Graph) -> bool {
 
 fn from_technique(id: &str, graph: &Graph, language: &Language) -> Option<Teaching> {
     let thing = graph.thing(id)?;
-    let source: TechniqueSource = serde_json::from_value(thing.clone()).ok()?;
-    if !source.permitted(graph.channel, language) {
-        return None;
-    }
+    let source = permitted_source(thing, graph.channel, language)?;
     let quiz = quiz::read(thing, id, graph.channel);
     if !quiz_requirement_met(graph.channel, quiz.is_some()) {
         return None;
@@ -71,6 +68,11 @@ fn from_technique(id: &str, graph: &Graph, language: &Language) -> Option<Teachi
         introduction: source.intro,
         quiz,
     })
+}
+
+fn permitted_source(thing: &serde_json::Value, channel: Channel, language: &Language) -> Option<TechniqueSource> {
+    let source: TechniqueSource = serde_json::from_value(thing.clone()).ok()?;
+    source.permitted(channel, language).then_some(source)
 }
 
 /// Production teaches a technique only with its reviewed quiz, so a gap in the content is refused, not shown.
