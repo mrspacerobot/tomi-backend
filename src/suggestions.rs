@@ -1,6 +1,6 @@
 //! Graph recipes a cook may make tonight with their ingredients and restrictions.
 //!
-//! Code decides what may be offered; a model may only reorder that list.
+//! Code selects and ranks graph dishes using the cook's data.
 //! The steps follow Tomi's plan: filter by open skill level, cuisine,
 //! kitchen, diet and avoid list, apply only graph-listed swaps, check
 //! the final dish again, then rank.
@@ -21,12 +21,13 @@ pub mod progress;
 mod ranking;
 mod routes;
 mod suggestion;
+mod teaching;
 #[cfg(test)]
 mod tests;
 
 pub use routes::router;
 
-pub use ranking::{overlap_order, ranked, Ranked, MODEL_SHORT_LIST};
+pub use ranking::overlap_order;
 pub use suggestion::{Suggestion, SuggestionContext};
 
 /// A graph recipe that the cook may make tonight.
@@ -39,6 +40,8 @@ pub struct Candidate {
     pub level: u8,
     /// The graph's food things after its allowed swaps and omissions.
     pub ingredients: Vec<String>,
+    /// Confirmed foods from tonight that this recipe uses.
+    pub confirmed_ingredients: Vec<String>,
     pub swaps: Vec<AppliedSwap>,
     pub omitted: Vec<String>,
     pub missing: Vec<String>,
@@ -61,6 +64,8 @@ pub struct Tonight<'a> {
     pub profile: &'a Profile,
     /// Confirmed from the scan or typed, plus the cupboard staples.
     pub available: BTreeSet<SavedId>,
+    /// Foods the cook confirmed tonight, excluding presumed cupboard staples.
+    pub confirmed: BTreeSet<SavedId>,
     /// The skill levels the cook has reached; nothing locked is offered.
     pub open: &'a OpenLevels,
 }
@@ -79,6 +84,9 @@ pub fn candidates(library: &Library, graph: &Graph, tonight: &Tonight) -> Vec<Ca
 /// The recipe for this cook, when their level, cuisines and kitchen allow it and it can be adapted for them.
 fn candidate(recipe: (&str, &crate::graph::serving::ServedRecipe), kitchen: &plan::Kitchen) -> Option<Candidate> {
     let (recipe_id, recipe) = recipe;
+    if !is_dish(&recipe.makes) {
+        return None;
+    }
     let (skill, level) = eligible_level(kitchen.graph, recipe, kitchen.tonight)?;
     let source = kitchen.graph.thing(recipe_id)?;
     let profile = kitchen.tonight.profile;
@@ -88,6 +96,10 @@ fn candidate(recipe: (&str, &crate::graph::serving::ServedRecipe), kitchen: &pla
     let title = serde_json::from_value::<LocalizedText>(source.get("names")?.clone()).ok()?;
     let source = plan::RecipeSource { id: recipe_id.to_string(), value: source.clone(), title, skill, level };
     plan::cook(&source, kitchen)
+}
+
+fn is_dish(makes: &str) -> bool {
+    makes.starts_with("dish/")
 }
 
 fn eligible_level(

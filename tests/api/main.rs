@@ -20,3 +20,4 @@ mod profile;
 mod recipes;
 mod scans;
 mod suggestions;
+mod teaching;

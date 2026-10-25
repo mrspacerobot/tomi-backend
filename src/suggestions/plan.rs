@@ -50,7 +50,7 @@ fn log_not_adapted(recipe: &str, reason: &str) {
 }
 
 fn into_candidate(source: &RecipeSource, adapted: PreparedRecipe, tonight: &Tonight) -> Candidate {
-    let ingredients = food_ids(&adapted);
+    let (ingredients, confirmed_ingredients) = ingredient_context(&adapted, tonight);
     Candidate {
         recipe_id: source.id.clone(),
         source_recipe: source.value.clone(),
@@ -62,8 +62,28 @@ fn into_candidate(source: &RecipeSource, adapted: PreparedRecipe, tonight: &Toni
         omitted: adapted.left_out.iter().map(|left_out| left_out.part.clone()).collect(),
         equipment: equipment(&source.value),
         ingredients,
+        confirmed_ingredients,
         recipe: adapted,
     }
+}
+
+fn ingredient_context(adapted: &PreparedRecipe, tonight: &Tonight) -> (Vec<String>, Vec<String>) {
+    let ingredients = food_ids(adapted);
+    let confirmed = confirmed_ids(&ingredients, &tonight.confirmed);
+    (ingredients, confirmed)
+}
+
+fn confirmed_ids(ingredients: &[String], confirmed: &std::collections::BTreeSet<SavedId>) -> Vec<String> {
+    ingredients
+        .iter()
+        .filter(|ingredient| {
+            ingredient
+                .strip_prefix(INGREDIENT_PREFIX)
+                .and_then(|id| SavedId::parse(id).ok())
+                .is_some_and(|id| confirmed.contains(&id))
+        })
+        .cloned()
+        .collect()
 }
 
 fn food_ids(adapted: &PreparedRecipe) -> Vec<String> {
