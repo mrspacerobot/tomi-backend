@@ -86,12 +86,13 @@ supplies introduction/preparation content; guided sessions and completion remain
 
 The cook's cupboard staples are added (the assumed ones until they have answered the cupboard
 question), less any in `staplesLeftOut` for tonight. A staple left out never removes something
-the cook confirmed. The backend filters recipes by open skill levels and "never" cuisines, then
-the cooking graph selects a safe plan for the cook's restrictions and ingredients. Without a graph the
-answer is `503 graph_unavailable`. The model then reorders the short
-list and writes a one-line reason; it cannot add a recipe. Without a model,
-or when it fails, the order is by fewest ingredients to buy
-(`rankedBy: "overlap"`). Each offer carries `recipeId`, `sourceRecipe` from the graph, and a
+the cook confirmed. Dinner suggestions only use graph recipes that make dishes, not preparations.
+Confirmed ingredients are ranked ahead of assumed cupboard staples. The backend filters recipes by
+open skill levels and "never" cuisines, then the cooking graph selects a safe plan for the cook's
+restrictions and ingredients. The server deterministically ranks dishes by confirmed ingredient
+matches, foods to buy, and pantry overlap. Recipe ranking does not call a model. Without a graph the
+answer is `503 graph_unavailable`. `rankedBy` is `"overlap"` for API compatibility. Each offer carries
+`recipeId`, `sourceRecipe` from the graph, and a
 `safePlan` with checked ingredients, allowed substitutions (including ratios and caveats),
 omissions, missing ingredients, and required equipment. `sourceRecipe` preserves the graph's
 original instructions and amounts; it is never rewritten. It stays for now because the app still reads it, and
@@ -208,8 +209,8 @@ script on every pull request.
 ## Debugging AI requests
 
 Search Cloud Run logs for `jsonPayload.fields.message="AI request failed"`.
-Each failure carries `error_code`, `model`, `operation` (`fridge_scan` or
-`recipe_ranking`), and `provider_http_status` for provider rejections. The
+Each failure carries `error_code`, `model`, `operation` (`fridge_scan`), and
+`provider_http_status` for provider rejections. The
 request span carries `request_id`, matching the response's `x-request-id`.
 
 For example, HTTP 400 is `ai_provider_invalid_request`; authentication failures,
@@ -218,7 +219,7 @@ timeouts use `ai_timeout`, connection failures `ai_transport_error`, and bad
 JSON, invalid model content, empty responses, blocked responses and exhausted
 output limits also have distinct codes. Provider bodies and raw client errors
 are never logged. The app still receives the stable `503 ai_unavailable` response
-for scan failures, and recipe ranking falls back to ingredient overlap.
+for scan failures. Recipe selection and ranking do not call a model.
 
 The scan's allowed graph ingredient ids are supplied in the prompt, with a small
 response schema. Every returned ingredient id is checked against the graph;

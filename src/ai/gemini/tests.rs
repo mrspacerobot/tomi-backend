@@ -69,7 +69,6 @@ async fn a_non_json_provider_response_has_a_different_code_from_invalid_model_co
     let router = Router::new().fallback(post(|| async { "not json private-photo" }));
     let provider = provider(router).await;
     assert_eq!(provider.ai.generate(json!({})).await.unwrap_err(), AiError::Unreadable);
-    assert_eq!(parse_ranking("not json").unwrap_err(), AiError::InvalidContent);
 }
 
 #[tokio::test(start_paused = true)]

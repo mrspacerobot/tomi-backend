@@ -16,7 +16,7 @@ fn example() -> (Candidate, Graph) {
     let skill = SavedId::parse("eggs").unwrap();
     let open = OpenLevels::from_levels([(skill, 1)]);
     let profile = Profile::default();
-    let tonight = Tonight { profile: &profile, available: BTreeSet::new(), open: &open };
+    let tonight = Tonight { profile: &profile, available: BTreeSet::new(), confirmed: BTreeSet::new(), open: &open };
     let candidate = candidates(&library, &graph, &tonight).remove(0);
     (candidate, graph)
 }

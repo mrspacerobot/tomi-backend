@@ -3,9 +3,8 @@
 //! The key goes in a header, never in the URL, so it cannot end up in an
 //! access log. A photo is sent in the request body and never logged.
 
-use super::{prompts, Ai, AiError, AiFuture, FridgeQuestion, RankQuestion};
+use super::{prompts, Ai, AiError, AiFuture, FridgeQuestion};
 use crate::scans::fridge::ModelItem;
-use crate::suggestions::Ranked;
 use serde::Deserialize;
 use serde_json::Value;
 use std::time::Duration;
@@ -27,18 +26,6 @@ pub struct Gemini {
 #[derive(Deserialize)]
 struct FridgeAnswer {
     items: Vec<ModelItem>,
-}
-
-#[derive(Deserialize)]
-struct RankAnswer {
-    ranking: Vec<RankChoice>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct RankChoice {
-    recipe_id: String,
-    reason: String,
 }
 
 impl Gemini {
@@ -71,30 +58,12 @@ impl Ai for Gemini {
             Ok(answer.items)
         })
     }
-
-    fn rank_recipes<'a>(&'a self, question: RankQuestion<'a>) -> AiFuture<'a, Vec<Ranked>> {
-        let body = prompts::rank_request(&question);
-        Box::pin(async move {
-            let text = self.generate(body).await?;
-            parse_ranking(&text)
-        })
-    }
 }
 
 /// The text of the first candidate's first part, where the JSON answer is.
 pub(super) fn answer_text(answer: &Value) -> Option<String> {
     let text = answer.pointer("/candidates/0/content/parts/0/text")?;
     text.as_str().map(ToString::to_string)
-}
-
-/// An id the model made up is ignored again when it is matched to candidates.
-pub(super) fn parse_ranking(text: &str) -> Result<Vec<Ranked>, AiError> {
-    let answer: RankAnswer = serde_json::from_str(text).map_err(|_| AiError::InvalidContent)?;
-    let mut ranked = Vec::new();
-    for choice in answer.ranking {
-        ranked.push(Ranked { recipe_id: choice.recipe_id, reason: Some(choice.reason) });
-    }
-    Ok(ranked)
 }
 
 pub(super) fn response_text(answer: &Value) -> Result<String, AiError> {

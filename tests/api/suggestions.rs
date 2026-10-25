@@ -1,24 +1,17 @@
-use crate::fakes::{FakeAi, FakeStore};
+use crate::fakes::FakeStore;
 use crate::helpers::*;
 use axum::http::StatusCode;
 use axum::Router;
 use serde_json::{json, Value};
 use sqlx::PgPool;
 use std::sync::Arc;
-use tomi_api::suggestions::Ranked;
 
 pub const OMELETTE: &str = "recipe/spinach-and-cheese-omelette";
 const PAN_SAUCE: &str = "recipe/seared-chicken-thighs-with-lemon-butter-pan-sauce";
 
-/// A server where a comfortable cook can reach every skill level, with this model.
-pub fn open_server(pool: PgPool, ai: FakeAi) -> Router {
-    server_with(pool, Setup { ai: Arc::new(ai), library: library_without_prerequisites(), ..Setup::default() })
-}
-
-fn ranking_omelette_first() -> FakeAi {
-    let reason = Some("Ten minutes and you have the eggs.".to_string());
-    let ranked = Ranked { recipe_id: OMELETTE.to_string(), reason };
-    FakeAi { ranking: Some(vec![ranked]), ..FakeAi::default() }
+/// A server where a comfortable cook can reach every skill level.
+pub fn open_server(pool: PgPool) -> Router {
+    server_with(pool, Setup { library: library_without_prerequisites(), ..Setup::default() })
 }
 
 /// A new cook who answered "comfortable", with these other answers.
@@ -42,7 +35,7 @@ async fn a_new_cook_is_offered_nothing_above_their_level(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn an_offer_carries_the_words_the_app_shows(pool: PgPool) {
-    let app = open_server(pool, ranking_omelette_first());
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({"diet": "vegetarian", "avoid": ["nuts"]})).await;
     let reply = suggest(&app, &cook, json!({"ingredients": ["egg"]})).await;
     let offer = &reply.body["special"];
@@ -54,19 +47,8 @@ async fn an_offer_carries_the_words_the_app_shows(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn the_model_orders_the_short_list(pool: PgPool) {
-    let app = open_server(pool, ranking_omelette_first());
-    let cook = comfortable_cook(&app, json!({})).await;
-    let reply = suggest(&app, &cook, json!({"ingredients": ["chicken-thigh"]})).await;
-    assert_eq!(reply.body["rankedBy"], "model");
-    assert_eq!(reply.body["special"]["recipeId"], OMELETTE);
-    assert_eq!(reply.body["special"]["reason"], "Ten minutes and you have the eggs.");
-    assert!(reply.body["alternatives"].as_array().unwrap().iter().any(|offer| offer["recipeId"] == PAN_SAUCE));
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn without_a_model_the_order_follows_what_the_cook_has(pool: PgPool) {
-    let app = open_server(pool, FakeAi::default());
+async fn recommendations_use_the_deterministic_overlap_order(pool: PgPool) {
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({})).await;
     let pan_sauce = ["chicken-thigh", "garlic", "lemon", "white-wine", "butter", "spinach"];
     let reply = suggest(&app, &cook, json!({"ingredients": pan_sauce})).await;
@@ -76,7 +58,7 @@ async fn without_a_model_the_order_follows_what_the_cook_has(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn a_listed_swap_is_applied_and_named(pool: PgPool) {
-    let app = open_server(pool, FakeAi::default());
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({"avoid": ["alcohol"]})).await;
     let at_home = json!({"ingredients": ["chicken-thigh", "garlic", "lemon", "sunflower-oil"]});
     let reply = suggest(&app, &cook, at_home).await;
@@ -103,7 +85,7 @@ async fn a_listed_swap_is_applied_and_named(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn an_allergen_only_the_graph_knows_is_honoured(pool: PgPool) {
     // Sulphites had no avoid item before the graph added one: the wine is out, the stock stands in.
-    let app = open_server(pool, FakeAi::default());
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({"avoid": ["sulphites"]})).await;
     let at_home = json!({"ingredients": ["chicken-thigh", "garlic", "lemon", "sunflower-oil"]});
     let reply = suggest(&app, &cook, at_home).await;
@@ -115,7 +97,7 @@ async fn an_allergen_only_the_graph_knows_is_honoured(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn two_graph_allergens_together_leave_no_safe_way(pool: PgPool) {
     // Wine holds sulphites and every stock holds celery, so a cook avoiding both gets no pan sauce.
-    let app = open_server(pool, FakeAi::default());
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({"avoid": ["sulphites", "celery"]})).await;
     let reply = suggest(&app, &cook, json!({"ingredients": ["chicken-thigh"]})).await;
     assert_ne!(reply.body["special"]["recipeId"], PAN_SAUCE);
@@ -124,7 +106,7 @@ async fn two_graph_allergens_together_leave_no_safe_way(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn saved_nuts_still_rule_out_peanuts_and_tree_nuts_together(pool: PgPool) {
-    let app = open_server(pool, FakeAi::default());
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({"avoid": ["nuts"]})).await;
     let reply = suggest(&app, &cook, json!({"ingredients": ["egg"]})).await;
     assert_eq!(reply.body["special"]["checked"]["avoid"], json!(["nuts"]));
@@ -132,7 +114,7 @@ async fn saved_nuts_still_rule_out_peanuts_and_tree_nuts_together(pool: PgPool) 
 
 #[sqlx::test(migrations = "./migrations")]
 async fn a_vegetarian_never_gets_the_chicken(pool: PgPool) {
-    let app = open_server(pool, FakeAi::default());
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({"diet": "vegetarian"})).await;
     let reply = suggest(&app, &cook, json!({"ingredients": ["chicken-thigh"]})).await;
     assert!(offers(&reply.body).iter().all(|offer| offer["recipeId"] != PAN_SAUCE));
@@ -150,7 +132,7 @@ fn offers(response: &Value) -> Vec<&Value> {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn an_unknown_restriction_offers_nothing(pool: PgPool) {
-    let app = open_server(pool, FakeAi::default());
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({"avoid": ["mango"]})).await;
     let reply = suggest(&app, &cook, json!({"ingredients": ["egg"]})).await;
     assert_eq!(reply.body["special"], Value::Null);

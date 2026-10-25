@@ -1,4 +1,3 @@
-use crate::fakes::FakeAi;
 use crate::helpers::*;
 use crate::suggestions::{comfortable_cook, open_server};
 use serde_json::{json, Value};
@@ -20,7 +19,7 @@ fn step_texts(offer: &Value) -> Vec<&str> {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn an_offer_carries_the_recipe_written_for_the_cook(pool: PgPool) {
-    let app = open_server(pool, FakeAi::default());
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({})).await;
     let reply = suggest(&app, &cook, json!({"ingredients": ["egg", "cream"]})).await;
     let offer = offer_of(&reply.body, EGGS);
@@ -36,7 +35,7 @@ async fn an_offer_carries_the_recipe_written_for_the_cook(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn a_swapped_food_is_written_into_the_steps_and_listed_as_a_change(pool: PgPool) {
-    let app = open_server(pool, FakeAi::default());
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({"avoid": ["alcohol"]})).await;
     let at_home = json!({"ingredients": ["chicken-thigh", "garlic", "lemon", "sunflower-oil"]});
     let reply = suggest(&app, &cook, at_home).await;
@@ -52,7 +51,7 @@ async fn a_swapped_food_is_written_into_the_steps_and_listed_as_a_change(pool: P
 
 #[sqlx::test(migrations = "./migrations")]
 async fn a_stand_in_the_cook_has_replaces_the_food_they_lack_in_every_step(pool: PgPool) {
-    let app = open_server(pool, FakeAi::default());
+    let app = open_server(pool);
     let cook = comfortable_cook(&app, json!({})).await;
     let reply = suggest(&app, &cook, json!({"ingredients": ["egg", "creme-fraiche"]})).await;
     let offer = offer_of(&reply.body, EGGS);
