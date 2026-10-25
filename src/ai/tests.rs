@@ -27,11 +27,16 @@ fn the_fridge_request_carries_the_photo_and_a_closed_list_of_ids_once() {
 
 #[test]
 fn the_rank_request_lists_only_the_candidates() {
-    let candidate = candidate();
+    let mut candidate = candidate();
+    candidate.confirmed_ingredients.push("ingredient/egg".into());
     let profile = Profile::default();
     let body = rank_request(&RankQuestion { candidates: &[candidate], profile: &profile });
     let schema = &body["generationConfig"]["response_schema"];
     assert_eq!(schema["properties"]["ranking"]["items"]["properties"]["recipeId"]["enum"], json!(["recipe/omelette"]));
+    let text = body["contents"][0]["parts"][0]["text"].as_str().unwrap();
+    assert!(text.contains("confirmed ingredients tonight"));
+    assert!(text.contains("confirmedIngredients"));
+    assert!(text.contains("ingredient/egg"));
 }
 
 fn no_adaptation() -> PreparedRecipe {
@@ -47,6 +52,7 @@ fn candidate() -> Candidate {
         skill: id("eggs"),
         level: 3,
         ingredients: vec!["ingredient/egg".into()],
+        confirmed_ingredients: vec![],
         swaps: vec![],
         omitted: vec![],
         missing: vec![],

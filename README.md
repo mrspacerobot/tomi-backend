@@ -80,8 +80,10 @@ falls back to typing. Without a graph it is `503 graph_unavailable`.
 
 The cook's cupboard staples are added (the assumed ones until they have answered the cupboard
 question), less any in `staplesLeftOut` for tonight. A staple left out never removes something
-the cook confirmed. The backend filters recipes by open skill levels and "never" cuisines, then
-the cooking graph selects a safe plan for the cook's restrictions and ingredients. Without a graph the
+the cook confirmed. Dinner suggestions only use graph recipes that make dishes, not preparations.
+Confirmed ingredients are ranked ahead of assumed cupboard staples. The backend filters recipes by
+open skill levels and "never" cuisines, then the cooking graph selects a safe plan for the cook's
+restrictions and ingredients. Without a graph the
 answer is `503 graph_unavailable`. The model then reorders the short
 list and writes a one-line reason; it cannot add a recipe. Without a model,
 or when it fails, the order is by fewest ingredients to buy

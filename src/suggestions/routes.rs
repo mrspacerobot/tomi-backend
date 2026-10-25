@@ -98,7 +98,12 @@ struct CandidateInput<'a> {
 fn candidates(state: &AppState, graph: &Graph, input: CandidateInput) -> Vec<Candidate> {
     let open = open_levels(&state.library.catalog, input.profile.experience, &CookCounts::default());
     let ingredients = available(state, input.request, input.profile);
-    let tonight = Tonight { profile: input.profile, available: ingredients, open: &open };
+    let tonight = Tonight {
+        profile: input.profile,
+        available: ingredients,
+        confirmed: input.request.ingredients.clone(),
+        open: &open,
+    };
     overlap_order(suggestions::candidates(&state.library, graph, &tonight))
 }
 

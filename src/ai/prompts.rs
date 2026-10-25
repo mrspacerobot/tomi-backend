@@ -15,7 +15,8 @@ and how sure you are, from 0 to 1. Do not guess at hidden or unreadable items. \
 Never judge freshness, doneness or whether food is safe to eat.";
 
 const RANK_INSTRUCTIONS: &str = "You help a home cook choose tonight's recipe. \
-Rank the recipes below, best first. Prefer recipes that use what the cook has and need little shopping, \
+Rank the recipes below, best first. Prefer recipes that use the cook's confirmed ingredients tonight; \
+these are separate from assumed cupboard staples. Then prefer recipes that need little shopping, \
 then ones that fit the cook's experience, loved cuisines and focus skill. \
 For each recipe give a reason of at most 15 words, warm and plain, spoken to the cook. \
 Never say a dish is safe, healthy or cooked through. Use only the recipe ids given.";
@@ -62,6 +63,7 @@ fn recipe_summary(candidate: &Candidate) -> Value {
         "skill": candidate.skill,
         "level": candidate.level,
         "toBuy": candidate.missing,
+        "confirmedIngredients": candidate.confirmed_ingredients,
         "swaps": candidate.swaps,
     })
 }

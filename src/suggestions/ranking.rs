@@ -19,12 +19,13 @@ pub struct Ranked {
     pub reason: Option<String>,
 }
 
-/// Fewest missing foods first, then most of what the cook has, then by recipe id.
+/// Confirmed foods first, then fewest missing foods, pantry overlap and recipe id.
 pub fn overlap_order(mut candidates: Vec<Candidate>) -> Vec<Candidate> {
     candidates.sort_by(|left, right| {
+        let by_confirmed = right.confirmed_ingredients.len().cmp(&left.confirmed_ingredients.len());
         let by_missing = left.missing.len().cmp(&right.missing.len());
         let by_at_hand = at_hand(right).cmp(&at_hand(left));
-        by_missing.then(by_at_hand).then(left.recipe_id.cmp(&right.recipe_id))
+        by_confirmed.then(by_missing).then(by_at_hand).then(left.recipe_id.cmp(&right.recipe_id))
     });
     candidates
 }

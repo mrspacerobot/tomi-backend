@@ -4,6 +4,8 @@ use crate::library::tests::shipped_files;
 use crate::library::Library;
 use crate::suggestions::progress::OpenLevels;
 
+mod ranking_tests;
+
 const OMELETTE: &str = "recipe/spinach-and-cheese-omelette";
 const PAN_SAUCE: &str = "recipe/seared-chicken-thighs-with-lemon-butter-pan-sauce";
 
@@ -32,7 +34,7 @@ fn all_open(library: &Library) -> OpenLevels {
 fn offered(profile: &Profile, available: &[&str]) -> Vec<Candidate> {
     let library = library();
     let open = all_open(&library);
-    let tonight = Tonight { profile, available: ids(available), open: &open };
+    let tonight = Tonight { profile, available: ids(available), confirmed: BTreeSet::new(), open: &open };
     candidates(&library, &fixture_graph(), &tonight)
 }
 
@@ -40,7 +42,8 @@ fn offered(profile: &Profile, available: &[&str]) -> Vec<Candidate> {
 fn a_recipe_at_a_locked_level_is_never_offered() {
     let library = library();
     let open = OpenLevels::from_levels([(id("eggs"), 1)]);
-    let tonight = Tonight { profile: &Profile::default(), available: BTreeSet::new(), open: &open };
+    let tonight =
+        Tonight { profile: &Profile::default(), available: BTreeSet::new(), confirmed: BTreeSet::new(), open: &open };
     assert_eq!(candidate_ids(&candidates(&library, &fixture_graph(), &tonight)), vec!["recipe/soft-scrambled-eggs"]);
 }
 
@@ -52,6 +55,12 @@ fn candidate_ids(found: &[Candidate]) -> Vec<String> {
 fn a_cook_without_restrictions_is_offered_graph_recipes() {
     let found = offered(&Profile::default(), &["egg"]);
     assert_eq!(candidate_ids(&found), vec![PAN_SAUCE, "recipe/soft-scrambled-eggs", OMELETTE]);
+}
+
+#[test]
+fn preparations_are_not_recommended_as_tonight_dishes() {
+    assert!(!super::is_dish("preparation/alioli"));
+    assert!(super::is_dish("dish/cold-poached-salmon"));
 }
 
 #[test]
@@ -90,7 +99,8 @@ fn a_graph_recipe_missing_from_the_serving_section_is_never_offered() {
     let open = all_open(&library);
     let mut graph = fixture_graph();
     graph.serving.recipes.clear();
-    let tonight = Tonight { profile: &Profile::default(), available: BTreeSet::new(), open: &open };
+    let tonight =
+        Tonight { profile: &Profile::default(), available: BTreeSet::new(), confirmed: BTreeSet::new(), open: &open };
     assert!(candidates(&library, &graph, &tonight).is_empty());
 }
 
@@ -101,7 +111,7 @@ fn a_fact_a_restriction_names_that_the_graph_lacks_offers_nothing() {
     let mut graph = fixture_graph();
     graph.serving.facts.remove("fact/milk");
     let profile = Profile { avoid: ids(&["dairy"]), ..Profile::default() };
-    let tonight = Tonight { profile: &profile, available: BTreeSet::new(), open: &open };
+    let tonight = Tonight { profile: &profile, available: BTreeSet::new(), confirmed: BTreeSet::new(), open: &open };
     assert!(candidates(&library, &graph, &tonight).is_empty());
 }
 
@@ -144,27 +154,6 @@ fn an_explicitly_missing_tracked_appliance_filters_the_recipe() {
 }
 
 #[test]
-fn overlap_order_puts_fewest_missing_first() {
-    let at_home = ["egg", "spinach", "vegetarian-hard-cheese", "butter", "salt", "black-pepper"];
-    let order = overlap_order(offered(&Profile::default(), &at_home));
-    assert_eq!(candidate_ids(&order), vec![OMELETTE, "recipe/soft-scrambled-eggs", PAN_SAUCE]);
-}
-
-#[test]
-fn a_model_may_only_reorder_the_list() {
-    let by_overlap = overlap_order(offered(&Profile::default(), &[]));
-    let model = [
-        Ranked { recipe_id: "recipe/made-up".into(), reason: Some("invented".into()) },
-        Ranked { recipe_id: OMELETTE.into(), reason: Some("quick tonight".into()) },
-        Ranked { recipe_id: OMELETTE.into(), reason: None },
-    ];
-    let order = ranked(by_overlap, &model);
-    let order_ids: Vec<String> = order.iter().map(|(candidate, _)| candidate.recipe_id.clone()).collect();
-    assert_eq!(order_ids, vec![OMELETTE, "recipe/soft-scrambled-eggs", PAN_SAUCE]);
-    assert_eq!(order[0].1.as_deref(), Some("quick tonight"));
-}
-
-#[test]
 fn a_recipe_that_cannot_be_adapted_cleanly_is_not_offered() {
     let library = library();
     let open = all_open(&library);
@@ -172,7 +161,8 @@ fn a_recipe_that_cannot_be_adapted_cleanly_is_not_offered() {
     crate::graph::test_helpers::change_thing(&mut graph, "recipe/soft-scrambled-eggs", |recipe| {
         recipe["steps"][0]["text"] = serde_json::json!("Crack the {yolk:plural} into a bowl.");
     });
-    let tonight = Tonight { profile: &Profile::default(), available: BTreeSet::new(), open: &open };
+    let tonight =
+        Tonight { profile: &Profile::default(), available: BTreeSet::new(), confirmed: BTreeSet::new(), open: &open };
     let found = candidate_ids(&candidates(&library, &graph, &tonight));
     assert_eq!(found, vec![PAN_SAUCE, OMELETTE]);
 }
