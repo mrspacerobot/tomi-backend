@@ -32,10 +32,11 @@ src/
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
   suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels by calling `progress`
   progress/     game.rs (every game number), entries/ (cook entries, finished cooks, counts), experience/ (XP and
-                rank), skills/ (served, open and granted levels), snapshot.rs (`ProgressSnapshot`: skills, focus,
-                mastered count), received/ (cook entries as the phone sends them, read and checked), routes.rs
-                (`POST /v1/cook-entries`) and db.rs (the stored cook log). Tests sit in each folder, builders in
-                fixtures.rs. The streak and quiz answers are planned (docs/progress.md)
+                rank), skills/ (served, open and granted levels), streak/ (the cook's calendar and the weekly
+                streak), snapshot.rs (`ProgressSnapshot`: skills, focus, mastered count), received/ (cook entries as
+                the phone sends them, read and checked), routes.rs (`POST /v1/cook-entries`) and db.rs (the stored
+                cook log). Tests sit in each folder, builders in fixtures.rs. The quiz answers are planned
+                (docs/progress.md)
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
@@ -171,6 +172,10 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 ## Dependencies and secrets
 
 - **No new crate without the owner's approval** in the pull request that adds it. `Cargo.lock` is committed.
+- **Dates and time zones are `jiff`** (approved by the owner on 26 October 2026), with only its bundled time zone
+  database (`default-features = false` with `std`, `serde` and `tzdb-bundle-always`), so a zone reads the same in
+  tests, on a Mac and in the distroless image, which has no zoneinfo. A rule never reads `jiff`'s clock (`Zoned::now`, `Timestamp::now`)
+  or the server's zone (`TimeZone::system`); `tests/architecture.rs` refuses them.
 - **No secrets in the repository, ever.** Settings come from the environment; `.env` is ignored by git.
 
 ## Only the owner merges into main
