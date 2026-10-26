@@ -3,16 +3,15 @@
 //! A skill is served once the first level of every prerequisite is complete. Its level 1 then
 //! opens, and each later level opens once every level before it is complete. "Comfortable" in
 //! onboarding counts every skill of the first course as complete, without a cook and without XP.
-//! The catalog is an argument, so the rules hold for any menu and never name a skill.
+//! The catalog is an argument, so the rules hold for any catalog and never name a skill.
 
-use super::counts::CookCounts;
-use super::game::is_level_complete;
-use super::log::CookEntry;
-use super::menu::CookProgress;
+use super::grants::granted_skills;
 use super::skill::{LevelProgress, SkillProgress};
 use crate::kernel::ids::SavedId;
 use crate::library::{Catalog, Skill};
 use crate::profile::Experience;
+use crate::progress::game::is_level_complete;
+use crate::progress::{CookCounts, CookEntry, ProgressSnapshot};
 use std::collections::BTreeSet;
 
 /// Works out the cook's progress through one catalog, for one experience answer.
@@ -28,16 +27,16 @@ impl<'a> ProgressRules<'a> {
         ProgressRules { catalog, granted: granted_skills(catalog, experience) }
     }
 
-    /// Progress for every skill on the menu, from a log in any order and with any copies.
-    pub fn progress(&self, log: &[CookEntry]) -> CookProgress {
+    /// Progress for every skill of the catalog, from a log in any order and with any copies.
+    pub fn progress(&self, log: &[CookEntry]) -> ProgressSnapshot {
         self.progress_from_counts(&CookCounts::from_log(log))
     }
 
-    /// Progress for every skill on the menu, in menu order. Counts for a skill or level the
-    /// catalog does not know are left out, because the log may hold cooks from a newer menu.
-    pub fn progress_from_counts(&self, counts: &CookCounts) -> CookProgress {
+    /// Progress for every skill of the catalog, in catalog order. Counts for a skill or level the
+    /// catalog does not know are left out, because the log may hold cooks from a newer catalog.
+    pub fn progress_from_counts(&self, counts: &CookCounts) -> ProgressSnapshot {
         let skills = self.catalog.skills.iter().map(|skill| self.skill_progress(skill, counts)).collect();
-        CookProgress { skills }
+        ProgressSnapshot { skills }
     }
 
     fn skill_progress(&self, skill: &Skill, counts: &CookCounts) -> SkillProgress {
@@ -88,43 +87,4 @@ fn levels(skill: &Skill, counts: &CookCounts, start: LevelStart) -> Vec<LevelPro
         levels.push(progress);
     }
     levels
-}
-
-/// Every skill of the first course in the catalog, for a cook who answered "comfortable".
-/// "Never" and "basics" differ only in how much Tomi explains, so neither grants anything.
-pub fn granted_skills(catalog: &Catalog, experience: Experience) -> BTreeSet<SavedId> {
-    if experience != Experience::Comfortable {
-        return BTreeSet::new();
-    }
-    let Some(first_course) = catalog.courses.first() else {
-        return BTreeSet::new();
-    };
-    let in_course = catalog.skills.iter().filter(|skill| skill.course == first_course.id);
-    in_course.map(|skill| skill.id.clone()).collect()
-}
-
-/// The skill levels a cook may be offered a recipe at.
-#[derive(Debug, Default, PartialEq)]
-pub struct OpenLevels(BTreeSet<(SavedId, u8)>);
-
-impl OpenLevels {
-    /// Exactly these levels, for callers that know them already.
-    pub fn from_levels(levels: impl IntoIterator<Item = (SavedId, u8)>) -> Self {
-        OpenLevels(levels.into_iter().collect())
-    }
-
-    pub fn contains(&self, skill: &SavedId, level: u8) -> bool {
-        self.0.contains(&(skill.clone(), level))
-    }
-}
-
-/// Every open level of the menu, for the cook's experience answer and finished cooks.
-pub fn open_levels(catalog: &Catalog, experience: Experience, counts: &CookCounts) -> OpenLevels {
-    let progress = ProgressRules::new(catalog, experience).progress_from_counts(counts);
-    let mut open = BTreeSet::new();
-    for skill in &progress.skills {
-        let open_here = skill.levels.iter().filter(|level| level.is_open);
-        open.extend(open_here.map(|level| (skill.skill.clone(), level.number)));
-    }
-    OpenLevels(open)
 }

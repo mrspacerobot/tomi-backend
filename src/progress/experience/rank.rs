@@ -1,6 +1,6 @@
 //! Where a cook stands on the rank ladder for their total XP, and how far it is to the next rank.
 
-use super::game::{RANK_THRESHOLDS, XP_PER_TIER_PAST_TOP};
+use crate::progress::game::{RANK_THRESHOLDS, XP_PER_TIER_PAST_TOP};
 
 /// XP at which Toque, the top named rank, begins.
 const TOP_THRESHOLD: u32 = RANK_THRESHOLDS[RANK_THRESHOLDS.len() - 1];

@@ -1,6 +1,6 @@
 //! How many finished cooks the log holds for each level of each skill.
 
-use super::log::{finished_cooks, CookEntry};
+use super::entry::{finished_cooks, CookEntry};
 use crate::kernel::ids::SavedId;
 use std::collections::BTreeMap;
 

@@ -31,9 +31,10 @@ src/
   profile/      routes.rs (HTTP handlers), db.rs (queries), the pure rules, and their tests
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
   suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels by calling `progress`
-  progress/     game.rs (every game number) and the progress rules ported from the app: log.rs, counts.rs, xp.rs,
-                rank.rs, levels.rs (served, open, granted), skill.rs, menu.rs (focus, mastered count). The stored
-                cook log, streak and quiz answers are planned (docs/progress.md)
+  progress/     game.rs (every game number), entries/ (cook entries, finished cooks, counts), experience/ (XP and
+                rank), skills/ (served, open and granted levels), snapshot.rs (`ProgressSnapshot`: skills, focus,
+                mastered count). Tests sit in each folder, builders in fixtures.rs. The stored cook log, streak
+                and quiz answers are planned (docs/progress.md)
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)

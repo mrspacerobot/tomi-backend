@@ -1,7 +1,7 @@
 //! XP, counted from the cook log every time it is asked for, never kept as a running total.
 
-use super::game::{QUIZ_BONUS_XP, XP_PER_FINISHED_COOK};
-use super::log::{finished_cooks, CookEntry, Outcome};
+use crate::progress::game::{QUIZ_BONUS_XP, XP_PER_FINISHED_COOK};
+use crate::progress::{finished_cooks, CookEntry, Outcome};
 
 /// What a cook earns for the way it ended: the cook itself, plus the quiz bonus when the quiz was
 /// passed. A cook stopped early earns nothing.

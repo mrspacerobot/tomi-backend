@@ -1,12 +1,12 @@
 //! How far the cook is with one skill and each of its levels.
 
-use super::game::is_level_complete;
 use crate::kernel::ids::SavedId;
+use crate::progress::game::is_level_complete;
 
 /// Levels are numbered from 1.
 const FIRST_LEVEL: u8 = 1;
 
-/// Where a skill stands on the menu, as the cook sees it.
+/// Where a skill stands in the catalog, as the cook sees it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SkillStatus {
     /// Not on offer yet. `missing` lists the prerequisites whose first level is still to be completed.
@@ -60,7 +60,7 @@ impl SkillProgress {
         self.levels.iter().all(LevelProgress::is_complete)
     }
 
-    /// One state for the menu. Mastered comes first, so finished work still shows
+    /// One state for the catalog. Mastered comes first, so finished work still shows
     /// if a newer catalog adds a prerequisite to a skill the cook has already mastered.
     pub fn status(&self) -> SkillStatus {
         if self.is_mastered() {

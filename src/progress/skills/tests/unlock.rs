@@ -1,12 +1,82 @@
-//! Port of TomiCore's `ProgressExperienceTests`: "comfortable" hands the cook the first course as
-//! mastered. The fixture menu has knife and eggs in the first course and roux, which needs knife,
-//! in the second.
+//! Ports of TomiCore's `ProgressUnlockTests` (which skills are locked, served or mastered) and
+//! `ProgressExperienceTests` ("comfortable" hands the cook the first course as mastered; the fixture
+//! catalog has knife and eggs in the first course and roux, which needs knife, in the second).
 
-use super::test_log::{catalog, complete_per_level, cooks, cooks_per_level, fixture_skills, granted_per_level};
-use super::test_log::{id, ids, open_per_level, TestLog};
 use crate::profile::Experience;
+use crate::progress::fixtures::{
+    catalog, complete_per_level, cooks, cooks_per_level, fixture_skills, granted_per_level, id, ids,
+};
+use crate::progress::fixtures::{open_per_level, skill, TestLog};
 use crate::progress::{granted_skills, CookEntry, SkillStatus};
 use std::collections::BTreeSet;
+
+fn locked(missing: &[&str]) -> SkillStatus {
+    SkillStatus::Locked { missing: ids(missing) }
+}
+
+#[test]
+fn an_empty_log_serves_only_skills_without_prerequisites() {
+    let progress = TestLog::new().progress(&[]);
+    let skills: Vec<String> = progress.skills.iter().map(|skill| skill.skill.to_string()).collect();
+    assert_eq!(skills, ["knife", "eggs", "roux"]);
+    let statuses: Vec<SkillStatus> = progress.skills.iter().map(|skill| skill.status()).collect();
+    assert_eq!(statuses, [SkillStatus::Served, SkillStatus::Served, locked(&["knife"])]);
+    assert!(progress.skills.iter().all(|skill| cooks_per_level(skill) == [0, 0]));
+}
+
+#[test]
+fn a_skill_is_served_once_level_one_of_its_prerequisite_is_complete() {
+    let log = TestLog::new();
+    let roux = log.progress_of("roux", &cooks(2, "knife", 1));
+    assert_eq!(roux.status(), SkillStatus::Served);
+    assert!(roux.missing_prerequisites.is_empty());
+    assert_eq!(open_per_level(&roux), [true, false]);
+}
+
+#[test]
+fn one_cook_of_a_prerequisite_is_not_enough() {
+    let log = TestLog::new();
+    assert_eq!(log.progress_of("roux", &cooks(1, "knife", 1)).status(), locked(&["knife"]));
+}
+
+#[test]
+fn a_later_level_of_a_prerequisite_does_not_stand_in_for_level_one() {
+    let log = TestLog::new();
+    assert_eq!(log.progress_of("roux", &cooks(2, "knife", 2)).status(), locked(&["knife"]));
+}
+
+#[test]
+fn a_locked_skill_names_only_the_prerequisites_still_missing() {
+    let roux = skill("roux", "sauces").needs(&["knife", "eggs"]);
+    let log = TestLog::with_catalog(catalog(
+        &["basics", "sauces"],
+        &[skill("knife", "basics"), skill("eggs", "basics"), roux],
+    ));
+    assert_eq!(log.progress_of("roux", &[]).status(), locked(&["knife", "eggs"]));
+    assert_eq!(log.progress_of("roux", &cooks(2, "knife", 1)).status(), locked(&["eggs"]));
+    let both = [cooks(2, "knife", 1), cooks(2, "eggs", 1)].concat();
+    assert_eq!(log.progress_of("roux", &both).status(), SkillStatus::Served);
+}
+
+#[test]
+fn a_skill_is_mastered_when_all_its_levels_are_complete() {
+    let log = TestLog::new();
+    let level_one = cooks(2, "knife", 1);
+    assert_eq!(log.progress_of("knife", &level_one).status(), SkillStatus::Served);
+    let knife = log.progress_of("knife", &[level_one, cooks(2, "knife", 2)].concat());
+    assert_eq!(knife.status(), SkillStatus::Mastered);
+    assert!(knife.is_mastered());
+    assert!(knife.is_served());
+}
+
+#[test]
+fn the_whole_catalog_is_mastered_when_every_level_of_every_skill_is_complete() {
+    let log = TestLog::new();
+    let progress = log.progress(&log.cooks_completing_everything());
+    let statuses: Vec<SkillStatus> = progress.skills.iter().map(|skill| skill.status()).collect();
+    assert_eq!(statuses, vec![SkillStatus::Mastered; 3]);
+    assert!(progress.skills.iter().all(|skill| complete_per_level(skill).iter().all(|complete| *complete)));
+}
 
 fn comfortable() -> TestLog {
     TestLog::with_experience(Experience::Comfortable)
@@ -67,7 +137,7 @@ fn real_cooks_count_on_top_of_granted_skills() {
 }
 
 #[test]
-fn a_granted_menu_is_fully_mastered_once_the_rest_is_cooked() {
+fn a_granted_catalog_is_fully_mastered_once_the_rest_is_cooked() {
     let log = comfortable();
     let entries = [cooks(2, "roux", 1), cooks(2, "roux", 2)].concat();
     assert_eq!(statuses(&log, &entries), vec![SkillStatus::Mastered; 3]);
@@ -83,7 +153,7 @@ fn the_first_course_is_read_from_the_catalog() {
 }
 
 #[test]
-fn a_menu_without_courses_grants_nothing() {
+fn a_catalog_without_courses_grants_nothing() {
     let empty = catalog(&[], &[]);
     assert!(granted_skills(&empty, Experience::Comfortable).is_empty());
     let log = TestLog { catalog: empty, experience: Experience::Comfortable };

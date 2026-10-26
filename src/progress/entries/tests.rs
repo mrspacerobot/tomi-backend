@@ -1,9 +1,11 @@
-//! Port of TomiCore's `ProgressLogTests`: what the rules make of an imperfect log, with abandoned
-//! cooks, entries from a newer menu, copies and odd orders.
+//! Tests of what the rules make of imperfect cook entries: abandoned cooks, entries from a newer
+//! catalog, copies and odd orders. Ported from TomiCore's `ProgressLogTests`, plus the server's own
+//! promises from issue #36.
 
-use super::test_log::{catalog, complete_per_level, cook, cooks, cooks_per_level, ids, open_per_level, skill};
-use super::test_log::{stopped_before_the_end, TestLog};
-use crate::progress::SkillStatus;
+use crate::progress::fixtures::{
+    complete_per_level, cook, cooks, cooks_per_level, stopped_before_the_end, with_the_quiz_wrong, TestLog,
+};
+use crate::progress::{earned_xp, open_levels, CookCounts, CookEntry, Rank, SkillStatus};
 
 #[test]
 fn cooks_stopped_early_do_not_count() {
@@ -71,50 +73,54 @@ fn the_order_of_entries_does_not_matter() {
     assert_eq!(log.progress(&reversed), log.progress(&entries));
 }
 
-/// The chosen rule: every finished cook counts at its own level, whether or not that level was open.
-#[test]
-fn a_cook_at_a_level_not_yet_open_still_counts_at_that_level() {
-    let log = TestLog::new();
-    let early = cooks(2, "knife", 2);
-    let knife = log.progress_of("knife", &early);
-    assert_eq!(cooks_per_level(&knife), [0, 2]);
-    assert_eq!(complete_per_level(&knife), [false, true]);
-    assert_eq!(open_per_level(&knife), [true, false]);
-    assert_eq!(knife.current_level(), 1);
-    assert_eq!(knife.status(), SkillStatus::Served);
-    let caught_up = [early, cooks(2, "knife", 1)].concat();
-    assert_eq!(log.progress_of("knife", &caught_up).status(), SkillStatus::Mastered);
+/// A log with a bit of everything: copies, a stopped cook, a failed quiz and an unknown skill.
+fn mixed_log() -> Vec<CookEntry> {
+    let copied = cook("knife", 1);
+    let quiz_wrong = with_the_quiz_wrong(&cook("eggs", 1));
+    let stopped = stopped_before_the_end(&cook("knife", 1));
+    let unknown = cook("sous-vide", 9);
+    let more = [cooks(2, "knife", 2), cooks(1, "roux", 1)].concat();
+    [vec![copied.clone(), quiz_wrong, stopped, copied, unknown], more].concat()
 }
 
 #[test]
-fn a_complete_level_does_not_open_the_next_while_an_earlier_one_is_incomplete() {
-    let log = TestLog::with_catalog(catalog(&["basics"], &[skill("knife", "basics").levels(&[1, 2, 3])]));
-    let early = cooks(2, "knife", 2);
-    assert_eq!(open_per_level(&log.progress_of("knife", &early)), [true, false, false]);
-    let caught_up = [early, cooks(2, "knife", 1)].concat();
-    assert_eq!(open_per_level(&log.progress_of("knife", &caught_up)), [true, true, true]);
-    assert_eq!(log.progress_of("knife", &caught_up).current_level(), 3);
-}
-
-/// A newer catalog may add a prerequisite to a skill the cook has already finished.
-#[test]
-fn a_skill_with_every_level_complete_shows_as_mastered_even_if_a_prerequisite_is_missing() {
+fn the_same_log_in_two_orders_gives_the_same_xp_rank_and_skill_progress() {
     let log = TestLog::new();
-    let early = [cooks(2, "roux", 1), cooks(2, "roux", 2)].concat();
-    let roux = log.progress_of("roux", &early);
-    assert_eq!(roux.status(), SkillStatus::Mastered);
-    assert_eq!(roux.missing_prerequisites, ids(&["knife"]));
-    assert!(!roux.is_served());
+    let entries = mixed_log();
+    let reversed: Vec<CookEntry> = entries.iter().rev().cloned().collect();
+    assert_eq!(earned_xp(&reversed), earned_xp(&entries));
+    assert_eq!(Rank::for_xp(earned_xp(&reversed)), Rank::for_xp(earned_xp(&entries)));
+    assert_eq!(log.progress(&reversed), log.progress(&entries));
+    let mut rotated = entries.clone();
+    rotated.rotate_left(3);
+    assert_eq!(log.progress(&rotated), log.progress(&entries));
+    assert_eq!(earned_xp(&rotated), earned_xp(&entries));
 }
 
 #[test]
-fn cooks_of_a_locked_skill_are_kept_for_when_it_is_served() {
+fn an_unknown_skill_or_level_earns_xp_and_opens_nothing() {
     let log = TestLog::new();
-    let early = cooks(2, "roux", 1);
-    let locked = log.progress_of("roux", &early);
-    assert_eq!(locked.status(), SkillStatus::Locked { missing: ids(&["knife"]) });
-    assert_eq!(cooks_per_level(&locked), [2, 0]);
-    let served = log.progress_of("roux", &[early, cooks(2, "knife", 1)].concat());
-    assert_eq!(served.status(), SkillStatus::Served);
-    assert_eq!(served.current_level(), 2);
+    let unknown = [cooks(2, "sous-vide", 1), cooks(2, "knife", 9)].concat();
+    assert_eq!(earned_xp(&unknown), 4 * 60);
+    assert_eq!(log.progress(&unknown), log.progress(&[]));
+    let counts = CookCounts::from_log(&unknown);
+    assert_eq!(
+        open_levels(&log.catalog, log.experience, &counts),
+        open_levels(&log.catalog, log.experience, &CookCounts::default())
+    );
+}
+
+#[test]
+fn a_stopped_early_cook_earns_nothing_and_counts_for_no_level() {
+    let log = TestLog::new();
+    let stopped: Vec<CookEntry> = cooks(2, "knife", 1).iter().map(stopped_before_the_end).collect();
+    assert_eq!(earned_xp(&stopped), 0);
+    assert_eq!(log.progress(&stopped), log.progress(&[]));
+    assert_eq!(CookCounts::from_log(&stopped), CookCounts::default());
+}
+
+#[test]
+fn a_finished_cook_earns_fifty_or_sixty_with_the_quiz_passed() {
+    assert_eq!(earned_xp(&[with_the_quiz_wrong(&cook("knife", 1))]), 50);
+    assert_eq!(earned_xp(&[cook("knife", 1)]), 60);
 }
