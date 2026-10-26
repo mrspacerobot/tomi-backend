@@ -3,6 +3,8 @@
 //! The streak is the everyday hook; rank is the slow, long goal, so it is paced in weeks and months,
 //! not cooks. Pacing assumes a regular cook: about 60 XP a cook, three or four cooks a week.
 
+use jiff::SignedDuration;
+
 /// Bumped whenever a number here or a rule of this feature changes what a log is worth.
 pub const RULES_VERSION: u32 = 1;
 
@@ -27,6 +29,10 @@ pub const WEEKLY_GOAL_MAXIMUM: u8 = 7;
 
 /// The streak goal of a cook who has not picked one.
 pub const WEEKLY_GOAL_DEFAULT: u8 = 3;
+
+/// How far after its arrival a cook may say it was made, for a phone clock that runs a little fast. A cook later
+/// than this is refused as `cooked_in_future`.
+pub const COOKED_IN_FUTURE_TOLERANCE: SignedDuration = SignedDuration::from_secs(10 * 60);
 
 /// Finished cooks at one level of a skill before that level is complete
 /// and the next one opens.

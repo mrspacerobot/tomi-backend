@@ -6,7 +6,8 @@ thin client: it keeps an outbox of unsent cook entries, shows the last progress 
 computes or predicts XP or rank. The quiz is run here: the phone gets questions and choices, sends each pick, and is
 told right or wrong. Correct answers never leave the server.
 
-**Status: planned.** None of these routes exists yet. This document is the contract the following pull requests
+**Status: in progress.** `POST /v1/cook-entries` stores the cook log (#38); its answer gains the progress
+snapshot with #40. The other routes are planned. This document is the contract the following pull requests
 implement, and each of them keeps it current:
 
 | Issue | Delivers |
@@ -84,11 +85,16 @@ cooking begins; that id is the idempotency key, so a retried batch is always saf
   development logs already on phones.
 - `outcome` is `finished` or `stoppedEarly`.
 - `weeklyGoal` is the goal when the cook was made, so raising the goal later never judges a past week again.
-- **No `quizCorrect`, no XP and no totals.** Unknown fields are refused per entry. The quiz result is derived here
-  from the answers recorded under the entry's id (see "The quiz").
+- **No `quizCorrect`, no XP and no totals.** Unknown fields, in the entry or its `dish`, are refused per entry as
+  `unknown_field`. The quiz result is derived here from the answers recorded under the entry's id (see "The quiz").
+- Each entry is stored in `tomi.cook_entries` (primary key: the cook and the entry id) with its own time zone, by its
+  canonical IANA name. Nothing else is stored with it: no total, no XP, no quiz result.
+- Two copies are the same body when they say the same thing: the instant is compared in UTC and the zone by its
+  canonical name, so `2026-10-26T19:42:00+01:00` and `2026-10-26T18:42:00Z` are one cook.
 
-The answer is `200` whenever the batch itself could be read, with one result per entry and the snapshot after the
-batch:
+The answer is `200` whenever the batch itself could be read, with one result per entry, in the order the entries
+were sent, and the snapshot after the batch (added by #40; [`docs/examples/cook-entries.json`](examples/cook-entries.json)
+is the request and answer as they are today, checked by a test):
 
 ```json
 {
@@ -109,23 +115,30 @@ batch:
 | `conflict` | The same id with a different body is already stored. The first copy stays and counts; nothing changes | Removes it, logs the id and the code only |
 | `rejected` | Not stored. `problems` holds permanent codes | Marks it refused, never retries, logs the codes |
 
-Problem codes of a rejected entry:
+Problem codes of a rejected entry, listed in this order when an entry has several:
 
 | Code | When |
 |---|---|
-| `unsupported_schema_version` | `schemaVersion` is not one this server reads |
+| `unsupported_schema_version` | `schemaVersion` is missing or not one this server reads. Nothing else of the entry is read |
+| `unknown_field` | The entry or its `dish` has a field schema 1 does not have, such as `quizCorrect`, `xp` or a total |
+| `unreadable_entry` | A field is missing or of the wrong type, `cookedAt` is not an RFC 3339 instant, `outcome` is another word, or `dish` is not exactly one kind |
 | `invalid_skill_id` | The skill is not a well-formed id |
 | `level_out_of_range` | The level is not a valid level number |
 | `weekly_goal_out_of_range` | The goal is outside the game's weekly goal range |
 | `cooked_in_future` | `cookedAt` is later than the receipt by more than the game's tolerance |
 | `invalid_time_zone` | The entry's `timeZone` is not a known IANA zone |
-| `recipe_does_not_teach_level` | The pinned graph knows the recipe, and its levels do not include this skill and level |
+| `recipe_does_not_teach_level` | The entry's `graphVersion` is the pinned graph, that graph knows the recipe, and its levels do not include this skill and level. A cook of another graph version is not judged by this one |
+
+An entry without a readable `id` is answered in its place with `"id": null` and `unreadable_entry`, so one bad entry
+never blocks the rest of the outbox. The conflict log line holds the entry id and `"code": "conflict"`, never what the
+entry says.
 
 A skill or level the catalog does not know is **accepted**: it is ignored for mastery, still earns XP and counts for
 the streak, so a newer catalog can recognise it later.
 
-Batch errors: `401` and `403` as for every route; `422 invalid_request` for an unreadable body, more than 100 entries
-or a bad `calendar`. The phone keeps its entries on any batch error and tries again later; it never drops them.
+Batch errors: `401` and `403` as for every route (a deleted account is `403 account_deleted`); `422 invalid_request`
+for an unreadable body, an unknown top-level field, more than 100 entries or a bad `calendar` (a missing or unknown
+`timeZone`, or a `firstWeekday` outside 1 to 7). Nothing of a refused batch is stored. The phone keeps its entries on any batch error and tries again later; it never drops them.
 
 ## `GET /v1/progress?timeZone=Europe/Amsterdam&firstWeekday=2`
 

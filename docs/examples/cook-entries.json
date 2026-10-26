@@ -1,0 +1,47 @@
+{
+  "request": {
+    "calendar": { "timeZone": "Europe/Amsterdam", "firstWeekday": 2 },
+    "entries": [
+      {
+        "schemaVersion": 1,
+        "id": "4e2c2a0e-7e6b-4c7a-9c2b-6e0a3d1f9a11",
+        "cookedAt": "2026-10-20T18:42:00Z",
+        "timeZone": "Europe/Amsterdam",
+        "dish": { "recipeId": "recipe/omelette-french", "graphVersion": "2026.10.20" },
+        "skill": "eggs",
+        "level": 1,
+        "outcome": "finished",
+        "weeklyGoal": 3
+      },
+      {
+        "schemaVersion": 1,
+        "id": "5f3d3b1f-8f7c-4d8b-8d3c-7f1b4e2a0b22",
+        "cookedAt": "2026-10-12T11:05:00Z",
+        "timeZone": "Asia/Tokyo",
+        "dish": { "lessonId": "eggs-scrambled-1" },
+        "skill": "eggs",
+        "level": 1,
+        "outcome": "stoppedEarly",
+        "weeklyGoal": 3
+      },
+      {
+        "schemaVersion": 1,
+        "id": "9b1f0c4d-2a3e-4f5b-8c6d-7e8f9a0b1c2d",
+        "cookedAt": "2999-01-01T12:00:00Z",
+        "timeZone": "Europe/Amsterdam",
+        "dish": { "lessonId": "eggs-scrambled-1" },
+        "skill": "eggs",
+        "level": 1,
+        "outcome": "finished",
+        "weeklyGoal": 3
+      }
+    ]
+  },
+  "response": {
+    "results": [
+      { "id": "4e2c2a0e-7e6b-4c7a-9c2b-6e0a3d1f9a11", "status": "accepted" },
+      { "id": "5f3d3b1f-8f7c-4d8b-8d3c-7f1b4e2a0b22", "status": "accepted" },
+      { "id": "9b1f0c4d-2a3e-4f5b-8c6d-7e8f9a0b1c2d", "status": "rejected", "problems": ["cooked_in_future"] }
+    ]
+  }
+}
