@@ -100,7 +100,7 @@ fn a_row_saved_before_fields_were_added_reads_with_their_defaults() {
     assert_eq!(profile.diet, Some(id("vegan")));
     assert_eq!(profile.avoid, [id("nuts")].into());
     assert_eq!(profile.servings, 2);
-    assert_eq!(profile.weekly_goal, 3);
+    assert_eq!(profile.weekly_goal, crate::progress::game::WEEKLY_GOAL_DEFAULT);
     assert!(!profile.onboarding_done);
 }
 

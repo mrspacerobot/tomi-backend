@@ -5,8 +5,10 @@ use crate::kernel::display::Shown;
 use crate::kernel::ids::SavedId;
 use crate::kernel::language::Language;
 use crate::library::{Choice, Course, Equipment, Kind, Library, Skill};
+use game::ShownGame;
 use serde::Serialize;
 
+mod game;
 mod routes;
 #[cfg(test)]
 mod tests;
@@ -26,6 +28,7 @@ pub struct Options {
     staples: Vec<ShownStaple>,
     ingredients: Vec<Shown>,
     courses: Vec<ShownCourse>,
+    game: ShownGame,
 }
 
 /// An avoid item, with whether it is about an allergen or a choice, so the app can group them.
@@ -89,6 +92,7 @@ pub fn options(library: &Library, foods: &Foods, language: &Language) -> Options
         staples: shown_staples(library, foods, language),
         ingredients: Shown::all(foods.listed(), language),
         courses: library.catalog.courses.iter().map(|course| shown_course(library, course, language)).collect(),
+        game: ShownGame::from_rules(),
     }
 }
 

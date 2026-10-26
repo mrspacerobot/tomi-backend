@@ -4,6 +4,7 @@
 //! remove one. JSON uses the same camelCase names as the app.
 
 use crate::kernel::ids::SavedId;
+use crate::progress::game::WEEKLY_GOAL_DEFAULT;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -87,7 +88,7 @@ impl Default for Profile {
             experience: Experience::default(),
             servings: 2,
             units: None,
-            weekly_goal: 3,
+            weekly_goal: WEEKLY_GOAL_DEFAULT,
             focus_skill: None,
             onboarding_done: false,
         }

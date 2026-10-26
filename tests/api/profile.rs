@@ -2,6 +2,7 @@ use crate::helpers::{get, new_cook, patch_profile, server, server_with, Setup};
 use axum::http::StatusCode;
 use serde_json::{json, Value};
 use sqlx::PgPool;
+use tomi_api::progress::game::{WEEKLY_GOAL_DEFAULT, WEEKLY_GOAL_MAXIMUM, WEEKLY_GOAL_MINIMUM};
 
 #[sqlx::test(migrations = "./migrations")]
 async fn a_new_cook_starts_with_version_zero_and_defaults(pool: PgPool) {
@@ -10,7 +11,7 @@ async fn a_new_cook_starts_with_version_zero_and_defaults(pool: PgPool) {
     assert_eq!(reply.body["version"], 0);
     assert_eq!(reply.body["profile"]["diet"], Value::Null);
     assert_eq!(reply.body["profile"]["avoid"], json!([]));
-    assert_eq!(reply.body["profile"]["weeklyGoal"], 3);
+    assert_eq!(reply.body["profile"]["weeklyGoal"], WEEKLY_GOAL_DEFAULT);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -75,6 +76,21 @@ async fn bad_bodies_are_refused(pool: PgPool) {
         let reply = patch_profile(&app, &cook, body.clone()).await;
         assert_eq!(reply.status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
         assert_eq!(reply.body["error"]["code"], "invalid_request");
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn the_weekly_goal_is_held_to_the_game_range(pool: PgPool) {
+    let (app, cook) = (server(pool), new_cook());
+    for goal in [WEEKLY_GOAL_MINIMUM - 1, WEEKLY_GOAL_MAXIMUM + 1] {
+        let reply = patch_profile(&app, &cook, json!({"version": 0, "weeklyGoal": goal})).await;
+        assert_eq!(reply.status, StatusCode::UNPROCESSABLE_ENTITY, "{goal}");
+        assert_eq!(reply.body["error"]["code"], "invalid_request");
+    }
+    for (version, goal) in [(0, WEEKLY_GOAL_MINIMUM), (1, WEEKLY_GOAL_MAXIMUM)] {
+        let reply = patch_profile(&app, &cook, json!({"version": version, "weeklyGoal": goal})).await;
+        assert_eq!(reply.status, StatusCode::OK, "{goal}");
+        assert_eq!(reply.body["profile"]["weeklyGoal"], goal);
     }
 }
 

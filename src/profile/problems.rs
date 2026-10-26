@@ -2,6 +2,7 @@
 
 use super::Profile;
 use crate::kernel::ids::SavedId;
+use crate::progress::game::{WEEKLY_GOAL_MAXIMUM, WEEKLY_GOAL_MINIMUM};
 use std::collections::BTreeSet;
 use std::ops::RangeInclusive;
 
@@ -9,8 +10,8 @@ use std::ops::RangeInclusive;
 const MAX_LIST_LENGTH: usize = 200;
 /// Tomi only asks for at least one. The top guards against typing errors.
 const SERVINGS: RangeInclusive<u8> = 1..=24;
-/// Cooking days in a week, as Tomi's `GameRules.weeklyGoalOptions`.
-const WEEKLY_GOAL: RangeInclusive<u8> = 1..=7;
+/// Cooking days in a week: the game's range, the one `GET /v1/options` sends.
+const WEEKLY_GOAL: RangeInclusive<u8> = WEEKLY_GOAL_MINIMUM..=WEEKLY_GOAL_MAXIMUM;
 
 impl Profile {
     /// Every problem at once, so the app can show them together.

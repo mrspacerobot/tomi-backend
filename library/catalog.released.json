@@ -1,0 +1,14 @@
+{
+  "braise": [1, 2, 3],
+  "eggs": [1, 2, 3],
+  "emulsions": [1, 2, 3, 4],
+  "gratin": [1, 2, 3],
+  "knife-cuts": [1, 2, 3],
+  "pan-sauce": [1, 2, 3],
+  "poach": [1, 2, 3],
+  "roast": [1, 2, 3],
+  "roux": [1, 2, 3],
+  "saute": [1, 2, 3],
+  "sear": [1, 2, 3],
+  "stocks": [1, 2, 3]
+}
