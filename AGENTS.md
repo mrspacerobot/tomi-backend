@@ -26,10 +26,13 @@ Report honestly: if a check fails or you skipped a step, say so.
 
 ```
 src/
-  profile.rs  scans.rs  suggestions.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs   one folder per feature
+  profile.rs  scans.rs  suggestions.rs  progress.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs
+                one root file and one folder per feature
   profile/      routes.rs (HTTP handlers), db.rs (queries), the pure rules, and their tests
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
-  suggestions/  routes.rs, suggestion.rs (the API answer), ranking, progress.rs and game.rs
+  suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels by calling `progress`
+  progress/     the cook log, game.rs (every game number), the progress rules and the quiz answers (planned,
+                docs/progress.md)
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
@@ -129,10 +132,11 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 
 - **Fail closed.** An unknown diet or avoid id is kept, never dropped. A missing or unreadable fact, an incompatible version or a withdrawn lesson is a refusal, never an empty restriction or a guess.
 - **A restriction is never weakened silently.** Removing a diet or an avoid item needs `allowWeakerRestrictions: true`, which the app sends only after the cook confirmed it on screen. Two copies that disagree are read with the strictest restrictions of both.
-- **The cook log is the source of truth.** XP, rank, streak and mastery are computed from it on demand. A stored total is a bug. XP is never accepted from the app.
-- **No result depends on arrival order.** The same event id twice counts once. Two copies of one id that disagree are resolved by a fixed rule, the same one the app uses.
-- **Week and day arithmetic uses the cook's calendar,** passed in as a time zone and first weekday, never the server's clock or seven times 24 hours.
-- **No Rust file names a specific skill, diet, avoid item, ingredient, equipment or cuisine.** Restrictions, progression and kitchen options come from reviewed library data in `library/` (`library/SOURCE.md`); recipe content and food facts come only from the graph. Explicitly missing appliances tracked by the library filter recipes; other graph equipment is disclosed as a requirement until kitchen options migrate. Game numbers live in one module.
+- **This server owns the cook log, every progress rule and the quiz,** per Supabase account (the owner's decision of 26 October 2026, contract in `docs/progress.md`). XP, rank, weekly streak, levels, unlocks, mastery, grants and focus are decided here, in the `progress` feature. The phone keeps an outbox of unsent cook entries and shows the last snapshot this server sent; it never computes or predicts XP or rank. The word is "cook entry", never "event".
+- **The cook log is the source of truth.** XP, rank, streak and mastery are computed from it on demand. A stored total is a bug. XP, totals and quiz results are never accepted from the app: an entry with such a field is refused as unknown.
+- **No result depends on arrival order.** The same entry id twice counts once. The first accepted copy of an entry id wins; a later copy with a different body is answered `conflict`, changes nothing and is logged with the id and the code only.
+- **Week and day arithmetic uses the cook's calendar,** with `jiff` and its bundled time zone database (approved by the owner on 26 October 2026), never the server's clock or seven times 24 hours. Each cook entry stores its own IANA time zone. A past week is judged by each entry's own zone; the week in progress uses the time zone and first weekday sent on the request.
+- **No Rust file names a specific skill, diet, avoid item, ingredient, equipment or cuisine.** Restrictions, progression and kitchen options come from reviewed library data in `library/` (`library/SOURCE.md`); recipe content and food facts come only from the graph. Explicitly missing appliances tracked by the library filter recipes; other graph equipment is disclosed as a requirement until kitchen options migrate. Game numbers live in one module, `progress::game`, and the app holds none: what it needs for input (the weekly goal range and default) it reads from `GET /v1/options`.
 - **The app holds no food knowledge and no lists.** Diets, avoid items, ingredients (from the graph), equipment, cuisines, experience and units, with their names, come from `GET /v1/options` and from each answer. Every offer says which restrictions it was checked against. `library/choices.json` is the server's own list of cuisines, experience answers and units (wording from Tomi's approved mockups).
 - **Code decides what may be offered and their order.** Dinner suggestions must make a graph `dish`, never a `preparation`. Recipes are selected from the graph by open skill level and cuisine. The cook's confirmed ingredients are kept separate from assumed cupboard staples and take priority in deterministic ranking. Available ingredients and restrictions go to the graph safety planner; only graph-listed swaps and omissions are used. Copied lesson JSON never gates availability or supplies recipe content. The preproduction `/v1/lessons/suggest` response carries graph `sourceRecipe` separately from its checked `safePlan`; source instructions are not rewritten to pretend a substitution or omission was adapted.
 - **AI runs on this server only for fridge scans, behind the `Ai` interface** (`src/ai.rs`), with a fake in every test. A model may name only ingredient ids from a closed list; it never adds an ingredient, diet, recipe or fact, and `domain` checks its answer before anyone sees it. Recipe selection and ranking are deterministic code.
@@ -145,6 +149,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 ## The adapted recipe
 
 - **Teaching is optional graph content, never inferred.** Suggestions carry `teaching` as described in `docs/teaching.md`. Its primary technique is the first sorted actual recipe technique matched to the offered skill level, including graph variants. Missing or malformed introductions leave teaching unavailable without hiding the checked recipe; missing or malformed quizzes are unavailable independently. Text, answers and tiers come unchanged from the pinned graph. Question IDs are scoped by technique. Production requires recipe, technique, introduction and offered questions to be reviewed or higher; a draft graph keeps its explicit testing status.
+- **The quiz is run by this server, and correct answers never leave it.** Quiz questions are sent with their choices, without their answer or explanation (teaching schema 2, mrspacerobot/tomi-backend#42; schema 1 still sends them until then). Each pick is checked here (`POST /v1/quiz-answers`) and answered right or wrong, with the explanation only once right. The first answer to each question is the score; later picks only teach. A cook's quiz result is derived here from those first answers, never sent by the app.
 - **Changed recipes need reviewed teaching compatibility.** Until the graph carries compatibility evidence, any applied substitution or omission makes teaching unavailable. A food-safe swap is not proof that the instructions or quiz remain applicable. Teaching schema 1 supplies content for introduction/preparation; graph-native sessions, resume, timers and completion are separate contracts.
 
 
@@ -175,7 +180,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 
 - **Deployment follows a merge to main.** CI builds one image containing the backend and the exact graph in `graph.lock`, after running the graph reference tests. Only that image digest is deployed. Existing traffic moves only after the candidate passes readiness and reports the pinned graph version and channel. Cloud Run assigns initial traffic automatically when creating the first service, which cannot use `--no-traffic`; the same probes verify that initial deployment. A failed service lookup stops deployment. Graph updates still require an owner-merged pin pull request. Google deployment credentials use repository- and main-branch-scoped Workload Identity Federation, never a service-account key in GitHub.
 - **One issue, one branch, one pull request,** small enough to review in one sitting.
-- **Every commit names its issue.** The subject says what changed, in the imperative, and ends with the issue number: `Add cook events (#4)`. The body says why.
+- **Every commit names its issue.** The subject says what changed, in the imperative, and ends with the issue number: `Add cook entries (#4)`. The body says why.
 - **When a decision changes,** update this file and the README in the same pull request.
 
 ## Code review rules

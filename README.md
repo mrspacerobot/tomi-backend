@@ -18,6 +18,16 @@ profile, then the AI functions (fridge scan and tonight's suggestions).
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
 | `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, a safe graph recipe and up to two alternatives out |
 
+Planned, not built yet (contract in [`docs/progress.md`](docs/progress.md)):
+
+| Route | Sign-in | What it will do |
+|---|---|---|
+| `POST /v1/cook-entries` | yes | The phone's unsent cooks in (at most 100), one `accepted`, `duplicate`, `conflict` or `rejected` per entry and the progress snapshot out |
+| `GET /v1/progress` | yes | The progress snapshot (XP, rank, weekly streak, skills and levels) for the calendar on the request |
+| `POST /v1/quiz-answers` | yes | One quiz pick in, right or wrong out; correct answers never leave the server |
+
+`GET /v1/options` will also carry the weekly goal range and default (`game.weeklyGoal`).
+
 Sign-in is Supabase Auth. The app sends the Supabase access token as
 `Authorization: Bearer <token>`. The API checks the signature, issuer,
 audience and expiry, refuses anonymous sessions, and creates its own user
@@ -151,9 +161,11 @@ checked it against: the app hides an offer checked against less than the
 cook's own restrictions. Scan items name their ingredient as `{id, name}`;
 swaps read `{removed, added}`, as in the app's `AppliedSwap`.
 
-Recipes are offered only at skill levels the cook has reached, by
-Tomi's `ProgressRules`. The server has no cook log yet, so for now only the
-onboarding answer counts: "comfortable" opens the whole first course.
+Recipes are offered only at skill levels the cook has reached. This server owns
+the cook log and every progress rule (owner's decision of 26 October 2026,
+[`docs/progress.md`](docs/progress.md)); the app holds none. The cook log is not
+stored yet, so for now only the onboarding answer counts: "comfortable" opens
+the whole first course.
 
 Errors always look like
 `{"error": {"code": "...", "message": "...", "details": {...}}}`.
@@ -242,4 +254,4 @@ unrecognised ids remain plain labels for the cook to confirm or skip.
   limits come with the next slice.
 - **The Docker image was not built here** (no Docker daemon in the session
   that wrote it). The binary and all tests were.
-- Next slices, from the spec: cook events and progress, then active recipe, ratings and leaderboard.
+- Next slices: the cook log, progress and the server-run quiz ([`docs/progress.md`](docs/progress.md)), then active recipe, ratings and leaderboard.
