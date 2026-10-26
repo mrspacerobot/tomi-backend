@@ -7,7 +7,7 @@ computes or predicts XP or rank. The quiz is run here: the phone gets questions 
 told right or wrong. Correct answers never leave the server.
 
 **Status: in progress.** `POST /v1/cook-entries` stores the cook log (#38); its answer gains the progress
-snapshot with #40. The other routes are planned. This document is the contract the following pull requests
+snapshot with #40. Suggestions open levels from the signed-in cook's own finished cooks (#41). The other routes are planned. This document is the contract the following pull requests
 implement, and each of them keeps it current:
 
 | Issue | Delivers |

@@ -1,6 +1,7 @@
 //! Storing cook entries. The first accepted copy of an entry id is the one kept; nothing here ever overwrites it.
 
 use crate::error::AppError;
+use crate::progress::entries::{CookEntry, StoredCook};
 use crate::progress::received::{Dish, ReceivedEntry};
 use jiff::Timestamp;
 use sqlx::PgPool;
@@ -14,6 +15,8 @@ const INSERT: &str = "
     on conflict (user_id, id) do nothing";
 
 const STORED_SHA256: &str = "select payload_sha256 from tomi.cook_entries where user_id = $1 and id = $2";
+
+const COOK_LOG: &str = "select id, skill, level, outcome from tomi.cook_entries where user_id = $1";
 
 /// An entry to keep for this cook, with its fingerprint and the time it arrived.
 pub struct EntryWrite<'a> {
@@ -40,6 +43,26 @@ pub async fn insert(pool: &PgPool, write: &EntryWrite<'_>) -> Result<bool, AppEr
 pub async fn stored_sha256(pool: &PgPool, user_id: Uuid, id: Uuid) -> Result<String, AppError> {
     let query = sqlx::query_scalar(STORED_SHA256).bind(user_id).bind(id);
     Ok(query.fetch_one(pool).await?)
+}
+
+/// Every cook this cook logged, and only theirs, in no particular order: the rules give the same answer for any.
+/// A row no accepted entry could have written is left out and logged by its id, so it opens nothing.
+pub async fn cook_log(pool: &PgPool, user_id: Uuid) -> Result<Vec<CookEntry>, AppError> {
+    let rows: Vec<(Uuid, String, i16, String)> = sqlx::query_as(COOK_LOG).bind(user_id).fetch_all(pool).await?;
+    let mut log = Vec::with_capacity(rows.len());
+    for (id, skill, level, outcome) in rows {
+        match (StoredCook { id, skill, level, outcome }).read() {
+            Some(entry) => log.push(entry),
+            None => log_unreadable(id),
+        }
+    }
+    Ok(log)
+}
+
+/// Only the entry id: never what the entry says.
+#[expect(clippy::cognitive_complexity, reason = "tracing's macro expands into branches no reader sees")]
+fn log_unreadable(entry_id: Uuid) {
+    tracing::error!(%entry_id, "a stored cook entry could not be read; it counts for nothing");
 }
 
 /// The lesson, recipe and graph version columns: one kind of dish is filled, the other left empty.

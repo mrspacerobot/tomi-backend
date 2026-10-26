@@ -8,7 +8,7 @@ use crate::http::{json_body, Caller, CookLanguage};
 use crate::kernel::ids::SavedId;
 use crate::kernel::language::Language;
 use crate::profile::{read as read_profile, Profile};
-use crate::progress::{open_levels, CookCounts};
+use crate::progress::{cook_log, open_levels, CookCounts, OpenLevels};
 use crate::scans::{self, Confirmation};
 use crate::suggestions::{self, overlap_order, Candidate, Suggestion, SuggestionContext, Tonight};
 use crate::AppState;
@@ -62,7 +62,8 @@ async fn suggest(
     validate_ingredients(graph, &request)?;
     confirm_scan(&state, user_id, &request).await?;
     let profile = read_profile(&state.db, user_id).await?.profile;
-    let input = CandidateInput { request: &request, profile: &profile };
+    let open = cook_open_levels(&state, user_id, &profile).await?;
+    let input = CandidateInput { request: &request, profile: &profile, open: &open };
     let by_overlap = candidates(&state, graph, input);
     Ok(Json(response(graph, by_overlap, Answer { profile: &profile, language: &language })))
 }
@@ -86,16 +87,24 @@ fn validate_ingredients(graph: &Graph, request: &SuggestionsRequest) -> Result<(
 struct CandidateInput<'a> {
     request: &'a SuggestionsRequest,
     profile: &'a Profile,
+    open: &'a OpenLevels,
+}
+
+/// The levels this cook has opened with their own finished cooks and their experience answer. Progress only
+/// decides which levels are offered; the cook's restrictions still decide every food.
+async fn cook_open_levels(state: &AppState, user_id: Uuid, profile: &Profile) -> Result<OpenLevels, AppError> {
+    let log = cook_log(&state.db, user_id).await?;
+    let counts = CookCounts::from_log(&log);
+    Ok(open_levels(&state.library.catalog, profile.experience, &counts))
 }
 
 fn candidates(state: &AppState, graph: &Graph, input: CandidateInput) -> Vec<Candidate> {
-    let open = open_levels(&state.library.catalog, input.profile.experience, &CookCounts::default());
     let ingredients = available(state, input.request, input.profile);
     let tonight = Tonight {
         profile: input.profile,
         available: ingredients,
         confirmed: input.request.ingredients.clone(),
-        open: &open,
+        open: input.open,
     };
     overlap_order(suggestions::candidates(&state.library, graph, &tonight))
 }

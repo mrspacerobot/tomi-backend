@@ -4,7 +4,7 @@ use crate::helpers::*;
 use serde_json::{json, Value};
 use sqlx::PgPool;
 
-mod fixtures;
+pub mod fixtures;
 mod policy;
 mod selection;
 

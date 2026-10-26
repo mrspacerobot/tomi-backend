@@ -16,7 +16,7 @@ const RECIPE: &str = "recipe/soft-scrambled-eggs";
 const FIXTURE_GRAPH: &str = "fixture";
 
 /// A finished cook of a fixture graph recipe, with a new id, as the phone sends it.
-fn entry() -> Value {
+pub fn entry() -> Value {
     json!({
         "schemaVersion": 1,
         "id": Uuid::new_v4(),
@@ -31,7 +31,7 @@ fn entry() -> Value {
 }
 
 /// The same entry with one field set to another value.
-fn with(entry: &Value, field: &str, value: Value) -> Value {
+pub fn with(entry: &Value, field: &str, value: Value) -> Value {
     let mut changed = entry.clone();
     changed[field] = value;
     changed
@@ -48,7 +48,7 @@ async fn send(app: &Router, token: Option<&str>, body: &Value) -> Reply {
 }
 
 /// Sends a batch and returns its results, after checking the batch itself was read.
-async fn results(app: &Router, token: &str, entries: &[Value]) -> Vec<Value> {
+pub async fn results(app: &Router, token: &str, entries: &[Value]) -> Vec<Value> {
     let reply = send(app, Some(token), &batch(entries)).await;
     assert_eq!(reply.status, axum::http::StatusCode::OK, "{}", reply.body);
     reply.body["results"].as_array().unwrap().clone()

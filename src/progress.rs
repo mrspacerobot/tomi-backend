@@ -5,7 +5,8 @@
 //! stored beside the entries. The rules are a port of Tomi's TomiCore `Game` and `Progress` rules.
 //!
 //! `routes.rs` takes the cook entries the phone sends (`POST /v1/cook-entries`), `received` reads and checks
-//! each one, and `db.rs` keeps the first accepted copy of each entry id.
+//! each one, and `db.rs` keeps the first accepted copy of each entry id. `cook_log` reads a cook's stored
+//! entries back, so suggestions open levels from that cook's own log.
 
 mod db;
 mod entries;
@@ -23,6 +24,7 @@ pub use received::{
     Dish, EntryBatch, EntryOutcome, EntryProblem, EntryResult, EntryStatus, ReceivedEntry, RequestCalendar,
     ENTRY_SCHEMA_VERSION, MAX_ENTRIES_PER_BATCH,
 };
+pub use db::cook_log;
 pub use routes::router;
 
 pub use entries::{finished_cooks, CookCounts, CookEntry, Outcome};
