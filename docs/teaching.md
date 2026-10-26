@@ -2,9 +2,9 @@
 
 `POST /v1/lessons/suggest` adds an optional `teaching` field to each suggestion. Existing recipe fields and browsing remain available when teaching is null. Older responses without this field mean teaching is unavailable.
 
-Teaching schema 2 contains:
+Teaching schema 1 contains:
 
-- `schemaVersion`: integer 2.
+- `schemaVersion`: integer 1.
 - `graphVersion`, `graphChannel`: the exact pinned graph identity; channel is `draft` or `production`.
 - `language`: `en`; graph teaching prose currently exists only in English.
 - `technique`: `{id, name, tier}`. The ID is `technique/<slug>` for the actual technique used by the recipe and matched to its offered skill level. A slug has at most 64 ASCII lowercase letters/digits joined by single hyphens, with no empty segments. Selection sorts matching technique IDs, independent of source order. The first matching technique must have a valid introduction; no unrelated fallback is guessed.

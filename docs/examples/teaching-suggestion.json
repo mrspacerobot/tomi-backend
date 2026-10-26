@@ -254,7 +254,7 @@
     "avoid": []
   },
   "teaching": {
-    "schemaVersion": 2,
+    "schemaVersion": 1,
     "graphVersion": "2026.10.22-8aa9532",
     "graphChannel": "draft",
     "language": "en",

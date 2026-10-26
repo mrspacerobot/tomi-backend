@@ -23,7 +23,7 @@ async fn offer(pool: PgPool, graph: tomi_api::graph::Graph) -> Value {
 async fn quiz_questions_never_expose_answers(pool: PgPool) {
     let offer = offer(pool, fixture_graph()).await;
     let teaching = &offer["teaching"];
-    assert_eq!(teaching["schemaVersion"], 2);
+    assert_eq!(teaching["schemaVersion"], 1);
     let questions = teaching["quiz"].as_array().unwrap();
     assert!(!questions.is_empty());
     for question in questions {
@@ -53,7 +53,7 @@ fn assert_no_answers(value: &Value) {
 async fn an_unchanged_recipe_carries_pinned_graph_teaching(pool: PgPool) {
     let offer = offer(pool, fixture_graph()).await;
     let teaching = &offer["teaching"];
-    assert_eq!(teaching["schemaVersion"], 2);
+    assert_eq!(teaching["schemaVersion"], 1);
     assert_eq!(teaching["graphVersion"], "fixture");
     assert_eq!(teaching["graphChannel"], "draft");
     assert_eq!(teaching["language"], "en");

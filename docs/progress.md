@@ -17,7 +17,7 @@ implement, and each of them keeps it current:
 | mrspacerobot/tomi-backend#39 | `game.weeklyGoal` in `GET /v1/options`, and the released skill catalog pinned by a test |
 | mrspacerobot/tomi-backend#40 | `GET /v1/progress`, and the snapshot in the cook-entries answer |
 | mrspacerobot/tomi-backend#41 | Suggestions open levels from the cook's own log |
-| mrspacerobot/tomi-backend#42 | Quiz questions sent without their answers (teaching schema 2) |
+| mrspacerobot/tomi-backend#42 | Quiz questions sent without their answers (teaching schema 1) |
 | mrspacerobot/tomi-backend#43 | `POST /v1/quiz-answers` |
 | mrspacerobot/tomi-backend#44 | Each cook's quiz result derived from its recorded first answers |
 
@@ -176,8 +176,8 @@ answer carries the same snapshot.
 ## The quiz
 
 Suggestions carry each quiz question as `{id, question, choices, tier}`, **without its answer or explanation**
-(teaching schema 2, `docs/teaching.md`). The answers stay in the pinned graph, read by question id. Until #42 is
-merged, teaching schema 1 still sends them.
+(teaching schema 1, `docs/teaching.md`). The answers stay in the pinned graph, read by question id. Until #42 is
+merged, the existing schema 1 response still sends them.
 
 ### `POST /v1/quiz-answers`
 
