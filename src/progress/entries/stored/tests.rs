@@ -11,12 +11,8 @@ fn stored(skill: &str, level: i16, outcome: &str) -> StoredCook {
 
 #[test]
 fn a_finished_cook_is_read_without_a_quiz_bonus_until_answers_are_recorded() {
-    let expected = CookEntry {
-        id: Uuid::nil(),
-        skill: id("eggs"),
-        level: 2,
-        outcome: Outcome::Finished { quiz_passed: false },
-    };
+    let expected =
+        CookEntry { id: Uuid::nil(), skill: id("eggs"), level: 2, outcome: Outcome::Finished { quiz_passed: false } };
     assert_eq!(stored("eggs", 2, "finished").read(), Some(expected));
 }
 

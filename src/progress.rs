@@ -20,11 +20,11 @@ mod snapshot;
 #[cfg(test)]
 mod fixtures;
 
+pub use db::cook_log;
 pub use received::{
     Dish, EntryBatch, EntryOutcome, EntryProblem, EntryResult, EntryStatus, ReceivedEntry, RequestCalendar,
     ENTRY_SCHEMA_VERSION, MAX_ENTRIES_PER_BATCH,
 };
-pub use db::cook_log;
 pub use routes::router;
 
 pub use entries::{finished_cooks, CookCounts, CookEntry, Outcome};
