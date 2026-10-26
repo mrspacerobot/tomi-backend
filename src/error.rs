@@ -31,6 +31,8 @@ pub enum AppError {
     AiUnavailable,
     #[error("the cooking graph is not loaded on this server")]
     GraphUnavailable,
+    #[error("the cooking graph changed since this was offered; ask for new suggestions")]
+    GraphVersionChanged,
     #[error("the database failed")]
     Database(#[from] sqlx::Error),
     #[error("stored data could not be read")]
@@ -70,6 +72,7 @@ impl AppError {
             AppError::Photo(_) => "photo_unreadable",
             AppError::AiUnavailable => "ai_unavailable",
             AppError::GraphUnavailable => "graph_unavailable",
+            AppError::GraphVersionChanged => "graph_version_changed",
             AppError::ProfileTooNew => "profile_too_new",
             AppError::Database(_) | AppError::Corrupt(_) | AppError::StoredProfileUnreadable => "internal",
         }
@@ -89,6 +92,7 @@ impl AppError {
             AppError::NotFound => StatusCode::NOT_FOUND,
             AppError::VersionConflict { .. } => StatusCode::CONFLICT,
             AppError::WeakensRestrictions { .. } => StatusCode::CONFLICT,
+            AppError::GraphVersionChanged => StatusCode::CONFLICT,
             AppError::Photo(PhotoError::TooLarge) => StatusCode::PAYLOAD_TOO_LARGE,
             AppError::Photo(PhotoError::UnsupportedType) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             AppError::Photo(_) => StatusCode::UNPROCESSABLE_ENTITY,

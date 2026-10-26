@@ -17,6 +17,7 @@ profile, then the AI functions (fridge scan and tonight's suggestions).
 | `POST /v1/ingredients/resolve` | yes | Typed text to ingredients: `exact`, `ambiguous` (the cook chooses) or `none` |
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
 | `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, a safe graph recipe and up to two alternatives out |
+| `POST /v1/quiz-answers` | yes | One quiz pick in, right or wrong out; the first pick of each question is kept as the score. Correct answers never leave the server ([`docs/progress.md`](docs/progress.md#post-v1quiz-answers)) |
 
 Planned, not built yet (contract in [`docs/progress.md`](docs/progress.md)):
 
@@ -24,7 +25,6 @@ Planned, not built yet (contract in [`docs/progress.md`](docs/progress.md)):
 |---|---|---|
 | `POST /v1/cook-entries` | yes | The phone's unsent cooks in (at most 100), one `accepted`, `duplicate`, `conflict` or `rejected` per entry and the progress snapshot out |
 | `GET /v1/progress` | yes | The progress snapshot (XP, rank, weekly streak, skills and levels) for the calendar on the request |
-| `POST /v1/quiz-answers` | yes | One quiz pick in, right or wrong out; correct answers never leave the server |
 
 `GET /v1/options` will also carry the weekly goal range and default (`game.weeklyGoal`).
 

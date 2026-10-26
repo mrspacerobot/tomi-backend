@@ -18,6 +18,7 @@ struct QuestionSource {
     tier: ContentTier,
 }
 
+/// A question as the phone sees it: never its answer or explanation.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Question {
@@ -27,7 +28,37 @@ pub struct Question {
     tier: ContentTier,
 }
 
-pub fn read(thing: &Value, technique: &str, channel: Channel) -> Option<Vec<Question>> {
+/// A question with its answer and explanation, for checking a pick on this server.
+/// Deliberately neither `Serialize` nor `Debug`, so the answer cannot reach a reply or a log by accident.
+pub struct KeyedQuestion {
+    question: Question,
+    answer: usize,
+    explanation: String,
+}
+
+impl KeyedQuestion {
+    pub fn id(&self) -> &str {
+        &self.question.id
+    }
+
+    pub fn has_choice(&self, choice: usize) -> bool {
+        choice < self.question.choices.len()
+    }
+
+    pub fn is_answer(&self, choice: usize) -> bool {
+        choice == self.answer
+    }
+
+    pub fn explanation(&self) -> &str {
+        &self.explanation
+    }
+
+    pub fn into_question(self) -> Question {
+        self.question
+    }
+}
+
+pub fn read(thing: &Value, technique: &str, channel: Channel) -> Option<Vec<KeyedQuestion>> {
     let sources: Vec<QuestionSource> = serde_json::from_value(thing.get("quiz")?.clone()).ok()?;
     if sources.is_empty() {
         return None;
@@ -35,19 +66,16 @@ pub fn read(thing: &Value, technique: &str, channel: Channel) -> Option<Vec<Ques
     let questions = sources.into_iter().map(|source| checked(source, technique, channel));
     let questions = questions.collect::<Option<Vec<_>>>()?;
     let mut ids = BTreeSet::new();
-    questions.iter().all(|question| ids.insert(&question.id)).then_some(questions)
+    questions.iter().all(|question| ids.insert(question.id().to_string())).then_some(questions)
 }
 
-fn checked(source: QuestionSource, technique: &str, channel: Channel) -> Option<Question> {
+fn checked(source: QuestionSource, technique: &str, channel: Channel) -> Option<KeyedQuestion> {
     if !source.valid(channel) {
         return None;
     }
-    Some(Question {
-        id: format!("{technique}/quiz/{}", source.id),
-        question: source.question,
-        choices: source.choices,
-        tier: source.tier,
-    })
+    let id = format!("{technique}/quiz/{}", source.id);
+    let question = Question { id, question: source.question, choices: source.choices, tier: source.tier };
+    Some(KeyedQuestion { question, answer: source.answer, explanation: source.because })
 }
 
 impl QuestionSource {

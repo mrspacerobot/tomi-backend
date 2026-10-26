@@ -1,0 +1,15 @@
+{
+  "request": {
+    "entryId": "4e2c2a0e-7e6b-4c7a-9c2b-6e0a3d1f9a11",
+    "recipeId": "recipe/soft-scrambled-eggs",
+    "graphVersion": "2026.10.22-8aa9532",
+    "questionId": "technique/scramble/quiz/purpose",
+    "choice": 0
+  },
+  "answer": {
+    "questionId": "technique/scramble/quiz/purpose",
+    "correct": true,
+    "scored": true,
+    "explanation": "This gentle method aims for small, soft, creamy curds rather than large, dry ones."
+  }
+}

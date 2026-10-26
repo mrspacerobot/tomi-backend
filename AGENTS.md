@@ -26,13 +26,13 @@ Report honestly: if a check fails or you skipped a step, say so.
 
 ```
 src/
-  profile.rs  scans.rs  suggestions.rs  progress.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs
+  profile.rs  scans.rs  suggestions.rs  progress.rs  quiz.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs
                 one root file and one folder per feature
   profile/      routes.rs (HTTP handlers), db.rs (queries), the pure rules, and their tests
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
   suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels by calling `progress`
-  progress/     the cook log, game.rs (every game number), the progress rules and the quiz answers (planned,
-                docs/progress.md)
+  progress/     the cook log, game.rs (every game number) and the progress rules (planned, docs/progress.md)
+  quiz/         routes.rs, db.rs, and pick.rs: checks a quiz pick against the pinned graph and keeps first answers
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
@@ -149,7 +149,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 ## The adapted recipe
 
 - **Teaching is optional graph content, never inferred.** Suggestions carry `teaching` as described in `docs/teaching.md`. Its primary technique is the first sorted actual recipe technique matched to the offered skill level, including graph variants. Missing or malformed introductions leave teaching unavailable without hiding the checked recipe; missing or malformed quizzes are unavailable independently. Text, answers and tiers come unchanged from the pinned graph. Question IDs are scoped by technique. Production requires recipe, technique, introduction and offered questions to be reviewed or higher; a draft graph keeps its explicit testing status.
-- **The quiz is run by this server, and correct answers never leave it.** Quiz questions are sent with their choices, without their answer or explanation (teaching schema 1). Each pick is checked here (`POST /v1/quiz-answers`, planned in #43) and answered right or wrong, with the explanation only once right. The first answer to each question is the score; later picks only teach. A cook's quiz result is derived here from those first answers, never sent by the app.
+- **The quiz is run by this server, and correct answers never leave it.** Quiz questions are sent with their choices, without their answer or explanation (teaching schema 1). Each pick is checked here (`POST /v1/quiz-answers`, the `quiz` feature) and answered right or wrong, with the explanation only once right; a refusal never names the answer. The first answer to each question is the score and is stored; later picks only teach and are never stored. A cook's quiz result is derived here from those first answers, never sent by the app.
 - **Changed recipes need reviewed teaching compatibility.** Until the graph carries compatibility evidence, any applied substitution or omission makes teaching unavailable. A food-safe swap is not proof that the instructions or quiz remain applicable. Teaching schema 1 supplies content for introduction/preparation; graph-native sessions, resume, timers and completion are separate contracts.
 
 
