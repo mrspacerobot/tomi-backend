@@ -1,6 +1,8 @@
 //! The cook log as the rules read it: any list of entries, in any order, possibly with copies.
 
 use crate::kernel::ids::SavedId;
+use jiff::tz::TimeZone;
+use jiff::Timestamp;
 use std::collections::BTreeSet;
 use uuid::Uuid;
 
@@ -13,6 +15,12 @@ pub struct CookEntry {
     pub skill: SavedId,
     pub level: u8,
     pub outcome: Outcome,
+    /// The instant the cook was made.
+    pub cooked_at: Timestamp,
+    /// The IANA zone the cook was made in. A week before the current one counts the cook on its day here.
+    pub time_zone: TimeZone,
+    /// The cook's weekly goal when the cook was made, so a later change of goal never judges a past week again.
+    pub weekly_goal: u8,
 }
 
 /// How a cook ended.

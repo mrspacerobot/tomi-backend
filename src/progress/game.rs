@@ -28,6 +28,11 @@ pub const WEEKLY_GOAL_MAXIMUM: u8 = 7;
 /// The streak goal of a cook who has not picked one.
 pub const WEEKLY_GOAL_DEFAULT: u8 = 3;
 
+/// The goal a week is judged by: the cook's goal, held inside the range they may pick from.
+pub fn clamped_weekly_goal(goal: u8) -> u8 {
+    goal.clamp(WEEKLY_GOAL_MINIMUM, WEEKLY_GOAL_MAXIMUM)
+}
+
 /// Finished cooks at one level of a skill before that level is complete
 /// and the next one opens.
 pub const COOKS_TO_COMPLETE_LEVEL: u32 = 2;

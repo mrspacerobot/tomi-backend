@@ -1,12 +1,16 @@
 //! Builds cook entries and catalogs for the progress tests, as TomiCore's `ProgressTestLog` and
 //! fixtures. The catalog is the fixture catalog unless a test brings its own: knife and eggs in
-//! "basics" first, roux in "sauces" needing knife, two levels each.
+//! "basics" first, roux in "sauces" needing knife, two levels each. A cook is made at 6 pm on
+//! Monday 5 October 2026 in UTC with the default weekly goal, unless a test says otherwise.
 
 use crate::kernel::ids::SavedId;
 use crate::library::Catalog;
 use crate::profile::Experience;
-use crate::progress::game::COOKS_TO_COMPLETE_LEVEL;
+use crate::progress::game::{COOKS_TO_COMPLETE_LEVEL, WEEKLY_GOAL_DEFAULT};
 use crate::progress::{CookEntry, Outcome, ProgressRules, ProgressSnapshot, SkillProgress};
+use jiff::civil::{date, Date};
+use jiff::tz::TimeZone;
+use jiff::Zoned;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
@@ -20,7 +24,54 @@ pub fn ids(raw: &[&str]) -> Vec<SavedId> {
 
 /// A finished cook with its own new id and the quiz passed, as TomiCore's `CookEntry.fixture`.
 pub fn cook(skill: &str, level: u8) -> CookEntry {
-    CookEntry { id: Uuid::new_v4(), skill: id(skill), level, outcome: Outcome::Finished { quiz_passed: true } }
+    let made = local("UTC", october(5), 18);
+    CookEntry {
+        id: Uuid::new_v4(),
+        skill: id(skill),
+        level,
+        outcome: Outcome::Finished { quiz_passed: true },
+        cooked_at: made.timestamp(),
+        time_zone: made.time_zone().clone(),
+        weekly_goal: WEEKLY_GOAL_DEFAULT,
+    }
+}
+
+/// The same cook, made at this moment, in this moment's time zone.
+pub fn made_at(entry: &CookEntry, moment: &Zoned) -> CookEntry {
+    CookEntry { cooked_at: moment.timestamp(), time_zone: moment.time_zone().clone(), ..entry.clone() }
+}
+
+/// The same cook, made while the cook's weekly goal was this.
+pub fn with_weekly_goal(entry: &CookEntry, weekly_goal: u8) -> CookEntry {
+    CookEntry { weekly_goal, ..entry.clone() }
+}
+
+/// This hour on the hour of this day, on the clocks of this IANA zone.
+pub fn local(zone: &str, day: Date, hour: i8) -> Zoned {
+    local_time(zone, day, (hour, 0))
+}
+
+/// This hour and minute of this day, on the clocks of this IANA zone.
+pub fn local_time(zone: &str, day: Date, (hour, minute): (i8, i8)) -> Zoned {
+    day.at(hour, minute, 0, 0).to_zoned(TimeZone::get(zone).unwrap()).unwrap()
+}
+
+/// Days of 2026 as typed values. Mondays: 23 and 30 March, 14, 21 and 28 September, 5, 19 and
+/// 26 October, 2 November.
+pub fn march(day: i8) -> Date {
+    date(2026, 3, day)
+}
+
+pub fn september(day: i8) -> Date {
+    date(2026, 9, day)
+}
+
+pub fn october(day: i8) -> Date {
+    date(2026, 10, day)
+}
+
+pub fn november(day: i8) -> Date {
+    date(2026, 11, day)
 }
 
 /// As many separate finished cooks of one skill at one level as asked for.

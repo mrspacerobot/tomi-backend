@@ -53,7 +53,15 @@ released.
 - **Each cook entry stores its own time zone.** A week before the current one is judged by each entry's own zone: a
   cook made in Tokyo counts on its Tokyo day. The week in progress uses the zone on the request. The first weekday
   on the request is used for every week.
+- Precisely: a cook whose day on the request's clocks falls in the week in progress (or later) counts on that day.
+  Any other cook counts on its day in its own zone. A cook made just before the week in progress whose own day
+  already falls in it (1 am Monday in Tokyo is still Sunday in Amsterdam) counts once, on that own day.
+- A week is met when its days with a finished cook reach the goal recorded with its latest cook; at the same
+  instant the higher goal decides, so arrival order never matters. The week in progress never breaks the streak:
+  it adds a week once met, and the streak ends only when a finished week was not met.
 - "Now" is the request time, passed into the rules by the route.
+- The rules are `progress::CookCalendar` (parsed once; an unknown zone or a first weekday outside 1 to 7 is
+  refused) and `progress::StreakRules` (mrspacerobot/tomi-backend#37).
 
 ## `POST /v1/cook-entries`
 
