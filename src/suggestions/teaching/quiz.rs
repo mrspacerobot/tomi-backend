@@ -24,8 +24,6 @@ pub struct Question {
     id: String,
     question: String,
     choices: Vec<String>,
-    answer_index: usize,
-    explanation: String,
     tier: ContentTier,
 }
 
@@ -48,8 +46,6 @@ fn checked(source: QuestionSource, technique: &str, channel: Channel) -> Option<
         id: format!("{technique}/quiz/{}", source.id),
         question: source.question,
         choices: source.choices,
-        answer_index: source.answer,
-        explanation: source.because,
         tier: source.tier,
     })
 }

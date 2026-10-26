@@ -24,6 +24,10 @@ pub fn expected() -> Value {
     serde_json::from_str(include_str!("../../../docs/examples/teaching.json")).unwrap()
 }
 
+pub fn expected_suggestion() -> Value {
+    serde_json::from_str(include_str!("../../../docs/examples/teaching-suggestion.json")).unwrap()
+}
+
 pub fn duplicate_question(body: &mut Value) {
     let question = body["things"][TECHNIQUE]["quiz"][0].clone();
     body["things"][TECHNIQUE]["quiz"].as_array_mut().unwrap().push(question);

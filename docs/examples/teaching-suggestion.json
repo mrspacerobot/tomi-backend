@@ -254,7 +254,7 @@
     "avoid": []
   },
   "teaching": {
-    "schemaVersion": 1,
+    "schemaVersion": 2,
     "graphVersion": "2026.10.22-8aa9532",
     "graphChannel": "draft",
     "language": "en",
@@ -278,8 +278,6 @@
           "Large, dry, rubbery curds.",
           "A firm sheet for rolling."
         ],
-        "answerIndex": 0,
-        "explanation": "This gentle method aims for small, soft, creamy curds rather than large, dry ones.",
         "tier": "drafted"
       },
       {
@@ -290,8 +288,6 @@
           "Continuously, scraping the bottom and corners.",
           "Only after a browned layer has formed."
         ],
-        "answerIndex": 1,
-        "explanation": "Stir continuously and scrape the bottom and corners so you do not leave eggs sitting against the hot pan.",
         "tier": "drafted"
       },
       {
@@ -302,8 +298,6 @@
           "No trail in a completely watery mixture.",
           "A trail that closes slowly."
         ],
-        "answerIndex": 2,
-        "explanation": "A spoon trail that closes slowly matches the thick, creamy texture of this scramble.",
         "tier": "drafted"
       },
       {
@@ -314,8 +308,6 @@
           "Keep the pan on the heat and stir faster.",
           "Reduce stirring so the curds have time to join together."
         ],
-        "answerIndex": 0,
-        "explanation": "Fast-forming curds signal too much heat for this gentle method. Lift the pan away and keep stirring.",
         "tier": "drafted"
       }
     ]

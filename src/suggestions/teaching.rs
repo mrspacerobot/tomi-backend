@@ -60,7 +60,7 @@ fn from_technique(id: &str, graph: &Graph, language: &Language) -> Option<Teachi
         return None;
     }
     Some(Teaching {
-        schema_version: 1,
+        schema_version: 2,
         graph_version: graph.version.clone(),
         graph_channel: graph.channel.as_str(),
         language: "en",
