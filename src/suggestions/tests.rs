@@ -2,7 +2,7 @@ use super::*;
 use crate::graph::test_helpers::fixture_graph;
 use crate::library::tests::shipped_files;
 use crate::library::Library;
-use crate::suggestions::progress::OpenLevels;
+use crate::progress::OpenLevels;
 
 mod ranking_tests;
 

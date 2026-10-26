@@ -1,17 +1,21 @@
-use super::*;
+//! The levels suggestions may offer, on the shipped catalog.
+
+use super::test_log::{cooks, id, TestLog};
 use crate::library::tests::shipped_files;
-use crate::library::Library;
+use crate::library::{Catalog, Library};
+use crate::profile::Experience;
+use crate::progress::{open_levels, CookCounts, OpenLevels};
 
 fn catalog() -> Catalog {
     Library::parse(&shipped_files()).unwrap().catalog
 }
 
-fn id(raw: &str) -> SavedId {
-    SavedId::parse(raw).unwrap()
-}
-
 fn open(experience: Experience, counts: &CookCounts) -> OpenLevels {
     open_levels(&catalog(), experience, counts)
+}
+
+fn knife_cuts(count: u32) -> CookCounts {
+    CookCounts::from_log(&cooks(count, "knife-cuts", 1))
 }
 
 #[test]
@@ -34,8 +38,7 @@ fn comfortable_counts_the_first_course_as_complete() {
 
 #[test]
 fn two_cooks_complete_a_level_and_open_what_follows() {
-    let counts = CookCounts(BTreeMap::from([((id("knife-cuts"), 1), 2)]));
-    let open = open(Experience::Never, &counts);
+    let open = open(Experience::Never, &knife_cuts(2));
     assert!(open.contains(&id("knife-cuts"), 2));
     assert!(open.contains(&id("saute"), 1));
     assert!(open.contains(&id("stocks"), 1));
@@ -43,6 +46,14 @@ fn two_cooks_complete_a_level_and_open_what_follows() {
 
 #[test]
 fn one_cook_is_not_enough() {
-    let counts = CookCounts(BTreeMap::from([((id("knife-cuts"), 1), 1)]));
-    assert!(!open(Experience::Never, &counts).contains(&id("knife-cuts"), 2));
+    assert!(!open(Experience::Never, &knife_cuts(1)).contains(&id("knife-cuts"), 2));
+}
+
+#[test]
+fn a_mastered_skill_without_its_prerequisites_opens_no_level() {
+    let log = TestLog::new();
+    let roux = CookCounts::from_log(&[cooks(2, "roux", 1), cooks(2, "roux", 2)].concat());
+    let open = open_levels(&log.catalog, Experience::Basics, &roux);
+    assert!(!open.contains(&id("roux"), 1));
+    assert!(open.contains(&id("knife"), 1));
 }

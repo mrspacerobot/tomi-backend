@@ -5,7 +5,7 @@ use crate::graph::test_helpers::fixture_graph;
 use crate::kernel::ids::SavedId;
 use crate::library::{files, Library};
 use crate::profile::Profile;
-use crate::suggestions::progress::OpenLevels;
+use crate::progress::OpenLevels;
 use crate::suggestions::{candidates, Tonight};
 use std::collections::BTreeSet;
 use std::path::Path;

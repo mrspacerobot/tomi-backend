@@ -26,10 +26,12 @@ Report honestly: if a check fails or you skipped a step, say so.
 
 ```
 src/
-  profile.rs  scans.rs  suggestions.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs   one folder per feature
+  profile.rs  progress.rs  scans.rs  suggestions.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs   one folder per feature
   profile/      routes.rs (HTTP handlers), db.rs (queries), the pure rules, and their tests
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
-  suggestions/  routes.rs, suggestion.rs (the API answer), ranking, progress.rs and game.rs
+  progress/     the progress rules ported from the app: game.rs (every game number), log.rs, counts.rs, xp.rs,
+                rank.rs, levels.rs (served, open and granted), skill.rs, menu.rs (focus, mastered count)
+  suggestions/  routes.rs, suggestion.rs (the API answer), ranking; open levels come from progress
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
@@ -132,7 +134,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 - **The cook log is the source of truth.** XP, rank, streak and mastery are computed from it on demand. A stored total is a bug. XP is never accepted from the app.
 - **No result depends on arrival order.** The same event id twice counts once. Two copies of one id that disagree are resolved by a fixed rule, the same one the app uses.
 - **Week and day arithmetic uses the cook's calendar,** passed in as a time zone and first weekday, never the server's clock or seven times 24 hours.
-- **No Rust file names a specific skill, diet, avoid item, ingredient, equipment or cuisine.** Restrictions, progression and kitchen options come from reviewed library data in `library/` (`library/SOURCE.md`); recipe content and food facts come only from the graph. Explicitly missing appliances tracked by the library filter recipes; other graph equipment is disclosed as a requirement until kitchen options migrate. Game numbers live in one module.
+- **No Rust file names a specific skill, diet, avoid item, ingredient, equipment or cuisine.** Restrictions, progression and kitchen options come from reviewed library data in `library/` (`library/SOURCE.md`); recipe content and food facts come only from the graph. Explicitly missing appliances tracked by the library filter recipes; other graph equipment is disclosed as a requirement until kitchen options migrate. Game numbers live in one module, `progress::game`.
 - **The app holds no food knowledge and no lists.** Diets, avoid items, ingredients (from the graph), equipment, cuisines, experience and units, with their names, come from `GET /v1/options` and from each answer. Every offer says which restrictions it was checked against. `library/choices.json` is the server's own list of cuisines, experience answers and units (wording from Tomi's approved mockups).
 - **Code decides what may be offered and their order.** Dinner suggestions must make a graph `dish`, never a `preparation`. Recipes are selected from the graph by open skill level and cuisine. The cook's confirmed ingredients are kept separate from assumed cupboard staples and take priority in deterministic ranking. Available ingredients and restrictions go to the graph safety planner; only graph-listed swaps and omissions are used. Copied lesson JSON never gates availability or supplies recipe content. The preproduction `/v1/lessons/suggest` response carries graph `sourceRecipe` separately from its checked `safePlan`; source instructions are not rewritten to pretend a substitution or omission was adapted.
 - **AI runs on this server only for fridge scans, behind the `Ai` interface** (`src/ai.rs`), with a fake in every test. A model may name only ingredient ids from a closed list; it never adds an ingredient, diet, recipe or fact, and `domain` checks its answer before anyone sees it. Recipe selection and ranking are deterministic code.
