@@ -22,6 +22,7 @@ pub fn router() -> Router<AppState> {
         .merge(crate::ingredients::router())
         .merge(crate::profile::router())
         .merge(crate::progress::router())
+        .merge(crate::quiz::router())
         .merge(crate::scans::router())
         .merge(crate::suggestions::router())
 }

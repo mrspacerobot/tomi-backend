@@ -1,4 +1,4 @@
-//! Captures what the server logs during one call, so a test can check what reaches the logs.
+//! Captures what the server logs during one call, so a test can read it.
 
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex, Once};
@@ -7,12 +7,17 @@ use std::sync::{Arc, Mutex, Once};
 pub struct LogBuffer(Arc<Mutex<Vec<u8>>>);
 
 impl LogBuffer {
+    /// Everything, down to trace level, so a test sees whatever any layer or crate writes.
     pub fn subscriber(&self) -> impl tracing::Subscriber + Send + Sync + 'static {
         // A permanent registry keeps callsite interest enabled while parallel scoped captures come and go.
         static LOGGING: Once = Once::new();
         LOGGING.call_once(|| tracing::subscriber::set_global_default(tracing_subscriber::registry()).unwrap());
         let writer = self.clone();
-        tracing_subscriber::fmt().json().with_writer(move || writer.clone()).finish()
+        tracing_subscriber::fmt()
+            .json()
+            .with_max_level(tracing::Level::TRACE)
+            .with_writer(move || writer.clone())
+            .finish()
     }
 
     pub fn text(&self) -> String {

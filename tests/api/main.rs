@@ -19,6 +19,7 @@ mod logs;
 mod options;
 mod profile;
 mod progress;
+mod quiz;
 mod recipes;
 mod scans;
 mod suggestions;

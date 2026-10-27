@@ -7,8 +7,9 @@ computes or predicts XP or rank. The quiz is run here: the phone gets questions 
 told right or wrong. Correct answers never leave the server.
 
 **Status: in progress.** `POST /v1/cook-entries` stores the cook log (#38) and answers with the progress
-snapshot, which `GET /v1/progress` also serves (#40). The other routes are planned. This document is the contract the following pull requests
-implement, and each of them keeps it current:
+snapshot, which `GET /v1/progress` also serves (#40). `POST /v1/quiz-answers` keeps each first answer (#43). The
+other routes are planned. This document is the contract the following pull requests implement, and each of them
+keeps it current:
 
 | Issue | Delivers |
 |---|---|
@@ -18,7 +19,7 @@ implement, and each of them keeps it current:
 | mrspacerobot/tomi-backend#39 | `game.weeklyGoal` in `GET /v1/options`, and the released skill catalog pinned by a test |
 | mrspacerobot/tomi-backend#40 | `GET /v1/progress`, and the snapshot in the cook-entries answer |
 | mrspacerobot/tomi-backend#41 | Suggestions open levels from the cook's own log |
-| mrspacerobot/tomi-backend#42 | Quiz questions sent without their answers (teaching schema 2) |
+| mrspacerobot/tomi-backend#42 | Quiz questions sent without their answers (teaching schema 1) |
 | mrspacerobot/tomi-backend#43 | `POST /v1/quiz-answers` |
 | mrspacerobot/tomi-backend#44 | Each cook's quiz result derived from its recorded first answers |
 
@@ -214,35 +215,63 @@ types and an API test reads back after posting its log; the app copies it verbat
 ## The quiz
 
 Suggestions carry each quiz question as `{id, question, choices, tier}`, **without its answer or explanation**
-(teaching schema 2, `docs/teaching.md`). The answers stay in the pinned graph, read by question id. Until #42 is
-merged, teaching schema 1 still sends them.
+(teaching schema 1, `docs/teaching.md`). The answers stay in the pinned graph, read by question id.
 
 ### `POST /v1/quiz-answers`
+
+Built in #43, in the `quiz` feature. The request and its answer, checked against the real response by a test
+(`docs/examples/quiz-answer.json`):
 
 ```json
 {
   "entryId": "4e2c2a0e-7e6b-4c7a-9c2b-6e0a3d1f9a11",
-  "recipeId": "recipe/omelette-french",
-  "graphVersion": "2026.10.20",
-  "questionId": "technique/omelette/quiz/heat",
-  "choice": 1
+  "recipeId": "recipe/soft-scrambled-eggs",
+  "graphVersion": "2026.10.22-8aa9532",
+  "questionId": "technique/scramble/quiz/purpose",
+  "choice": 0
 }
 ```
 
 ```json
-{ "questionId": "technique/omelette/quiz/heat", "correct": true, "scored": true, "explanation": "…" }
+{
+  "questionId": "technique/scramble/quiz/purpose",
+  "correct": true,
+  "scored": true,
+  "explanation": "This gentle method aims for small, soft, creamy curds rather than large, dry ones."
+}
 ```
 
 - `entryId` is the id the phone made when cooking began and later sends as the cook entry's `id`, so the answers
-  and the entry meet by id, in either order.
-- One pick in, right or wrong out. `explanation` is sent only once the pick is right; the correct index is never
-  sent.
-- **The first answer to each question is the score.** `scored` is true only for the first recorded pick of that
-  question in that cook; later picks are checked and answered, but only teach, and are not stored.
-- A `graphVersion` other than the pinned graph is `409 graph_version_changed`. A question that is not part of the
-  quiz taught for that recipe, or a choice that is not one of its choices, is `422 invalid_request` and stores
-  nothing.
+  and the entry meet by id, in either order. `choice` is the index of the picked choice, from 0. Unknown fields are
+  refused, so the phone can never send a result of its own.
+- One pick in, right or wrong out. `explanation` is sent only once the pick is right, and is `null` otherwise; the
+  correct index is never sent, in an answer or a refusal.
+- **The first answer to each question is the score.** The first pick of a question in one cook is stored, and
+  `scored` is true for it. A later, different pick is checked and answered with `scored: false`, but only teaches:
+  it is never stored and never changes the first answer. Sending the very same first pick again (same recipe,
+  graph version and choice) is a retry, answered exactly as the first time, `scored: true`, and stores nothing new.
+- Answers belong to one Supabase account: two cooks may use the same `entryId` without meeting. A deleted account is
+  `403 account_deleted`, and erasing the account erases its answers.
+- **The quiz taught for that recipe** is the quiz of the technique the recipe is taught with at one of its skill
+  levels, under today's teaching rules (`docs/teaching.md`): the recipe, technique, introduction and quiz must be
+  allowed on the graph's channel and valid. Whether the cook's own adapted recipe was offered with teaching is not
+  known here and not checked.
 - The quiz needs a network connection.
+
+| Status | Code | When |
+|---|---|---|
+| `409` | `graph_version_changed` | `graphVersion` is not the pinned graph. Permanent: the phone asks for new suggestions |
+| `422` | `invalid_request`, problem `question_not_in_quiz` | The recipe is unknown, or the question is not part of the quiz taught for it |
+| `422` | `invalid_request`, problem `choice_out_of_range` | `choice` is not one of the question's choices |
+| `422` | `invalid_request` | The body cannot be read, has an unknown field, or `entryId` is not a UUID |
+| `503` | `graph_unavailable` | This server has no graph loaded |
+
+A refused pick stores nothing. Nothing of a pick, its question or its answer is logged.
+
+Each first answer is a row of `tomi.quiz_answers` (migration `0004_quiz_answers.sql`): `user_id`, `entry_id`,
+`question_id`, `recipe_id`, `graph_version`, `choice`, `correct`, `quiz_question_ids` (the whole quiz at the first
+answer, so scoring never needs an older graph) and `answered_at`. The primary key is
+`(user_id, entry_id, question_id)`, so the first insert wins. Row level security is on, with no policies.
 
 ### How a cook's quiz result is derived
 

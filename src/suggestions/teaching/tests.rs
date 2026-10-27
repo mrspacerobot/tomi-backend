@@ -22,6 +22,13 @@ fn example() -> (Candidate, Graph) {
 }
 
 #[test]
+fn teaching_keeps_schema_one() {
+    let (candidate, graph) = example();
+    let teaching = for_candidate(&candidate, &graph, &Language::english()).unwrap();
+    assert_eq!(teaching.schema_version, 1);
+}
+
+#[test]
 fn an_omitted_part_requires_reviewed_teaching_compatibility() {
     let (mut candidate, graph) = example();
     candidate.recipe.left_out.push(crate::recipe::OmittedPart { part: "garnish".into(), foods: vec![] });

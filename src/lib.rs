@@ -15,6 +15,7 @@ pub mod meta;
 pub mod options;
 pub mod profile;
 pub mod progress;
+pub mod quiz;
 pub mod recipe;
 pub mod scans;
 pub mod storage;

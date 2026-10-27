@@ -27,6 +27,7 @@ pub use routes::router;
 
 pub use ranking::overlap_order;
 pub use suggestion::{Suggestion, SuggestionContext};
+pub use teaching::{answer_key, AnswerKey, KeyedQuestion};
 
 /// A graph recipe that the cook may make tonight.
 #[derive(Debug, Clone)]

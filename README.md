@@ -19,14 +19,9 @@ profile, then the AI functions (fridge scan and tonight's suggestions).
 | `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, a safe graph recipe and up to two alternatives out |
 | `POST /v1/cook-entries` | yes | The phone's unsent cooks in (at most 100, with the cook's calendar), one `accepted`, `duplicate`, `conflict` or `rejected` per entry out, in the order sent. The entry id is the idempotency key. The answer carries the progress snapshot after the batch. Example: [`docs/examples/cook-entries.json`](docs/examples/cook-entries.json) |
 | `GET /v1/progress?timeZone=<IANA>&firstWeekday=<1-7>` | yes | The progress snapshot (XP, rank, weekly streak, skills and levels, focus), computed from the stored cook log on every request in the request's calendar. Example: [`docs/examples/progress.json`](docs/examples/progress.json) |
+| `POST /v1/quiz-answers` | yes | One quiz pick in, right or wrong out; the first pick of each question is kept as the score. Correct answers never leave the server ([`docs/progress.md`](docs/progress.md#post-v1quiz-answers)) |
 
-Planned, not built yet (contract in [`docs/progress.md`](docs/progress.md)):
-
-| Route | Sign-in | What it will do |
-|---|---|---|
-| `POST /v1/quiz-answers` | yes | One quiz pick in, right or wrong out; correct answers never leave the server |
-
-`GET /v1/options` will also carry the weekly goal range and default (`game.weeklyGoal`).
+Planned, not built yet (contract in [`docs/progress.md`](docs/progress.md)): `GET /v1/options` will also carry the weekly goal range and default (`game.weeklyGoal`).
 
 Sign-in is Supabase Auth. The app sends the Supabase access token as
 `Authorization: Bearer <token>`. The API checks the signature, issuer,

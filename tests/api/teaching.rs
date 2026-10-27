@@ -4,7 +4,7 @@ use crate::helpers::*;
 use serde_json::{json, Value};
 use sqlx::PgPool;
 
-mod fixtures;
+pub mod fixtures;
 mod policy;
 mod selection;
 
@@ -20,6 +20,36 @@ async fn offer(pool: PgPool, graph: tomi_api::graph::Graph) -> Value {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn quiz_questions_never_expose_answers(pool: PgPool) {
+    let offer = offer(pool, fixture_graph()).await;
+    let teaching = &offer["teaching"];
+    assert_eq!(teaching["schemaVersion"], 1);
+    let questions = teaching["quiz"].as_array().unwrap();
+    assert!(!questions.is_empty());
+    for question in questions {
+        let fields = question.as_object().unwrap();
+        assert_eq!(fields.len(), 4);
+        for field in ["id", "question", "choices", "tier"] {
+            assert!(fields.contains_key(field));
+        }
+    }
+    assert_no_answers(&offer);
+}
+
+fn assert_no_answers(value: &Value) {
+    match value {
+        Value::Object(fields) => {
+            for (key, value) in fields {
+                assert!(!["answerIndex", "explanation", "answer", "because"].contains(&key.as_str()));
+                assert_no_answers(value);
+            }
+        }
+        Value::Array(items) => items.iter().for_each(assert_no_answers),
+        _ => {}
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn an_unchanged_recipe_carries_pinned_graph_teaching(pool: PgPool) {
     let offer = offer(pool, fixture_graph()).await;
     let teaching = &offer["teaching"];
@@ -30,6 +60,9 @@ async fn an_unchanged_recipe_carries_pinned_graph_teaching(pool: PgPool) {
     assert_eq!(teaching["technique"]["id"], TECHNIQUE);
     assert_eq!(teaching["introduction"]["tier"], "drafted");
     assert_eq!(teaching, &fixtures::expected());
+    let mut example = fixtures::expected_suggestion();
+    example["teaching"]["graphVersion"] = json!("fixture");
+    assert_eq!(offer, example);
 }
 
 #[sqlx::test(migrations = "./migrations")]

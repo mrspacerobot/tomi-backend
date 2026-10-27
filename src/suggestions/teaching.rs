@@ -5,6 +5,7 @@ use crate::graph::{Channel, Graph};
 use crate::kernel::language::Language;
 use serde::Serialize;
 
+mod key;
 mod quiz;
 mod selection;
 mod source;
@@ -12,6 +13,8 @@ mod source;
 mod tests;
 mod tier;
 
+pub use key::{answer_key, AnswerKey};
+pub use quiz::KeyedQuestion;
 use quiz::Question;
 use source::{Introduction, Technique, TechniqueSource};
 use tier::ContentTier;
@@ -37,28 +40,28 @@ pub fn for_candidate(candidate: &Candidate, graph: &Graph, language: &Language) 
 }
 
 fn compatible(candidate: &Candidate, graph: &Graph) -> bool {
-    let Some(served) = graph.serving.recipes.get(&candidate.recipe_id) else {
+    candidate.recipe.swaps.is_empty()
+        && candidate.recipe.left_out.is_empty()
+        && recipe_permitted(&candidate.recipe_id, &candidate.source_recipe, graph)
+}
+
+/// The recipe's own content tiers allow teaching it on this graph's channel.
+fn recipe_permitted(recipe_id: &str, source_recipe: &serde_json::Value, graph: &Graph) -> bool {
+    let Some(served) = graph.serving.recipes.get(recipe_id) else {
         return false;
     };
-    let Ok(source_tier) = serde_json::from_value::<ContentTier>(candidate.source_recipe["tier"].clone()) else {
+    let Ok(source_tier) = serde_json::from_value::<ContentTier>(source_recipe["tier"].clone()) else {
         return false;
     };
     let Ok(served_tier) = serde_json::from_value::<ContentTier>(serde_json::Value::String(served.tier.clone())) else {
         return false;
     };
-    candidate.recipe.swaps.is_empty()
-        && candidate.recipe.left_out.is_empty()
-        && source_tier.permitted(graph.channel)
-        && served_tier.permitted(graph.channel)
+    source_tier.permitted(graph.channel) && served_tier.permitted(graph.channel)
 }
 
 fn from_technique(id: &str, graph: &Graph, language: &Language) -> Option<Teaching> {
-    let thing = graph.thing(id)?;
-    let source = permitted_source(thing, graph.channel, language)?;
-    let quiz = quiz::read(thing, id, graph.channel);
-    if !quiz_requirement_met(graph.channel, quiz.is_some()) {
-        return None;
-    }
+    let (source, quiz) = taught_parts(id, graph, language)?;
+    let quiz = quiz.map(|questions| questions.into_iter().map(KeyedQuestion::into_question).collect());
     Some(Teaching {
         schema_version: 1,
         graph_version: graph.version.clone(),
@@ -68,6 +71,17 @@ fn from_technique(id: &str, graph: &Graph, language: &Language) -> Option<Teachi
         introduction: source.intro,
         quiz,
     })
+}
+
+/// The technique's introduction and quiz, when today's teaching rules let it be taught at all.
+fn taught_parts(id: &str, graph: &Graph, language: &Language) -> Option<(TechniqueSource, Option<Vec<KeyedQuestion>>)> {
+    let thing = graph.thing(id)?;
+    let source = permitted_source(thing, graph.channel, language)?;
+    let quiz = quiz::read(thing, id, graph.channel);
+    if !quiz_requirement_met(graph.channel, quiz.is_some()) {
+        return None;
+    }
+    Some((source, quiz))
 }
 
 fn permitted_source(thing: &serde_json::Value, channel: Channel, language: &Language) -> Option<TechniqueSource> {
