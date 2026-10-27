@@ -198,6 +198,7 @@ See `docs/cloud-run-deployment.md` for the deployment identity, secrets and roll
 ## Layout and rules
 
 `AGENTS.md` has the layout and the coding rules, with examples. In short:
+HTTP request and response types describe the API boundary; validated domain types and rule names describe what they mean.
 one folder per feature (`src/profile`, `src/scans`, `src/suggestions` and so on), with HTTP handlers in
 `routes.rs`, storage in `db.rs` and pure rules alongside them, shared HTTP pieces in `src/http.rs`, API tests as one
 binary in `tests/api`. `src/recipe` holds the recipe adaptation rules. `src/cook_entries` owns the cook log. `src/progress` holds the progress rules
