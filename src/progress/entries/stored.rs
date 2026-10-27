@@ -1,7 +1,7 @@
 //! A cook entry as the cook log stores it, read back into what the rules need.
 
 use super::{CookEntry, Outcome};
-use crate::cook_entries::{EntryOutcome, StoredEntry};
+use crate::cook_entries::{CookOutcome, StoredEntry};
 use crate::kernel::calendar::known_zone;
 use crate::kernel::ids::SavedId;
 use jiff::Timestamp;
@@ -28,10 +28,10 @@ impl StoredEntry {
     /// The quiz bonus is not earned yet: the quiz result will be derived from the answers recorded under the
     /// entry's id (mrspacerobot/tomi-backend#44), never sent by the phone.
     fn read_outcome(&self) -> Result<Outcome, UnreadableStoredEntry> {
-        if self.outcome == EntryOutcome::Finished.as_str() {
+        if self.outcome == CookOutcome::Finished.as_str() {
             return Ok(Outcome::Finished { quiz_passed: false });
         }
-        if self.outcome == EntryOutcome::StoppedEarly.as_str() {
+        if self.outcome == CookOutcome::StoppedEarly.as_str() {
             return Ok(Outcome::StoppedEarly);
         }
         Err(UnreadableStoredEntry)
