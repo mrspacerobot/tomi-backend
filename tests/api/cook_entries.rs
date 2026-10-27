@@ -1,15 +1,20 @@
 //! The cook log: `POST /v1/cook-entries` stores each cook once, per cook, whatever order or how often it arrives.
 
+use crate::fakes::FixedClock;
 use crate::helpers::*;
 use axum::http::Method;
 use axum::Router;
+use jiff::Timestamp;
 use serde_json::{json, Value};
 use sqlx::PgPool;
+use std::sync::Arc;
 use uuid::Uuid;
 
-mod batch;
+mod answers;
 mod idempotency;
 mod problems;
+mod request;
+mod snapshot;
 
 /// A recipe of the fixture graph that teaches eggs level 1, and only through its techniques.
 const RECIPE: &str = "recipe/soft-scrambled-eggs";
@@ -37,9 +42,9 @@ pub fn with(entry: &Value, field: &str, value: Value) -> Value {
     changed
 }
 
-/// A batch of entries, sent with the cook's calendar.
-fn batch(entries: &[Value]) -> Value {
-    json!({"calendar": {"timeZone": "Europe/Amsterdam", "firstWeekday": 2}, "entries": entries})
+/// One entry, sent with the cook's calendar.
+fn request(entry: &Value) -> Value {
+    json!({"calendar": {"timeZone": "Europe/Amsterdam", "firstWeekday": 2}, "entry": entry})
 }
 
 async fn send(app: &Router, token: Option<&str>, body: &Value) -> Reply {
@@ -47,11 +52,15 @@ async fn send(app: &Router, token: Option<&str>, body: &Value) -> Reply {
     call(app, Call { method: Method::POST, path: "/v1/cook-entries", token, body }).await
 }
 
-/// Sends a batch and returns its results, after checking the batch itself was read.
+/// Sends each entry separately and returns the results in order.
 pub async fn results(app: &Router, token: &str, entries: &[Value]) -> Vec<Value> {
-    let reply = send(app, Some(token), &batch(entries)).await;
-    assert_eq!(reply.status, axum::http::StatusCode::OK, "{}", reply.body);
-    reply.body["results"].as_array().unwrap().clone()
+    let mut results = Vec::new();
+    for entry in entries {
+        let reply = send(app, Some(token), &request(entry)).await;
+        assert_eq!(reply.status, axum::http::StatusCode::OK, "{}", reply.body);
+        results.push(reply.body["result"].clone());
+    }
+    results
 }
 
 /// Sends one entry and returns its result.
@@ -61,4 +70,22 @@ async fn result(app: &Router, token: &str, entry: &Value) -> Value {
 
 async fn stored_rows(pool: &PgPool) -> i64 {
     sqlx::query_scalar("select count(*) from tomi.cook_entries").fetch_one(pool).await.unwrap()
+}
+
+/// The moment the progress tests ask at: Tuesday 27 October 2026, 7:43:02 pm in Amsterdam.
+fn request_time() -> Timestamp {
+    "2026-10-27T18:43:02Z".parse().unwrap()
+}
+
+/// The query of a phone in Amsterdam whose weeks start on Monday.
+const AMSTERDAM: &str = "timeZone=Europe/Amsterdam&firstWeekday=2";
+
+/// A test server whose clock reads `request_time()`.
+fn server_at_request_time(pool: PgPool) -> Router {
+    server_with(pool, Setup { clock: Arc::new(FixedClock(request_time())), ..Setup::default() })
+}
+
+/// `GET /v1/progress` with this query.
+async fn read_progress(app: &Router, token: Option<&str>, query: &str) -> Reply {
+    get(app, &format!("/v1/progress?{query}"), token).await
 }

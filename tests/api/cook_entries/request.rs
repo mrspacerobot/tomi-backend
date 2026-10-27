@@ -1,14 +1,25 @@
-//! The batch as a whole: who may send it, when it is refused, the table it fills, the logs and the example.
+//! The request: authorization, validation, database protections, logs and the example.
 
 use super::*;
+
+#[sqlx::test(migrations = "./migrations")]
+async fn a_single_cook_is_sent_and_answered_without_a_batch(pool: PgPool) {
+    let (app, cook) = (server(pool.clone()), new_cook());
+    let sent = entry();
+    let request = json!({"calendar": {"timeZone": "Europe/Amsterdam", "firstWeekday": 2}, "entry": sent});
+    let reply = send(&app, Some(&cook), &request).await;
+    assert_eq!(reply.status, axum::http::StatusCode::OK);
+    assert_eq!(reply.body["result"], json!({"id": sent["id"], "status": "accepted"}));
+    assert_eq!(stored_rows(&pool).await, 1);
+}
 use crate::logs::LogBuffer;
 use axum::http::StatusCode;
 use serde_json::json;
 use tracing::instrument::WithSubscriber;
 
 #[sqlx::test(migrations = "./migrations")]
-async fn without_a_token_the_batch_is_unauthenticated(pool: PgPool) {
-    let reply = send(&server(pool.clone()), None, &batch(&[entry()])).await;
+async fn without_a_token_the_request_is_unauthenticated(pool: PgPool) {
+    let reply = send(&server(pool.clone()), None, &request(&entry())).await;
     assert_eq!(reply.status, StatusCode::UNAUTHORIZED);
     assert_eq!(stored_rows(&pool).await, 0);
 }
@@ -22,35 +33,22 @@ async fn a_deleted_account_is_refused_and_nothing_is_stored(pool: PgPool) {
     let delete = "update tomi.users set deleted_at = now() where auth_subject = $1";
     sqlx::query(delete).bind(subject).execute(&pool).await.unwrap();
 
-    let reply = send(&app, Some(&token), &batch(&[entry()])).await;
+    let reply = send(&app, Some(&token), &request(&entry())).await;
     assert_eq!(reply.status, StatusCode::FORBIDDEN);
     assert_eq!(reply.body["error"]["code"], "account_deleted");
     assert_eq!(stored_rows(&pool).await, 0);
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn a_hundred_entries_are_read_and_one_more_refuses_the_batch(pool: PgPool) {
-    let (app, cook) = (server(pool.clone()), new_cook());
-    let too_many: Vec<Value> = (0..101).map(|_| entry()).collect();
-    let refused = send(&app, Some(&cook), &batch(&too_many)).await;
-    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(refused.body["error"]["code"], "invalid_request");
-    assert_eq!(stored_rows(&pool).await, 0);
-
-    assert_eq!(results(&app, &cook, &too_many[..100]).await.len(), 100);
-    assert_eq!(stored_rows(&pool).await, 100);
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn a_batch_without_a_readable_calendar_or_body_is_refused(pool: PgPool) {
+async fn a_request_without_a_readable_calendar_or_entry_is_refused(pool: PgPool) {
     let (app, cook) = (server(pool.clone()), new_cook());
     let refused = [
-        json!({"calendar": {"firstWeekday": 2}, "entries": [entry()]}),
-        json!({"calendar": {"timeZone": "Mars/Olympus_Mons", "firstWeekday": 2}, "entries": [entry()]}),
-        json!({"calendar": {"timeZone": "Europe/Amsterdam", "firstWeekday": 0}, "entries": [entry()]}),
-        json!({"calendar": {"timeZone": "Europe/Amsterdam", "firstWeekday": 8}, "entries": [entry()]}),
-        json!({"calendar": {"timeZone": "Europe/Amsterdam"}, "entries": [entry()]}),
-        json!({"entries": [entry()]}),
+        json!({"calendar": {"firstWeekday": 2}, "entry": entry()}),
+        json!({"calendar": {"timeZone": "Mars/Olympus_Mons", "firstWeekday": 2}, "entry": entry()}),
+        json!({"calendar": {"timeZone": "Europe/Amsterdam", "firstWeekday": 0}, "entry": entry()}),
+        json!({"calendar": {"timeZone": "Europe/Amsterdam", "firstWeekday": 8}, "entry": entry()}),
+        json!({"calendar": {"timeZone": "Europe/Amsterdam"}, "entry": entry()}),
+        json!({"entry": entry()}),
         json!({"calendar": {"timeZone": "Europe/Amsterdam", "firstWeekday": 2}}),
         json!([entry()]),
     ];
@@ -79,7 +77,7 @@ async fn a_conflict_logs_the_id_and_code_and_no_body_content_reaches_the_logs(po
     let changed = with(&sent, "outcome", json!("stoppedEarly"));
     let rejected = with(&with(&entry(), "skill", json!("Secret!")), "cookedAt", json!("2999-01-01T12:00:00Z"));
     let buffer = LogBuffer::default();
-    let bodies = [batch(std::slice::from_ref(&sent)), batch(&[changed, rejected])];
+    let bodies = [request(&sent), request(&changed), request(&rejected)];
     for body in &bodies {
         send(&app, Some(&cook), body).with_subscriber(buffer.subscriber()).await;
     }
@@ -96,7 +94,7 @@ async fn a_conflict_logs_the_id_and_code_and_no_body_content_reaches_the_logs(po
 #[sqlx::test(migrations = "./migrations")]
 async fn the_documented_example_is_what_the_server_answers(pool: PgPool) {
     let example: Value = serde_json::from_str(include_str!("../../../docs/examples/cook-entries.json")).unwrap();
-    let reply = send(&server(pool), Some(&new_cook()), &example["request"]).await;
+    let reply = send(&server_at_request_time(pool), Some(&new_cook()), &example["request"]).await;
     assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
     assert_eq!(reply.body, example["response"]);
 }

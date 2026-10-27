@@ -30,6 +30,25 @@ impl RankTitle {
         RankTitle::Patron,
         RankTitle::Toque,
     ];
+
+    /// The rank's permanent id, as the snapshot sends it and `library/ranks.json` names it.
+    pub fn id(self) -> &'static str {
+        match self {
+            RankTitle::Novice => "novice",
+            RankTitle::Commis => "commis",
+            RankTitle::Cook => "cook",
+            RankTitle::Saucier => "saucier",
+            RankTitle::Sous => "sous",
+            RankTitle::Chef => "chef",
+            RankTitle::Patron => "patron",
+            RankTitle::Toque => "toque",
+        }
+    }
+
+    /// Where the rank stands on the ladder, 0 for the lowest.
+    pub fn position(self) -> usize {
+        self as usize
+    }
 }
 
 /// A cook's rank for a total of XP. Computed from the cook log on demand, never stored.

@@ -1,78 +1,72 @@
-//! `POST /v1/cook-entries`: the cooks in the phone's outbox in, what became of each out.
+//! Progress snapshots computed from the stored cook log.
 
-use super::db::{self as store, EntryWrite};
-use super::received::{id_of, BatchFile, EntryBatch, EntryChecks, EntryResult, EntryStatus, ReceivedEntry};
+use super::{CookCalendar, ProgressAnswers, ProgressSnapshot, SnapshotInputs};
 use crate::error::AppError;
-use crate::http::{json_body, Caller};
+use crate::http::{Caller, CookLanguage};
+use crate::kernel::language::Language;
+use crate::profile::read as read_profile;
 use crate::AppState;
-use axum::extract::rejection::JsonRejection;
-use axum::routing::post;
+use axum::extract::rejection::QueryRejection;
+use axum::extract::Query;
+use axum::routing::get;
 use axum::{Json, Router};
 use jiff::Timestamp;
-use serde::Serialize;
-use serde_json::Value;
+use serde::Deserialize;
 use uuid::Uuid;
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/v1/cook-entries", post(receive))
+    Router::new().route("/v1/progress", get(progress))
 }
 
-#[derive(Serialize)]
-struct EntriesResponse {
-    /// One answer per entry, in the order the entries were sent.
-    results: Vec<EntryResult>,
+/// The cook's calendar, as `GET /v1/progress` takes it. Both are required: there is no default zone.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CalendarQuery {
+    time_zone: String,
+    first_weekday: i64,
 }
 
-/// The cook, the server and the moment the batch arrived, shared by every entry of it.
-struct Receipt<'a> {
-    state: &'a AppState,
-    user_id: Uuid,
-    checks: EntryChecks<'a>,
+/// What a snapshot is asked for with, besides the cook: the calendar, the language and the moment of the request.
+pub struct SnapshotRequest<'a> {
+    pub calendar: &'a CookCalendar,
+    pub language: &'a Language,
+    pub now: Timestamp,
 }
 
-async fn receive(
+async fn progress(
     caller: Caller,
-    body: Result<Json<BatchFile>, JsonRejection>,
-) -> Result<Json<EntriesResponse>, AppError> {
+    CookLanguage(language): CookLanguage,
+    query: Result<Query<CalendarQuery>, QueryRejection>,
+) -> Result<Json<ProgressSnapshot>, AppError> {
     let Caller { state, user_id } = caller;
-    let batch = EntryBatch::parse(json_body(body)?).map_err(AppError::Invalid)?;
-    let checks = EntryChecks { received_at: Timestamp::now(), graph: state.graph.as_deref() };
-    let receipt = Receipt { state: &state, user_id, checks };
-    let mut results = Vec::with_capacity(batch.entries.len());
-    for raw in &batch.entries {
-        results.push(answer(&receipt, raw).await?);
-    }
-    Ok(Json(EntriesResponse { results }))
+    let calendar = calendar_of(query)?;
+    let request = SnapshotRequest { calendar: &calendar, language: &language, now: state.clock.now() };
+    Ok(Json(snapshot(&state, user_id, &request).await?))
 }
 
-async fn answer(receipt: &Receipt<'_>, raw: &Value) -> Result<EntryResult, AppError> {
-    match ReceivedEntry::read(raw, &receipt.checks) {
-        Ok(entry) => {
-            let status = keep(receipt, &entry).await?;
-            Ok(EntryResult { id: Some(entry.id), status })
-        }
-        Err(problems) => Ok(EntryResult { id: id_of(raw), status: EntryStatus::Rejected { problems } }),
-    }
+fn calendar_of(query: Result<Query<CalendarQuery>, QueryRejection>) -> Result<CookCalendar, AppError> {
+    let Query(query) = query.map_err(|rejection| AppError::Invalid(vec![rejection.body_text()]))?;
+    CookCalendar::parse(&query.time_zone, query.first_weekday)
+        .map_err(|error| AppError::Invalid(vec![error.problem("")]))
 }
 
-/// Stores the entry, or tells a retry from a different body when the cook already has its id.
-async fn keep(receipt: &Receipt<'_>, entry: &ReceivedEntry) -> Result<EntryStatus, AppError> {
-    let payload_sha256 = entry.payload_sha256()?;
-    let (user_id, received_at) = (receipt.user_id, receipt.checks.received_at);
-    let write = EntryWrite { user_id, entry, payload_sha256: &payload_sha256, received_at };
-    if store::insert(&receipt.state.db, &write).await? {
-        return Ok(EntryStatus::Accepted);
-    }
-    let stored = store::stored_sha256(&receipt.state.db, user_id, entry.id).await?;
-    let status = EntryStatus::of_copy(&stored, &payload_sha256);
-    if status == EntryStatus::Conflict {
-        log_conflict(entry.id);
-    }
-    Ok(status)
-}
-
-/// Only the entry id and the code: never what the entry says.
-#[expect(clippy::cognitive_complexity, reason = "tracing's macro expands into branches no reader sees")]
-fn log_conflict(entry_id: Uuid) {
-    tracing::warn!(%entry_id, code = "conflict", "a cook entry arrived with a different body; the first copy stays");
+/// The snapshot of the cook's stored log, with their profile answers, as of the request.
+pub async fn snapshot(
+    state: &AppState,
+    user_id: Uuid,
+    request: &SnapshotRequest<'_>,
+) -> Result<ProgressSnapshot, AppError> {
+    let profile = read_profile(&state.db, user_id).await?.profile;
+    let stored = crate::cook_entries::cook_log(&state.db, user_id).await?;
+    let log = stored.iter().map(crate::cook_entries::StoredEntry::read).collect::<Result<Vec<_>, _>>()?;
+    let answers = ProgressAnswers::from(&profile);
+    let inputs = SnapshotInputs {
+        catalog: &state.library.catalog,
+        rank_names: &state.library.ranks,
+        language: request.language,
+        answers: &answers,
+        calendar: request.calendar,
+        now: request.now,
+    };
+    Ok(ProgressSnapshot::compute(&log, &inputs))
 }

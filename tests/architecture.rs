@@ -8,20 +8,43 @@ use std::path::{Path, PathBuf};
 /// A file longer than this has more than one job. See AGENTS.md.
 const MAX_FILE_LINES: usize = 200;
 
-/// Words that mean a file reaches for the web, the database or the clock. The rules take what they
-/// need as arguments.
-const FORBIDDEN_IN_RULES: [&str; 9] =
-    ["axum", "sqlx", "reqwest", "tokio", "tower", "SystemTime::now", "Instant::now", "Utc::now", "Local::now"];
+/// Words that mean a file reaches for the web, the database, the clock or the server's own time
+/// zone. The rules take what they need as arguments.
+const FORBIDDEN_IN_RULES: [&str; 12] = [
+    "axum",
+    "sqlx",
+    "reqwest",
+    "tokio",
+    "tower",
+    "SystemTime::now",
+    "Instant::now",
+    "Utc::now",
+    "Local::now",
+    "Zoned::now",
+    "Timestamp::now",
+    "TimeZone::system",
+];
 
 /// The features whose files are pure rules, except the ones in `TALKS_TO_THE_OUTSIDE`.
-const FEATURES: [&str; 10] =
-    ["graph", "ingredients", "kernel", "library", "options", "profile", "progress", "recipe", "scans", "suggestions"];
+const FEATURES: [&str; 11] = [
+    "cook_entries",
+    "graph",
+    "ingredients",
+    "kernel",
+    "library",
+    "options",
+    "profile",
+    "progress",
+    "recipe",
+    "scans",
+    "suggestions",
+];
 
 /// The files of a feature that talk to the web, the database, the disk or storage on purpose.
 const TALKS_TO_THE_OUTSIDE: [&str; 4] = ["routes.rs", "db.rs", "files.rs", "keep.rs"];
 
 /// Everything else under `src` is plumbing that may use the web, the database or the clock.
-const PLUMBING: [&str; 10] = ["ai", "auth", "config", "db", "error", "http", "lib", "main", "meta", "storage"];
+const PLUMBING: [&str; 11] = ["ai", "auth", "clock", "config", "db", "error", "http", "lib", "main", "meta", "storage"];
 
 #[test]
 fn no_file_is_longer_than_the_limit() {
@@ -39,12 +62,24 @@ fn no_file_is_longer_than_the_limit() {
 fn the_rules_of_each_feature_need_no_web_database_or_clock() {
     let mut found = Vec::new();
     for file in rule_files() {
-        let text = read(&file);
-        for word in FORBIDDEN_IN_RULES.iter().filter(|word| text.contains(*word)) {
+        for word in forbidden_words_in(&read(&file)) {
             found.push(format!("{} uses {word}", file.display()));
         }
     }
     assert!(found.is_empty(), "move this out of the rules, into routes.rs, db.rs or files.rs: {found:#?}");
+}
+
+/// A rule reading `jiff`'s clock or the server's zone would make the streak depend on when and where
+/// the server runs.
+#[test]
+fn reading_the_clock_or_the_servers_zone_with_jiff_is_caught_in_a_rule() {
+    let rule = "let today = jiff::Zoned::now().date();\nlet now = Timestamp::now();\nTimeZone::system()";
+    assert_eq!(forbidden_words_in(rule), ["Zoned::now", "Timestamp::now", "TimeZone::system"]);
+    assert!(forbidden_words_in("let day = moment.to_zoned(zone.clone()).date();").is_empty());
+}
+
+fn forbidden_words_in(text: &str) -> Vec<&'static str> {
+    FORBIDDEN_IN_RULES.into_iter().filter(|word| text.contains(word)).collect()
 }
 
 #[test]

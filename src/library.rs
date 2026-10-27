@@ -1,4 +1,4 @@
-//! Tomi's reviewed library: restrictions, staples, options and progression data.
+//! Tomi's reviewed library: restrictions, staples, options, progression data and rank names.
 //!
 //! Parsed from the reviewed JSON files the app ships (`library/`). Restrictions,
 //! equipment and catalog reject unknown fields and undeclared ids.
@@ -9,6 +9,7 @@ mod catalog;
 mod choices;
 mod equipment;
 pub mod files;
+mod ranks;
 mod restrictions;
 mod staples;
 #[cfg(test)]
@@ -18,6 +19,7 @@ mod text;
 pub use catalog::{Catalog, Course, Level, Skill};
 pub use choices::Choices;
 pub use equipment::{Equipment, EquipmentList};
+pub use ranks::RankNames;
 pub use restrictions::{Kind, Refusal, RestrictionList, Restrictions};
 pub use staples::{Staple, StapleList};
 pub use text::{Choice, LocalizedText};
@@ -31,6 +33,8 @@ pub struct LibraryFiles {
     pub equipment: String,
     /// The server's own `choices.json`: cuisines, experience and units.
     pub choices: String,
+    /// The server's own `ranks.json`: the name of each rank of the ladder.
+    pub ranks: String,
 }
 
 pub struct Library {
@@ -40,6 +44,7 @@ pub struct Library {
     pub equipment: EquipmentList,
     pub catalog: Catalog,
     pub choices: Choices,
+    pub ranks: RankNames,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -57,8 +62,9 @@ impl Library {
         let equipment = EquipmentList::parse(&files.equipment).map_err(in_file("equipment.json"))?;
         let catalog = Catalog::parse(&files.catalog).map_err(in_file("catalog.json"))?;
         let choices = Choices::parse(&files.choices).map_err(in_file("choices.json"))?;
+        let ranks = RankNames::parse(&files.ranks).map_err(in_file("ranks.json"))?;
         let version = catalog.library_version;
-        let library = Library { version, restrictions, staples, equipment, catalog, choices };
+        let library = Library { version, restrictions, staples, equipment, catalog, choices, ranks };
         Ok(library)
     }
 

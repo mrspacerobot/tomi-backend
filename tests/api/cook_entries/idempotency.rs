@@ -4,7 +4,7 @@ use super::*;
 use serde_json::json;
 
 #[sqlx::test(migrations = "./migrations")]
-async fn the_same_batch_twice_is_accepted_then_a_duplicate_and_stored_once(pool: PgPool) {
+async fn the_same_entries_twice_are_accepted_then_duplicates_and_stored_once(pool: PgPool) {
     let (app, cook) = (server(pool.clone()), new_cook());
     let entries = [entry(), entry()];
     let first = results(&app, &cook, &entries).await;
@@ -60,7 +60,7 @@ async fn stored_row(pool: &PgPool) -> Value {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn copies_inside_one_batch_count_once_and_a_different_copy_is_a_conflict(pool: PgPool) {
+async fn repeated_entries_count_once_and_a_different_copy_is_a_conflict(pool: PgPool) {
     let (app, cook) = (server(pool.clone()), new_cook());
     let sent = entry();
     let changed = with(&sent, "weeklyGoal", json!(4));
@@ -89,7 +89,7 @@ async fn the_stored_row_holds_the_entry_with_its_own_time_zone(pool: PgPool) {
     let row = stored_row(&pool).await;
     let expected = json!({
         "id": sent["id"], "time_zone": "Asia/Tokyo", "recipe_id": RECIPE, "graph_version": FIXTURE_GRAPH,
-        "lesson_id": null, "skill": "eggs", "level": 1, "outcome": "finished", "weekly_goal": 3, "schema_version": 1,
+        "skill": "eggs", "level": 1, "outcome": "finished", "weekly_goal": 3, "schema_version": 1,
     });
     for (column, value) in expected.as_object().unwrap() {
         assert_eq!(&row[column], value, "{column}");
@@ -99,11 +99,10 @@ async fn the_stored_row_holds_the_entry_with_its_own_time_zone(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn an_old_development_log_names_its_lesson(pool: PgPool) {
+async fn an_old_development_lesson_is_rejected(pool: PgPool) {
     let (app, cook) = (server(pool.clone()), new_cook());
     let sent = with(&entry(), "dish", json!({"lessonId": "eggs-scrambled-1"}));
-    assert_eq!(result(&app, &cook, &sent).await["status"], "accepted");
-    let lesson: Option<String> =
-        sqlx::query_scalar("select lesson_id from tomi.cook_entries").fetch_one(&pool).await.unwrap();
-    assert_eq!(lesson.as_deref(), Some("eggs-scrambled-1"));
+    let reply = result(&app, &cook, &sent).await;
+    assert_eq!(reply["status"], "rejected");
+    assert_eq!(stored_rows(&pool).await, 0);
 }

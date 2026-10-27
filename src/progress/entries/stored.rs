@@ -1,43 +1,39 @@
-//! A cook entry as the cook log keeps it, read back into what the rules need.
+//! A cook entry as the cook log stores it, read back into what the rules need.
 
-use super::entry::{CookEntry, Outcome};
+use super::{CookEntry, Outcome};
+use crate::cook_entries::{EntryOutcome, StoredEntry};
 use crate::kernel::ids::SavedId;
-use crate::progress::EntryOutcome;
-use uuid::Uuid;
+use jiff::tz::TimeZone;
+use jiff::Timestamp;
 
-/// The columns of a stored cook entry that progress reads, as the database holds them.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StoredCook {
-    pub id: Uuid,
-    pub skill: String,
-    pub level: i16,
-    pub outcome: String,
-}
+/// A stored row the rules cannot read. Only a row this server did not write can be one, so progress refuses it
+/// rather than leave a cook out.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("a stored cook entry could not be read")]
+pub struct UnreadableStoredEntry;
 
-impl StoredCook {
-    /// The cook as the rules read it, or nothing when a column holds what no accepted entry could.
-    /// The quiz result is not derived yet (mrspacerobot/tomi-backend#44), so no cook earns the bonus.
-    pub fn read(self) -> Option<CookEntry> {
-        let skill = SavedId::parse(&self.skill).ok()?;
-        let level = u8::try_from(self.level).ok()?;
-        if level < 1 {
-            return None;
+impl StoredEntry {
+    pub fn read(&self) -> Result<CookEntry, UnreadableStoredEntry> {
+        Ok(CookEntry {
+            id: self.id,
+            skill: SavedId::parse(&self.skill).map_err(|_| UnreadableStoredEntry)?,
+            level: u8::try_from(self.level).map_err(|_| UnreadableStoredEntry)?,
+            outcome: self.read_outcome()?,
+            cooked_at: Timestamp::from_microsecond(self.cooked_at_microseconds).map_err(|_| UnreadableStoredEntry)?,
+            time_zone: TimeZone::get(&self.time_zone).map_err(|_| UnreadableStoredEntry)?,
+            weekly_goal: u8::try_from(self.weekly_goal).map_err(|_| UnreadableStoredEntry)?,
+        })
+    }
+
+    /// The quiz bonus is not earned yet: the quiz result will be derived from the answers recorded under the
+    /// entry's id (mrspacerobot/tomi-backend#44), never sent by the phone.
+    fn read_outcome(&self) -> Result<Outcome, UnreadableStoredEntry> {
+        if self.outcome == EntryOutcome::Finished.as_str() {
+            return Ok(Outcome::Finished { quiz_passed: false });
         }
-        let outcome = outcome(&self.outcome)?;
-        Some(CookEntry { id: self.id, skill, level, outcome })
+        if self.outcome == EntryOutcome::StoppedEarly.as_str() {
+            return Ok(Outcome::StoppedEarly);
+        }
+        Err(UnreadableStoredEntry)
     }
 }
-
-/// The stored word, the same one `POST /v1/cook-entries` stores.
-fn outcome(stored: &str) -> Option<Outcome> {
-    if stored == EntryOutcome::Finished.as_str() {
-        return Some(Outcome::Finished { quiz_passed: false });
-    }
-    if stored == EntryOutcome::StoppedEarly.as_str() {
-        return Some(Outcome::StoppedEarly);
-    }
-    None
-}
-
-#[cfg(test)]
-mod tests;

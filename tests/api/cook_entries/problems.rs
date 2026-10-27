@@ -24,7 +24,7 @@ async fn a_skill_that_is_not_an_id_is_rejected(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn a_level_that_is_not_a_level_number_is_rejected(pool: PgPool) {
     for level in [0, -1, 256] {
-        let sent = with(&with(&entry(), "level", json!(level)), "dish", json!({"lessonId": "a-lesson"}));
+        let sent = with(&entry(), "level", json!(level));
         rejected(&pool, &sent, &["level_out_of_range"]).await;
     }
 }
@@ -83,11 +83,10 @@ async fn an_entry_carrying_a_quiz_result_xp_or_a_total_is_rejected_as_an_unknown
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn an_entry_that_cannot_be_read_is_rejected_and_the_rest_of_the_batch_is_stored(pool: PgPool) {
+async fn an_unreadable_entry_is_rejected_and_a_later_valid_entry_is_stored(pool: PgPool) {
     let (app, cook) = (server(pool.clone()), new_cook());
-    let both_dishes = json!({"recipeId": RECIPE, "graphVersion": FIXTURE_GRAPH, "lessonId": "a-lesson"});
     let unreadable = [
-        with(&entry(), "dish", both_dishes),
+        with(&entry(), "dish", json!({"graphVersion": FIXTURE_GRAPH})),
         with(&entry(), "dish", json!({"recipeId": RECIPE})),
         with(&entry(), "outcome", json!("burnt")),
         with(&entry(), "cookedAt", json!("yesterday")),
@@ -115,9 +114,9 @@ async fn an_entry_without_a_readable_id_is_answered_in_its_place(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn a_skill_or_level_the_catalog_does_not_know_is_accepted(pool: PgPool) {
     let (app, cook) = (server(pool), new_cook());
-    let lesson = json!({"lessonId": "a-lesson"});
-    let unknown_skill = with(&with(&entry(), "skill", json!("basket-weaving")), "dish", lesson.clone());
-    let unknown_level = with(&with(&entry(), "level", json!(9)), "dish", lesson);
+    let other_graph = json!({"recipeId": RECIPE, "graphVersion": "older"});
+    let unknown_skill = with(&with(&entry(), "skill", json!("basket-weaving")), "dish", other_graph.clone());
+    let unknown_level = with(&with(&entry(), "level", json!(9)), "dish", other_graph);
     for sent in [unknown_skill, unknown_level] {
         assert_eq!(result(&app, &cook, &sent).await["status"], "accepted");
     }

@@ -5,7 +5,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-/// The reviewed choices, restrictions, staples and progression files from `folder`.
+/// The reviewed choices, restrictions, staples, progression and rank files from `folder`.
 pub fn read(folder: &Path) -> io::Result<LibraryFiles> {
     Ok(LibraryFiles {
         catalog: fs::read_to_string(folder.join("catalog.json"))?,
@@ -13,5 +13,6 @@ pub fn read(folder: &Path) -> io::Result<LibraryFiles> {
         staples: fs::read_to_string(folder.join("staples.json"))?,
         equipment: fs::read_to_string(folder.join("equipment.json"))?,
         choices: fs::read_to_string(folder.join("choices.json"))?,
+        ranks: fs::read_to_string(folder.join("ranks.json"))?,
     })
 }

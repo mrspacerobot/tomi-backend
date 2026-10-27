@@ -1,8 +1,8 @@
 //! Suggestions open levels from the signed-in cook's own finished cooks, never anyone else's.
 
 use super::offers;
+use crate::cook_entries::{entry, results, with};
 use crate::helpers::*;
-use crate::progress::{entry, results, with};
 use crate::teaching::fixtures::changed;
 use axum::Router;
 use serde_json::{json, Value};

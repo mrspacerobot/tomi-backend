@@ -2,7 +2,9 @@
 
 pub mod ai;
 pub mod auth;
+pub mod clock;
 pub mod config;
+pub mod cook_entries;
 pub mod db;
 pub mod error;
 pub mod graph;
@@ -25,6 +27,7 @@ use axum::extract::DefaultBodyLimit;
 use axum::extract::Request;
 use axum::http::HeaderName;
 use axum::Router;
+use clock::Clock;
 use error::AppError;
 use graph::{Foods, Graph};
 use library::Library;
@@ -49,6 +52,8 @@ pub struct AppState {
     pub graph: Option<Arc<Graph>>,
     pub ai: Arc<dyn Ai>,
     pub photos: Arc<dyn PhotoStore>,
+    /// What time it is. Routes read it once per request and pass it into the rules.
+    pub clock: Arc<dyn Clock>,
 }
 
 impl AppState {

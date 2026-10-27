@@ -1,8 +1,10 @@
-//! Stand-ins for the model and the photo store, so tests never call out.
+//! Stand-ins for the model, the photo store and the clock, so tests never call out or depend on the time.
 
+use jiff::Timestamp;
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 use tomi_api::ai::{Ai, AiFuture, FridgeQuestion};
+use tomi_api::clock::Clock;
 use tomi_api::scans::fridge::ModelItem;
 use tomi_api::storage::{PhotoStore, StoreFuture, StoredFile};
 
@@ -56,5 +58,14 @@ impl PhotoStore for FakeStore {
             files.remove(path);
         }
         Box::pin(async { Ok(()) })
+    }
+}
+
+/// A clock that always reads the same moment.
+pub struct FixedClock(pub Timestamp);
+
+impl Clock for FixedClock {
+    fn now(&self) -> Timestamp {
+        self.0
     }
 }

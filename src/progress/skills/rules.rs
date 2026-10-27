@@ -7,11 +7,12 @@
 
 use super::grants::granted_skills;
 use super::skill::{LevelProgress, SkillProgress};
+use super::CatalogProgress;
 use crate::kernel::ids::SavedId;
 use crate::library::{Catalog, Skill};
 use crate::profile::Experience;
 use crate::progress::game::is_level_complete;
-use crate::progress::{CookCounts, CookEntry, ProgressSnapshot};
+use crate::progress::{CookCounts, CookEntry};
 use std::collections::BTreeSet;
 
 /// Works out the cook's progress through one catalog, for one experience answer.
@@ -28,15 +29,15 @@ impl<'a> ProgressRules<'a> {
     }
 
     /// Progress for every skill of the catalog, from a log in any order and with any copies.
-    pub fn progress(&self, log: &[CookEntry]) -> ProgressSnapshot {
+    pub fn progress(&self, log: &[CookEntry]) -> CatalogProgress {
         self.progress_from_counts(&CookCounts::from_log(log))
     }
 
     /// Progress for every skill of the catalog, in catalog order. Counts for a skill or level the
     /// catalog does not know are left out, because the log may hold cooks from a newer catalog.
-    pub fn progress_from_counts(&self, counts: &CookCounts) -> ProgressSnapshot {
+    pub fn progress_from_counts(&self, counts: &CookCounts) -> CatalogProgress {
         let skills = self.catalog.skills.iter().map(|skill| self.skill_progress(skill, counts)).collect();
-        ProgressSnapshot { skills }
+        CatalogProgress { skills }
     }
 
     fn skill_progress(&self, skill: &Skill, counts: &CookCounts) -> SkillProgress {

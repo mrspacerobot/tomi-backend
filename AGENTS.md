@@ -30,20 +30,18 @@ src/
                 one root file and one folder per feature
   profile/      routes.rs (HTTP handlers), db.rs (queries), the pure rules, and their tests
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
-  suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels from the cook's log (`progress`)
-  progress/     game.rs (every game number), entries/ (cook entries, finished cooks, counts), experience/ (XP and
-                rank), skills/ (served, open and granted levels), snapshot.rs (`ProgressSnapshot`: skills, focus,
-                mastered count), received/ (cook entries as the phone sends them, read and checked), routes.rs
-                (`POST /v1/cook-entries`) and db.rs (the stored cook log). Tests sit in each folder, builders in
-                fixtures.rs. The streak and quiz answers are planned (docs/progress.md)
+  suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; reads the cook log and calls `progress`
+  cook_entries/ the cook log: request parsing and validation, routes.rs and db.rs
+  progress/     game, entries, experience, skills, streak and snapshot rules, and the snapshot route
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
-  kernel/       the vocabulary several features share: ids, language, display names
+  kernel/       the vocabulary several features share: ids, language, display names and calendar
   meta/         health and bootstrap routes
   http.rs       the shared HTTP pieces (CurrentUser, CookLanguage) and the router that merges every feature
   ai/           the model behind one interface: Gemini, and a fake in tests
   storage.rs    the private photo bucket behind one interface
+  clock.rs      what time it is, behind one interface, so an API test can fix it (`AppState.clock`)
   auth/         Supabase token checks, and the lookup of the cook's own user id
   db.rs  config.rs  error.rs  lib.rs  main.rs
 tests/
@@ -53,7 +51,7 @@ migrations/     SQL, additive only
 ```
 
 - **Three layers inside every feature.** `routes.rs` translates HTTP into calls and shapes the answer. The rules decide. `db.rs` stores. A handler never decides a rule, and a rule never touches I/O.
-- **The rules of a feature need no web, database or clock.** Every file of a feature except `routes.rs`, `db.rs`, `files.rs` and `keep.rs` takes the time and the data it needs as arguments. `tests/architecture.rs` fails when one of them names `axum`, `sqlx`, `reqwest`, `tokio`, `tower` or reads the current time, and when a new folder under `src` is not listed there as a feature or as plumbing.
+- **The rules of a feature need no web, database or clock.** Every file of a feature except `routes.rs`, `db.rs`, `files.rs` and `keep.rs` takes the time and the data it needs as arguments; a route reads "now" once from `AppState.clock`. `tests/architecture.rs` fails when one of them names `axum`, `sqlx`, `reqwest`, `tokio`, `tower` or reads the current time, and when a new folder under `src` is not listed there as a feature or as plumbing.
 - **Group by feature, not by kind.** A new feature is a root file `src/<feature>.rs` and a folder `src/<feature>/` with `routes.rs`, `db.rs` and its rules, and its API tests in `tests/api/<feature>.rs`. Add it to `FEATURES` in `tests/architecture.rs`. What two features share goes in `kernel`. A feature's `db` module is private: another feature calls the few functions the feature re-exports (`profile::read`, `scans::confirm`), never its SQL.
 - **Unit tests sit beside the code in their own file:** `src/profile.rs` declares `#[cfg(test)] mod tests;` and the tests live in `src/profile/tests.rs`. That keeps the code file short.
 - **API tests are one binary** (`tests/api/main.rs` declares the other files), so they compile once. Shared setup lives in `tests/api/helpers.rs`.
@@ -136,12 +134,13 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 - **Fail closed.** An unknown diet or avoid id is kept, never dropped. A missing or unreadable fact, an incompatible version or a withdrawn lesson is a refusal, never an empty restriction or a guess.
 - **A restriction is never weakened silently.** Removing a diet or an avoid item needs `allowWeakerRestrictions: true`, which the app sends only after the cook confirmed it on screen. Two copies that disagree are read with the strictest restrictions of both.
 - **This server owns the cook log, every progress rule and the quiz,** per Supabase account (the owner's decision of 26 October 2026, contract in `docs/progress.md`). XP, rank, weekly streak, levels, unlocks, mastery, grants and focus are decided here, in the `progress` feature. The phone keeps an outbox of unsent cook entries and shows the last snapshot this server sent; it never computes or predicts XP or rank. The word is "cook entry", never "event".
+- **Send one cook entry per request. Each entry names a graph recipe and its graph version.**
 - **The cook log is the source of truth.** XP, rank, streak and mastery are computed from it on demand. A stored total is a bug. XP, totals and quiz results are never accepted from the app: an entry with such a field is refused as unknown.
 - **No result depends on arrival order.** The same entry id twice counts once. The first accepted copy of an entry id wins; a later copy with a different body is answered `conflict`, changes nothing and is logged with the id and the code only.
 - **Week and day arithmetic uses the cook's calendar,** with `jiff` and its bundled time zone database (approved by the owner on 26 October 2026), never the server's clock or seven times 24 hours. Each cook entry stores its own IANA time zone. A past week is judged by each entry's own zone; the week in progress uses the time zone and first weekday sent on the request.
 - **No Rust file names a specific skill, diet, avoid item, ingredient, equipment or cuisine.** Restrictions, progression and kitchen options come from reviewed library data in `library/` (`library/SOURCE.md`); recipe content and food facts come only from the graph. Explicitly missing appliances tracked by the library filter recipes; other graph equipment is disclosed as a requirement until kitchen options migrate. Game numbers live in one module, `progress::game`, and the app holds none: what it needs for input (the weekly goal range and default) it reads from `GET /v1/options`.
 - **The app holds no food knowledge and no lists.** Diets, avoid items, ingredients (from the graph), equipment, cuisines, experience and units, with their names, come from `GET /v1/options` and from each answer. Every offer says which restrictions it was checked against. `library/choices.json` is the server's own list of cuisines, experience answers and units (wording from Tomi's approved mockups).
-- **Code decides what may be offered and their order.** Dinner suggestions must make a graph `dish`, never a `preparation`. Recipes are selected from the graph by open skill level and cuisine. Suggestions follow the cook's log: the levels are opened by `progress` from the signed-in cook's own finished cooks (`progress::cook_log`, never its SQL) and their experience answer, and only ever choose which levels are offered, never which foods are allowed. The cook's confirmed ingredients are kept separate from assumed cupboard staples and take priority in deterministic ranking. Available ingredients and restrictions go to the graph safety planner; only graph-listed swaps and omissions are used. Copied lesson JSON never gates availability or supplies recipe content. The preproduction `/v1/lessons/suggest` response carries graph `sourceRecipe` separately from its checked `safePlan`; source instructions are not rewritten to pretend a substitution or omission was adapted.
+- **Code decides what may be offered and their order.** Dinner suggestions must make a graph `dish`, never a `preparation`. Recipes are selected from the graph by open skill level and cuisine. The cook's confirmed ingredients are kept separate from assumed cupboard staples and take priority in deterministic ranking. Available ingredients and restrictions go to the graph safety planner; only graph-listed swaps and omissions are used. Copied lesson JSON never gates availability or supplies recipe content. The preproduction `/v1/lessons/suggest` response carries graph `sourceRecipe` separately from its checked `safePlan`; source instructions are not rewritten to pretend a substitution or omission was adapted.
 - **AI runs on this server only for fridge scans, behind the `Ai` interface** (`src/ai.rs`), with a fake in every test. A model may name only ingredient ids from a closed list; it never adds an ingredient, diet, recipe or fact, and `domain` checks its answer before anyone sees it. Recipe selection and ranking are deterministic code.
 - **Scan vocabularies belong in the prompt, not a schema enum.** The graph's ingredient list can exceed Gemini's structured schema limits. Keep the scan schema small and check every returned id against the graph; unknown ids remain unlinked labels. AI failure logs carry a specific `error_code`, model, operation and provider HTTP status when available, under the HTTP request id. Never log provider bodies or raw client errors: they can contain the cook's data or credentials. The public scan error remains `ai_unavailable`.
 - **Proof of concept: there is no consent yet, and every scanned photo is kept.** The owner's decision, for testing with their own photos only. A photo is sent to the model and kept as it arrived, metadata included, whenever photo storage is set up; what the app sends is the app's decision. Never log a photo, and never let the app reach the bucket. **Before any real cook uses this, build consent properly** (what is kept named in a text the cook agrees to, a way to withdraw that deletes what was kept, versions that re-ask when the text changes) and get a privacy review. Until then nobody else's photo may be scanned, and Gemini must not be on its free tier for real cooks' photos. The server still checks the type, size and first bytes of every upload: it does not trust the app.
@@ -171,6 +170,10 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 ## Dependencies and secrets
 
 - **No new crate without the owner's approval** in the pull request that adds it. `Cargo.lock` is committed.
+- **Dates and time zones are `jiff`** (approved by the owner on 26 October 2026), with only its bundled time zone
+  database (`default-features = false` with `std`, `serde` and `tzdb-bundle-always`), so a zone reads the same in
+  tests, on a Mac and in the distroless image, which has no zoneinfo. A rule never reads `jiff`'s clock (`Zoned::now`, `Timestamp::now`)
+  or the server's zone (`TimeZone::system`); `tests/architecture.rs` refuses them.
 - **No secrets in the repository, ever.** Settings come from the environment; `.env` is ignored by git.
 
 ## Only the owner merges into main

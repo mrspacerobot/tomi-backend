@@ -2,13 +2,14 @@
 //!
 //! Code selects and ranks eligible dishes from the cook's confirmed foods and pantry.
 
+use crate::cook_entries::cook_log;
 use crate::error::AppError;
 use crate::graph::Graph;
 use crate::http::{json_body, Caller, CookLanguage};
 use crate::kernel::ids::SavedId;
 use crate::kernel::language::Language;
 use crate::profile::{read as read_profile, Profile};
-use crate::progress::{cook_log, open_levels, CookCounts, OpenLevels};
+use crate::progress::{open_levels, CookCounts, OpenLevels, StoredEntry};
 use crate::scans::{self, Confirmation};
 use crate::suggestions::{self, overlap_order, Candidate, Suggestion, SuggestionContext, Tonight};
 use crate::AppState;
@@ -93,7 +94,8 @@ struct CandidateInput<'a> {
 /// The levels this cook has opened with their own finished cooks and their experience answer. Progress only
 /// decides which levels are offered; the cook's restrictions still decide every food.
 async fn cook_open_levels(state: &AppState, user_id: Uuid, profile: &Profile) -> Result<OpenLevels, AppError> {
-    let log = cook_log(&state.db, user_id).await?;
+    let stored = cook_log(&state.db, user_id).await?;
+    let log = stored.iter().map(StoredEntry::read).collect::<Result<Vec<_>, _>>()?;
     let counts = CookCounts::from_log(&log);
     Ok(open_levels(&state.library.catalog, profile.experience, &counts))
 }
