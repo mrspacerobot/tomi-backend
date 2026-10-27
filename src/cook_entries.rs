@@ -1,19 +1,25 @@
-//! Cook entries as the phone sends them: a batch read once at the edge, each entry checked into a type that
-//! cannot hold a bad value, and the answer for each.
+//! Cook entries as the phone sends them: one entry read and checked at the edge, and its answer.
 
 mod answer;
-mod batch;
+mod db;
 mod dish;
 mod entry;
 mod fields;
 mod problems;
+mod request;
+mod routes;
+mod stored;
 mod zone;
 
 #[cfg(test)]
 mod tests;
 
 pub use answer::{EntryResult, EntryStatus};
-pub use batch::{BatchFile, EntryBatch, MAX_ENTRIES_PER_BATCH};
 pub use dish::Dish;
 pub use entry::{id_of, EntryChecks, EntryOutcome, ReceivedEntry, ENTRY_SCHEMA_VERSION};
 pub use problems::EntryProblem;
+pub use request::{CheckedRequest, EntryRequest};
+
+pub use db::cook_log;
+pub use routes::router;
+pub use stored::StoredEntry;

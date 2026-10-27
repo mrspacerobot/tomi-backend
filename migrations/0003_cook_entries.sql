@@ -10,11 +10,8 @@ create table tomi.cook_entries (
     schema_version integer not null,
     skill text not null,
     level smallint not null check (level >= 1),
-    -- Exactly one dish: a graph recipe with its graph version, or a lesson of
-    -- the old development logs.
-    lesson_id text,
-    recipe_id text,
-    graph_version text,
+    recipe_id text not null,
+    graph_version text not null,
     outcome text not null check (outcome in ('finished', 'stoppedEarly')),
     weekly_goal smallint not null,
     cooked_at timestamptz not null,
@@ -22,9 +19,7 @@ create table tomi.cook_entries (
     -- cook's own day there.
     time_zone text not null,
     received_at timestamptz not null default now(),
-    primary key (user_id, id),
-    check ((recipe_id is null) = (graph_version is null)),
-    check ((recipe_id is null) <> (lesson_id is null))
+    primary key (user_id, id)
 );
 
 alter table tomi.cook_entries enable row level security;

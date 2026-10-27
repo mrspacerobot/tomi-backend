@@ -8,6 +8,7 @@ mod stored;
 #[cfg(test)]
 mod tests;
 
+pub use crate::cook_entries::StoredEntry;
 pub use counts::CookCounts;
 pub use entry::{finished_cooks, CookEntry, Outcome};
-pub use stored::{StoredEntry, UnreadableStoredEntry};
+pub use stored::UnreadableStoredEntry;

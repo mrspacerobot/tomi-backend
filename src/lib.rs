@@ -4,6 +4,7 @@ pub mod ai;
 pub mod auth;
 pub mod clock;
 pub mod config;
+pub mod cook_entries;
 pub mod db;
 pub mod error;
 pub mod graph;
