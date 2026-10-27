@@ -33,6 +33,10 @@ pub const WEEKLY_GOAL_DEFAULT: u8 = 3;
 /// How far after its arrival a cook may say it was made, for a phone clock that runs a little fast. A cook later
 /// than this is refused as `cooked_in_future`.
 pub const COOKED_IN_FUTURE_TOLERANCE: SignedDuration = SignedDuration::from_secs(10 * 60);
+/// The goal a week is judged by: the cook's goal, held inside the range they may pick from.
+pub fn clamped_weekly_goal(goal: u8) -> u8 {
+    goal.clamp(WEEKLY_GOAL_MINIMUM, WEEKLY_GOAL_MAXIMUM)
+}
 
 /// Finished cooks at one level of a skill before that level is complete
 /// and the next one opens.

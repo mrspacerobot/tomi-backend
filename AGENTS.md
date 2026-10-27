@@ -32,13 +32,11 @@ src/
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
   suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels by calling `progress`
   cook_entries/ the cook log: request parsing and validation, routes.rs and db.rs
-  progress/     game.rs (game numbers), entries/ (finished cooks and counts), experience/ (XP and rank),
-                skills/ (levels and status), snapshot.rs and tests. The streak and quiz answers are planned
-                (docs/progress.md)
+  progress/     game, entries, experience, skills, streak and snapshot rules
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
-  kernel/       the vocabulary several features share: ids, language, display names
+  kernel/       the vocabulary several features share: ids, language, display names and calendar
   meta/         health and bootstrap routes
   http.rs       the shared HTTP pieces (CurrentUser, CookLanguage) and the router that merges every feature
   ai/           the model behind one interface: Gemini, and a fake in tests
@@ -171,6 +169,10 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 ## Dependencies and secrets
 
 - **No new crate without the owner's approval** in the pull request that adds it. `Cargo.lock` is committed.
+- **Dates and time zones are `jiff`** (approved by the owner on 26 October 2026), with only its bundled time zone
+  database (`default-features = false`, `tzdb-bundle-always`), so a zone reads the same in tests, on a Mac and in
+  the distroless image, which has no zoneinfo. A rule never reads `jiff`'s clock (`Zoned::now`, `Timestamp::now`)
+  or the server's zone (`TimeZone::system`); `tests/architecture.rs` refuses them.
 - **No secrets in the repository, ever.** Settings come from the environment; `.env` is ignored by git.
 
 ## Only the owner merges into main

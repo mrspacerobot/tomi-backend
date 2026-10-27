@@ -8,7 +8,6 @@ mod fields;
 mod problems;
 mod request;
 mod routes;
-mod zone;
 
 #[cfg(test)]
 mod tests;
@@ -17,6 +16,6 @@ pub use answer::{EntryResult, EntryStatus};
 pub use dish::Dish;
 pub use entry::{id_of, EntryChecks, EntryOutcome, ReceivedEntry, ENTRY_SCHEMA_VERSION};
 pub use problems::EntryProblem;
-pub use request::{CheckedRequest, EntryRequest, RequestCalendar};
+pub use request::{CheckedRequest, EntryRequest};
 
 pub use routes::router;

@@ -172,6 +172,8 @@ onboarding answer counts: "comfortable" opens the whole first course.
 Errors always look like
 `{"error": {"code": "...", "message": "...", "details": {...}}}`.
 
+The shared calendar in `src/kernel/calendar.rs` validates IANA zones and finds local week boundaries; progress owns the streak rules.
+
 ## The cooking graph
 
 The `cooking-graph` repository builds a versioned, checksummed artifact (`./release` there). This repository
@@ -200,9 +202,8 @@ See `docs/cloud-run-deployment.md` for the deployment identity, secrets and roll
 `AGENTS.md` has the layout and the coding rules, with examples. In short:
 one folder per feature (`src/profile`, `src/scans`, `src/suggestions` and so on), with HTTP handlers in
 `routes.rs`, storage in `db.rs` and pure rules alongside them, shared HTTP pieces in `src/http.rs`, API tests as one
-binary in `tests/api`. `src/recipe` holds the recipe adaptation rules. `src/cook_entries` owns the cook log, and `src/progress` holds the progress rules
-ported from the app (XP, rank, open levels, served and mastered skills) and the stored cook log behind
-`POST /v1/cook-entries`. Suggestion and recipe
+binary in `tests/api`. `src/recipe` holds recipe adaptation. `src/cook_entries` owns the cook log; `src/progress`
+holds XP, rank, weekly streak, open levels and mastered skills. Suggestion and recipe
 response types use the same names as the frontend: `Suggestion`, `SuggestionsRequest`,
 `SuggestionsResponse`, `AdaptedRecipe`, `AdaptedIngredient` and `RecipeChanges`.
 

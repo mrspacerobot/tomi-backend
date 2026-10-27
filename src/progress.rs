@@ -1,4 +1,5 @@
-//! The cook's progress, computed from their cook entries: XP, rank, open levels and mastered skills.
+//! The cook's progress, computed from their cook entries: XP, rank, weekly streak, open levels and
+//! mastered skills.
 //!
 //! Every rule here is pure: it takes the entries, the catalog and the cook's answers as arguments
 //! and decides from nothing else, so the same entries in any order give the same answer. Nothing is
@@ -9,6 +10,7 @@ mod experience;
 pub mod game;
 mod skills;
 mod snapshot;
+mod streak;
 
 #[cfg(test)]
 mod fixtures;
@@ -17,3 +19,4 @@ pub use entries::{finished_cooks, CookCounts, CookEntry, Outcome};
 pub use experience::{earned_xp, xp_for, Rank, RankTitle};
 pub use skills::{granted_skills, open_levels, LevelProgress, OpenLevels, ProgressRules, SkillProgress, SkillStatus};
 pub use snapshot::ProgressSnapshot;
+pub use streak::{CookCalendar, ParseCalendarError, Streak, StreakRules};
