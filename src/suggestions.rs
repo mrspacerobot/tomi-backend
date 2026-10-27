@@ -10,14 +10,12 @@ use crate::graph::Graph;
 use crate::kernel::ids::SavedId;
 use crate::library::{EquipmentList, Library, LocalizedText, Restrictions};
 use crate::profile::Profile;
-use crate::suggestions::progress::OpenLevels;
+use crate::progress::OpenLevels;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeSet;
 
-pub mod game;
 mod plan;
-pub mod progress;
 mod ranking;
 mod routes;
 mod suggestion;
@@ -29,6 +27,7 @@ pub use routes::router;
 
 pub use ranking::overlap_order;
 pub use suggestion::{Suggestion, SuggestionContext};
+pub use teaching::{answer_key, AnswerKey, KeyedQuestion};
 
 /// A graph recipe that the cook may make tonight.
 #[derive(Debug, Clone)]

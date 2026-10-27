@@ -5,7 +5,7 @@ use crate::graph::test_helpers::fixture_graph;
 use crate::kernel::ids::SavedId;
 use crate::library::{files, Library};
 use crate::profile::Profile;
-use crate::suggestions::progress::OpenLevels;
+use crate::progress::OpenLevels;
 use crate::suggestions::{candidates, Tonight};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -19,6 +19,13 @@ fn example() -> (Candidate, Graph) {
     let tonight = Tonight { profile: &profile, available: BTreeSet::new(), confirmed: BTreeSet::new(), open: &open };
     let candidate = candidates(&library, &graph, &tonight).remove(0);
     (candidate, graph)
+}
+
+#[test]
+fn teaching_keeps_schema_one() {
+    let (candidate, graph) = example();
+    let teaching = for_candidate(&candidate, &graph, &Language::english()).unwrap();
+    assert_eq!(teaching.schema_version, 1);
 }
 
 #[test]

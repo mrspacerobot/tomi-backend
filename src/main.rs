@@ -6,6 +6,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tomi_api::ai::{Ai, Gemini, NoAi};
 use tomi_api::auth::Verifier;
+use tomi_api::clock::SystemClock;
 use tomi_api::config::{AiConfig, Config, PhotoConfig};
 use tomi_api::library::Library;
 use tomi_api::storage::{NoStore, PhotoStore, SupabaseStore};
@@ -65,9 +66,7 @@ async fn database(config: &Config) -> Result<PgPool, String> {
 }
 
 fn state(config: &Config, pool: PgPool) -> Result<AppState, String> {
-    let secret = config.supabase_jwt_secret.as_deref();
-    let verifier = Verifier::new(&config.supabase_url, secret);
-    let verifier = verifier.map_err(|error| format!("auth: {error}"))?;
+    let verifier = verifier(config)?;
     let mut library = library(&config.library_dir)?;
     let graph = graph::files::start(GRAPH_LOCK, &config.graph)?;
     agree(&mut library, graph.as_ref())?;
@@ -79,7 +78,13 @@ fn state(config: &Config, pool: PgPool) -> Result<AppState, String> {
         graph: graph.map(Arc::new),
         ai: ai(&config.ai)?,
         photos: photos(config.supabase_url.as_str(), &config.photos)?,
+        clock: Arc::new(SystemClock),
     })
+}
+
+fn verifier(config: &Config) -> Result<Verifier, String> {
+    let secret = config.supabase_jwt_secret.as_deref();
+    Verifier::new(&config.supabase_url, secret).map_err(|error| format!("auth: {error}"))
 }
 
 /// The library's restrictions may only name facts the graph has, or there is no start.

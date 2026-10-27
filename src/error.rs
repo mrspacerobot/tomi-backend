@@ -5,6 +5,7 @@
 
 use crate::auth::AuthError;
 use crate::profile::StoredProfileError;
+use crate::progress::UnreadableStoredEntry;
 use crate::scans::photo::PhotoError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -31,12 +32,16 @@ pub enum AppError {
     AiUnavailable,
     #[error("the cooking graph is not loaded on this server")]
     GraphUnavailable,
+    #[error("the cooking graph changed since this was offered; ask for new suggestions")]
+    GraphVersionChanged,
     #[error("the database failed")]
     Database(#[from] sqlx::Error),
     #[error("stored data could not be read")]
     Corrupt(#[from] serde_json::Error),
     #[error("the stored profile could not be read")]
     StoredProfileUnreadable,
+    #[error(transparent)]
+    StoredCookEntryUnreadable(#[from] UnreadableStoredEntry),
     #[error("the profile was saved by a newer version of Tomi's server; try again shortly")]
     ProfileTooNew,
 }
@@ -70,8 +75,12 @@ impl AppError {
             AppError::Photo(_) => "photo_unreadable",
             AppError::AiUnavailable => "ai_unavailable",
             AppError::GraphUnavailable => "graph_unavailable",
+            AppError::GraphVersionChanged => "graph_version_changed",
             AppError::ProfileTooNew => "profile_too_new",
-            AppError::Database(_) | AppError::Corrupt(_) | AppError::StoredProfileUnreadable => "internal",
+            AppError::Database(_)
+            | AppError::Corrupt(_)
+            | AppError::StoredProfileUnreadable
+            | AppError::StoredCookEntryUnreadable(_) => "internal",
         }
     }
 
@@ -89,15 +98,17 @@ impl AppError {
             AppError::NotFound => StatusCode::NOT_FOUND,
             AppError::VersionConflict { .. } => StatusCode::CONFLICT,
             AppError::WeakensRestrictions { .. } => StatusCode::CONFLICT,
+            AppError::GraphVersionChanged => StatusCode::CONFLICT,
             AppError::Photo(PhotoError::TooLarge) => StatusCode::PAYLOAD_TOO_LARGE,
             AppError::Photo(PhotoError::UnsupportedType) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             AppError::Photo(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::AiUnavailable | AppError::GraphUnavailable | AppError::ProfileTooNew => {
                 StatusCode::SERVICE_UNAVAILABLE
             }
-            AppError::Database(_) | AppError::Corrupt(_) | AppError::StoredProfileUnreadable => {
-                StatusCode::INTERNAL_SERVER_ERROR
-            }
+            AppError::Database(_)
+            | AppError::Corrupt(_)
+            | AppError::StoredProfileUnreadable
+            | AppError::StoredCookEntryUnreadable(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 

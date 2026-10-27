@@ -9,6 +9,7 @@ pub(crate) fn shipped_files() -> LibraryFiles {
         staples: include_str!("../../library/staples.json").to_string(),
         equipment: include_str!("../../library/equipment.json").to_string(),
         choices: include_str!("../../library/choices.json").to_string(),
+        ranks: include_str!("../../library/ranks.json").to_string(),
     }
 }
 
@@ -106,4 +107,44 @@ fn a_released_avoid_item_is_never_removed_and_never_rules_out_less() {
         let found = now.get(&id).unwrap_or_else(|| panic!("`{id}` was released and is gone"));
         assert!(found.is_superset(&facts), "`{id}` rules out less than it did");
     }
+}
+
+fn ranks_file(ids: &[&str]) -> String {
+    let ranks: Vec<serde_json::Value> =
+        ids.iter().map(|id| serde_json::json!({"id": id, "name": {"en": id, "de": "Auf Deutsch"}})).collect();
+    serde_json::json!({"schemaVersion": 1, "ranks": ranks}).to_string()
+}
+
+#[test]
+fn every_rank_of_the_ladder_has_its_name_in_english() {
+    let english = crate::kernel::language::Language::english();
+    let library = shipped();
+    let names: Vec<&str> =
+        crate::progress::RankTitle::ALL.iter().map(|title| library.ranks.name(*title, &english)).collect();
+    assert_eq!(names, ["Novice", "Commis", "Cook", "Saucier", "Sous", "Chef", "Patron", "Toque"]);
+}
+
+#[test]
+fn a_rank_file_that_misses_reorders_or_adds_a_rank_rejects_the_library() {
+    let ladder = ["novice", "commis", "cook", "saucier", "sous", "chef", "patron", "toque"];
+    assert!(RankNames::parse(&ranks_file(&ladder)).is_ok());
+    let broken = [&ladder[1..], &["commis", "novice", "cook", "saucier", "sous", "chef", "patron", "toque"]];
+    for ids in broken {
+        let files = LibraryFiles { ranks: ranks_file(ids), ..shipped_files() };
+        assert!(Library::parse(&files).is_err(), "{ids:?}");
+    }
+    let mut longer = ladder.to_vec();
+    longer.push("toque-ii");
+    assert!(RankNames::parse(&ranks_file(&longer)).is_err());
+}
+
+#[test]
+fn a_rank_name_follows_the_language_and_falls_back_to_english() {
+    let names =
+        RankNames::parse(&ranks_file(&["novice", "commis", "cook", "saucier", "sous", "chef", "patron", "toque"]))
+            .unwrap();
+    let german = crate::kernel::language::Language::from_accept_language(Some("de-CH"));
+    let french = crate::kernel::language::Language::from_accept_language(Some("fr"));
+    assert_eq!(names.name(crate::progress::RankTitle::Chef, &german), "Auf Deutsch");
+    assert_eq!(names.name(crate::progress::RankTitle::Chef, &french), "chef");
 }

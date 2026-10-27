@@ -17,16 +17,11 @@ profile, then the AI functions (fridge scan and tonight's suggestions).
 | `POST /v1/ingredients/resolve` | yes | Typed text to ingredients: `exact`, `ambiguous` (the cook chooses) or `none` |
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
 | `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, a safe graph recipe and up to two alternatives out |
+| `POST /v1/cook-entries` | yes | One unsent cook and the cook's calendar in, one `accepted`, `duplicate`, `conflict` or `rejected` result out. The entry id is the idempotency key. Example: [`docs/examples/cook-entries.json`](docs/examples/cook-entries.json). The answer carries the progress snapshot also available through `GET /v1/progress` |
+| `GET /v1/progress?timeZone=<IANA>&firstWeekday=<1-7>` | yes | The progress snapshot (XP, rank, weekly streak, skills and levels, focus), computed from the stored cook log on every request in the request's calendar. Example: [`docs/examples/progress.json`](docs/examples/progress.json) |
+| `POST /v1/quiz-answers` | yes | One quiz pick in, right or wrong out; the first pick of each question is kept as the score, and progress derives each cook's quiz bonus from those first answers. Correct answers never leave the server ([`docs/progress.md`](docs/progress.md#post-v1quiz-answers)) |
 
-Planned, not built yet (contract in [`docs/progress.md`](docs/progress.md)):
-
-| Route | Sign-in | What it will do |
-|---|---|---|
-| `POST /v1/cook-entries` | yes | The phone's unsent cooks in (at most 100), one `accepted`, `duplicate`, `conflict` or `rejected` per entry and the progress snapshot out |
-| `GET /v1/progress` | yes | The progress snapshot (XP, rank, weekly streak, skills and levels) for the calendar on the request |
-| `POST /v1/quiz-answers` | yes | One quiz pick in, right or wrong out; correct answers never leave the server |
-
-`GET /v1/options` will also carry the weekly goal range and default (`game.weeklyGoal`).
+Planned, not built yet (contract in [`docs/progress.md`](docs/progress.md)): `GET /v1/options` will also carry the weekly goal range and default (`game.weeklyGoal`).
 
 Sign-in is Supabase Auth. The app sends the Supabase access token as
 `Authorization: Bearer <token>`. The API checks the signature, issuer,
@@ -163,12 +158,19 @@ swaps read `{removed, added}`, as in the app's `AppliedSwap`.
 
 Recipes are offered only at skill levels the cook has reached. This server owns
 the cook log and every progress rule (owner's decision of 26 October 2026,
-[`docs/progress.md`](docs/progress.md)); the app holds none. The cook log is not
-stored yet, so for now only the onboarding answer counts: "comfortable" opens
-the whole first course.
+[`docs/progress.md`](docs/progress.md)); the app holds none. The cook log is
+stored (`tomi.cook_entries`, one row per cook per entry id, each with its own
+IANA time zone), and suggestions follow it: every request reads the signed-in
+cook's own entries and opens levels from their finished cooks and their
+onboarding answer ("comfortable" opens the whole first course). Two finished
+cooks of a level open the next one; a stopped-early cook, and another cook's
+entries, open nothing. Progress only decides which levels are offered, never
+which foods are allowed.
 
 Errors always look like
 `{"error": {"code": "...", "message": "...", "details": {...}}}`.
+
+The shared calendar in `src/kernel/calendar.rs` validates IANA zones and finds local week boundaries; progress owns the streak rules.
 
 ## The cooking graph
 
@@ -196,9 +198,12 @@ See `docs/cloud-run-deployment.md` for the deployment identity, secrets and roll
 ## Layout and rules
 
 `AGENTS.md` has the layout and the coding rules, with examples. In short:
+HTTP request and response types describe the API boundary; validated domain types and rule names describe what they mean.
 one folder per feature (`src/profile`, `src/scans`, `src/suggestions` and so on), with HTTP handlers in
 `routes.rs`, storage in `db.rs` and pure rules alongside them, shared HTTP pieces in `src/http.rs`, API tests as one
-binary in `tests/api`. `src/recipe` holds the recipe adaptation rules. Suggestion and recipe
+binary in `tests/api`. `src/recipe` holds the recipe adaptation rules. `src/cook_entries` owns the cook log. `src/progress` holds the progress rules
+ported from the app (XP, rank, weekly streak, open levels, served and mastered skills) and serves the progress
+snapshot of `GET /v1/progress`. Suggestion and recipe
 response types use the same names as the frontend: `Suggestion`, `SuggestionsRequest`,
 `SuggestionsResponse`, `AdaptedRecipe`, `AdaptedIngredient` and `RecipeChanges`.
 
@@ -239,8 +244,6 @@ unrecognised ids remain plain labels for the cook to confirm or skip.
 
 ## Not built yet, and doubts
 
-- **Progress counts no cooks yet,** because the server has no cook log. New cooks see recipes at
-  their first open level, and "comfortable" opens the first course.
 - **Serving sizes are not scaled:** the graph supplies source amounts, but the API does not adapt
   them to the cook's saved serving count.
 - **Ids are checked for shape, not existence.** The spec wants an
