@@ -157,6 +157,7 @@ fn a_stored_row_the_rules_cannot_read_is_refused_never_left_out() {
         crate::progress::StoredEntry { outcome: "abandoned".to_string(), ..stored_row() },
         crate::progress::StoredEntry { weekly_goal: -1, ..stored_row() },
         crate::progress::StoredEntry { time_zone: "Mars/Olympus_Mons".to_string(), ..stored_row() },
+        crate::progress::StoredEntry { time_zone: "+02:00".to_string(), ..stored_row() },
     ];
     for row in unreadable {
         assert_eq!(row.read(), Err(crate::progress::UnreadableStoredEntry), "{row:?}");
