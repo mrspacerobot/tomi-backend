@@ -33,10 +33,10 @@ src/
   suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels by calling `progress`
   progress/     game.rs (every game number), entries/ (cook entries, finished cooks, counts), experience/ (XP and
                 rank), skills/ (served, open and granted levels), streak/ (the cook's calendar and the weekly
-                streak), snapshot.rs (`ProgressSnapshot`: skills, focus, mastered count), received/ (cook entries as
-                the phone sends them, read and checked), routes.rs (`POST /v1/cook-entries`) and db.rs (the stored
-                cook log). Tests sit in each folder, builders in fixtures.rs. The quiz answers are planned
-                (docs/progress.md)
+                streak), snapshot.rs and snapshot/ (`ProgressSnapshot`, the answer of `GET /v1/progress`), received/
+                (cook entries as the phone sends them, read and checked), routes.rs (`POST /v1/cook-entries`,
+                `GET /v1/progress`) and db.rs (the stored cook log). Tests sit in each folder, builders in
+                fixtures.rs. The quiz answers are planned (docs/progress.md)
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
@@ -45,6 +45,7 @@ src/
   http.rs       the shared HTTP pieces (CurrentUser, CookLanguage) and the router that merges every feature
   ai/           the model behind one interface: Gemini, and a fake in tests
   storage.rs    the private photo bucket behind one interface
+  clock.rs      what time it is, behind one interface, so an API test can fix it (`AppState.clock`)
   auth/         Supabase token checks, and the lookup of the cook's own user id
   db.rs  config.rs  error.rs  lib.rs  main.rs
 tests/
@@ -54,7 +55,7 @@ migrations/     SQL, additive only
 ```
 
 - **Three layers inside every feature.** `routes.rs` translates HTTP into calls and shapes the answer. The rules decide. `db.rs` stores. A handler never decides a rule, and a rule never touches I/O.
-- **The rules of a feature need no web, database or clock.** Every file of a feature except `routes.rs`, `db.rs`, `files.rs` and `keep.rs` takes the time and the data it needs as arguments. `tests/architecture.rs` fails when one of them names `axum`, `sqlx`, `reqwest`, `tokio`, `tower` or reads the current time, and when a new folder under `src` is not listed there as a feature or as plumbing.
+- **The rules of a feature need no web, database or clock.** Every file of a feature except `routes.rs`, `db.rs`, `files.rs` and `keep.rs` takes the time and the data it needs as arguments; a route reads "now" once from `AppState.clock`. `tests/architecture.rs` fails when one of them names `axum`, `sqlx`, `reqwest`, `tokio`, `tower` or reads the current time, and when a new folder under `src` is not listed there as a feature or as plumbing.
 - **Group by feature, not by kind.** A new feature is a root file `src/<feature>.rs` and a folder `src/<feature>/` with `routes.rs`, `db.rs` and its rules, and its API tests in `tests/api/<feature>.rs`. Add it to `FEATURES` in `tests/architecture.rs`. What two features share goes in `kernel`. A feature's `db` module is private: another feature calls the few functions the feature re-exports (`profile::read`, `scans::confirm`), never its SQL.
 - **Unit tests sit beside the code in their own file:** `src/profile.rs` declares `#[cfg(test)] mod tests;` and the tests live in `src/profile/tests.rs`. That keeps the code file short.
 - **API tests are one binary** (`tests/api/main.rs` declares the other files), so they compile once. Shared setup lives in `tests/api/helpers.rs`.

@@ -14,6 +14,6 @@ mod weeks;
 #[cfg(test)]
 mod tests;
 
-pub use calendar::{CookCalendar, ParseCalendarError};
+pub use calendar::{CookCalendar, ParseCalendarError, WeekBounds};
 pub use rules::StreakRules;
 pub use standing::Streak;

@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tomi_api::ai::Ai;
 use tomi_api::auth::Verifier;
+use tomi_api::clock::{Clock, SystemClock};
 use tomi_api::config::GraphConfig;
 use tomi_api::graph::{files, Graph};
 use tomi_api::library::Library;
@@ -24,13 +25,14 @@ pub const PROJECT: &str = "https://test-project.supabase.co";
 const SECRET: &str = "test-only-shared-secret-not-used-anywhere-else";
 
 /// What a test server is built from. The default accepts tokens signed
-/// with the test secret and uses a fake model and a fake photo store.
+/// with the test secret, uses a fake model and a fake photo store, and reads the system clock.
 pub struct Setup {
     pub verifier: Verifier,
     pub ai: Arc<dyn Ai>,
     pub photos: Arc<dyn PhotoStore>,
     pub library: Library,
     pub graph: Option<Graph>,
+    pub clock: Arc<dyn Clock>,
 }
 
 impl Default for Setup {
@@ -41,6 +43,7 @@ impl Default for Setup {
             photos: Arc::new(FakeStore::default()),
             library: shipped_library(),
             graph: Some(fixture_graph()),
+            clock: Arc::new(SystemClock),
         }
     }
 }
@@ -61,6 +64,7 @@ pub fn server_with(pool: PgPool, mut setup: Setup) -> Router {
         graph: setup.graph.map(Arc::new),
         ai: setup.ai,
         photos: setup.photos,
+        clock: setup.clock,
     };
     app(state)
 }

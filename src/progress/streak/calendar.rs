@@ -15,6 +15,15 @@ pub struct CookCalendar {
     first_weekday: Weekday,
 }
 
+/// The instants a week of the cook's calendar begins and ends at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WeekBounds {
+    /// The first moment of the week's first day.
+    pub starts_at: Timestamp,
+    /// The first moment of the next week's first day: the week ends just before it.
+    pub ends_at: Timestamp,
+}
+
 /// Why a calendar from a request was refused. There is no default zone: a guess would move cooks
 /// to the wrong day.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
@@ -42,6 +51,34 @@ impl CookCalendar {
 
     pub fn first_weekday(&self) -> Weekday {
         self.first_weekday
+    }
+
+    /// The zone's IANA name, as the request named it.
+    pub fn time_zone_name(&self) -> &str {
+        self.time_zone.iana_name().unwrap_or_default()
+    }
+
+    /// The first weekday in Foundation's numbering, 1 for Sunday to 7 for Saturday.
+    pub fn first_weekday_number(&self) -> i8 {
+        self.first_weekday.to_sunday_one_offset()
+    }
+
+    /// The week in progress at `now`, from the first moment of its first day to the first moment of the next
+    /// week's, on this zone's clocks: a week across a daylight saving change is an hour longer or shorter.
+    pub fn week_of(&self, now: Timestamp) -> WeekBounds {
+        let first_day = self.first_day_of_week(self.day_of(now));
+        let next_first_day = first_day.saturating_add(1.week());
+        WeekBounds { starts_at: self.first_moment_of(first_day), ends_at: self.first_moment_of(next_first_day) }
+    }
+
+    /// The first moment of `day` on this zone's clocks: midnight, or the end of a gap that skips it.
+    fn first_moment_of(&self, day: Date) -> Timestamp {
+        let first_moment = day.to_zoned(self.time_zone.clone()).and_then(|moment| moment.start_of_day());
+        match first_moment {
+            Ok(moment) => moment.timestamp(),
+            // Only a day at the very edge of jiff's range has no first moment, and no request time is one.
+            Err(_) => Timestamp::MAX,
+        }
     }
 
     /// The day `moment` falls on in this calendar's zone.

@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "ranks": [
+    {
+      "id": "novice",
+      "name": {
+        "en": "Novice"
+      }
+    },
+    {
+      "id": "commis",
+      "name": {
+        "en": "Commis"
+      }
+    },
+    {
+      "id": "cook",
+      "name": {
+        "en": "Cook"
+      }
+    },
+    {
+      "id": "saucier",
+      "name": {
+        "en": "Saucier"
+      }
+    },
+    {
+      "id": "sous",
+      "name": {
+        "en": "Sous"
+      }
+    },
+    {
+      "id": "chef",
+      "name": {
+        "en": "Chef"
+      }
+    },
+    {
+      "id": "patron",
+      "name": {
+        "en": "Patron"
+      }
+    },
+    {
+      "id": "toque",
+      "name": {
+        "en": "Toque"
+      }
+    }
+  ]
+}

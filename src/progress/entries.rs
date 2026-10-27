@@ -3,9 +3,11 @@
 
 mod counts;
 mod entry;
+mod stored;
 
 #[cfg(test)]
 mod tests;
 
 pub use counts::CookCounts;
 pub use entry::{finished_cooks, CookEntry, Outcome};
+pub use stored::{StoredEntry, UnreadableStoredEntry};

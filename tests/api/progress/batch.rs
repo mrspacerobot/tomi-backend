@@ -96,7 +96,7 @@ async fn a_conflict_logs_the_id_and_code_and_no_body_content_reaches_the_logs(po
 #[sqlx::test(migrations = "./migrations")]
 async fn the_documented_example_is_what_the_server_answers(pool: PgPool) {
     let example: Value = serde_json::from_str(include_str!("../../../docs/examples/cook-entries.json")).unwrap();
-    let reply = send(&server(pool), Some(&new_cook()), &example["request"]).await;
+    let reply = send(&server_at_request_time(pool), Some(&new_cook()), &example["request"]).await;
     assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
     assert_eq!(reply.body, example["response"]);
 }

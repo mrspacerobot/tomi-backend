@@ -27,8 +27,13 @@ pub use received::{
 };
 pub use routes::router;
 
-pub use entries::{finished_cooks, CookCounts, CookEntry, Outcome};
+pub use entries::{finished_cooks, CookCounts, CookEntry, Outcome, StoredEntry, UnreadableStoredEntry};
 pub use experience::{earned_xp, xp_for, Rank, RankTitle};
-pub use skills::{granted_skills, open_levels, LevelProgress, OpenLevels, ProgressRules, SkillProgress, SkillStatus};
-pub use snapshot::ProgressSnapshot;
-pub use streak::{CookCalendar, ParseCalendarError, Streak, StreakRules};
+pub use skills::{
+    granted_skills, open_levels, CatalogProgress, LevelProgress, OpenLevels, ProgressRules, SkillProgress, SkillStatus,
+};
+pub use snapshot::{
+    CalendarAnswer, CatalogAnswer, Counted, LevelAnswer, ProgressAnswers, ProgressSnapshot, RankAnswer, SkillAnswer,
+    SkillStatusAnswer, SnapshotInputs, StreakAnswer, SNAPSHOT_SCHEMA_VERSION,
+};
+pub use streak::{CookCalendar, ParseCalendarError, Streak, StreakRules, WeekBounds};

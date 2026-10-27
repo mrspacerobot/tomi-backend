@@ -33,6 +33,13 @@ Its wording is taken from the approved onboarding mockups in Tomi's
 stay the raw values the app saves (`never`, `basics`, `comfortable`;
 `metric`, `cups`). Change it in a reviewed pull request, like the library.
 
+`ranks.json` is the server's own too: the name of each rank of the ladder,
+which the progress snapshot sends in the cook's language beside the rank's
+permanent id. The names are the ladder of Tomi's `docs/implementation-plan.md`.
+It must list exactly the ranks of `progress::RankTitle`, in ladder order, or
+the server does not start. Rank ids are permanent; a name may change or gain a
+language in a reviewed pull request.
+
 `restrictions.json` lists the diets and avoid items the cook can choose, each with
 the graph facts it rules out (`avoids`). The ids and names are the ones the app's
 table had, and ids are permanent: saved preferences keep them. **Only a person

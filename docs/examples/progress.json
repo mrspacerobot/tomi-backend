@@ -1,0 +1,450 @@
+{
+  "schemaVersion": 1,
+  "rulesVersion": 1,
+  "catalogVersion": 1,
+  "computedAt": "2026-10-27T18:43:02Z",
+  "calendar": {
+    "timeZone": "Europe/Amsterdam",
+    "firstWeekday": 2
+  },
+  "xp": 350,
+  "rank": {
+    "id": "commis",
+    "name": "Commis",
+    "tier": 1,
+    "startsAt": 150,
+    "nextAt": 400
+  },
+  "streak": {
+    "weeks": 2,
+    "weeksBeforeThisWeek": 2,
+    "daysThisWeek": 1,
+    "goal": 3,
+    "daysLeftInWeek": 6,
+    "thisWeekMet": false,
+    "atRisk": false,
+    "lost": false,
+    "weekStartsAt": "2026-10-25T23:00:00Z",
+    "weekEndsAt": "2026-11-01T23:00:00Z"
+  },
+  "skills": [
+    {
+      "skill": "knife-cuts",
+      "status": "served",
+      "missingPrerequisites": [],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 1,
+          "cooksToComplete": 2,
+          "open": true,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    },
+    {
+      "skill": "eggs",
+      "status": "mastered",
+      "missingPrerequisites": [],
+      "currentLevel": 3,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 2,
+          "cooksToComplete": 2,
+          "open": true,
+          "granted": false,
+          "complete": true
+        },
+        {
+          "number": 2,
+          "cooks": 2,
+          "cooksToComplete": 2,
+          "open": true,
+          "granted": false,
+          "complete": true
+        },
+        {
+          "number": 3,
+          "cooks": 2,
+          "cooksToComplete": 2,
+          "open": true,
+          "granted": false,
+          "complete": true
+        }
+      ]
+    },
+    {
+      "skill": "stocks",
+      "status": "locked",
+      "missingPrerequisites": [
+        "knife-cuts"
+      ],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    },
+    {
+      "skill": "saute",
+      "status": "locked",
+      "missingPrerequisites": [
+        "knife-cuts"
+      ],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    },
+    {
+      "skill": "sear",
+      "status": "locked",
+      "missingPrerequisites": [
+        "saute"
+      ],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    },
+    {
+      "skill": "poach",
+      "status": "locked",
+      "missingPrerequisites": [
+        "stocks"
+      ],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    },
+    {
+      "skill": "roux",
+      "status": "locked",
+      "missingPrerequisites": [
+        "stocks"
+      ],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    },
+    {
+      "skill": "pan-sauce",
+      "status": "locked",
+      "missingPrerequisites": [
+        "sear"
+      ],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    },
+    {
+      "skill": "emulsions",
+      "status": "served",
+      "missingPrerequisites": [],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": true,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 4,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    },
+    {
+      "skill": "braise",
+      "status": "locked",
+      "missingPrerequisites": [
+        "stocks",
+        "pan-sauce"
+      ],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    },
+    {
+      "skill": "roast",
+      "status": "locked",
+      "missingPrerequisites": [
+        "sear"
+      ],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    },
+    {
+      "skill": "gratin",
+      "status": "locked",
+      "missingPrerequisites": [
+        "knife-cuts",
+        "roux"
+      ],
+      "currentLevel": 1,
+      "levels": [
+        {
+          "number": 1,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 2,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        },
+        {
+          "number": 3,
+          "cooks": 0,
+          "cooksToComplete": 2,
+          "open": false,
+          "granted": false,
+          "complete": false
+        }
+      ]
+    }
+  ],
+  "masteredCount": 1,
+  "focusSkill": "knife-cuts",
+  "counted": {
+    "finishedCooks": 7,
+    "ignoredUnknownSkillOrLevel": 0
+  }
+}

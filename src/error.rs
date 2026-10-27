@@ -5,6 +5,7 @@
 
 use crate::auth::AuthError;
 use crate::profile::StoredProfileError;
+use crate::progress::UnreadableStoredEntry;
 use crate::scans::photo::PhotoError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -37,6 +38,8 @@ pub enum AppError {
     Corrupt(#[from] serde_json::Error),
     #[error("the stored profile could not be read")]
     StoredProfileUnreadable,
+    #[error(transparent)]
+    StoredCookEntryUnreadable(#[from] UnreadableStoredEntry),
     #[error("the profile was saved by a newer version of Tomi's server; try again shortly")]
     ProfileTooNew,
 }
@@ -71,7 +74,10 @@ impl AppError {
             AppError::AiUnavailable => "ai_unavailable",
             AppError::GraphUnavailable => "graph_unavailable",
             AppError::ProfileTooNew => "profile_too_new",
-            AppError::Database(_) | AppError::Corrupt(_) | AppError::StoredProfileUnreadable => "internal",
+            AppError::Database(_)
+            | AppError::Corrupt(_)
+            | AppError::StoredProfileUnreadable
+            | AppError::StoredCookEntryUnreadable(_) => "internal",
         }
     }
 
@@ -95,9 +101,10 @@ impl AppError {
             AppError::AiUnavailable | AppError::GraphUnavailable | AppError::ProfileTooNew => {
                 StatusCode::SERVICE_UNAVAILABLE
             }
-            AppError::Database(_) | AppError::Corrupt(_) | AppError::StoredProfileUnreadable => {
-                StatusCode::INTERNAL_SERVER_ERROR
-            }
+            AppError::Database(_)
+            | AppError::Corrupt(_)
+            | AppError::StoredProfileUnreadable
+            | AppError::StoredCookEntryUnreadable(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 

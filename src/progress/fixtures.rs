@@ -7,7 +7,7 @@ use crate::kernel::ids::SavedId;
 use crate::library::Catalog;
 use crate::profile::Experience;
 use crate::progress::game::{COOKS_TO_COMPLETE_LEVEL, WEEKLY_GOAL_DEFAULT};
-use crate::progress::{CookEntry, Outcome, ProgressRules, ProgressSnapshot, SkillProgress};
+use crate::progress::{CatalogProgress, CookEntry, Outcome, ProgressRules, SkillProgress};
 use jiff::civil::{date, Date};
 use jiff::tz::TimeZone;
 use jiff::Zoned;
@@ -167,7 +167,7 @@ impl TestLog {
         entries
     }
 
-    pub fn progress(&self, entries: &[CookEntry]) -> ProgressSnapshot {
+    pub fn progress(&self, entries: &[CookEntry]) -> CatalogProgress {
         ProgressRules::new(&self.catalog, self.experience).progress(entries)
     }
 

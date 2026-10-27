@@ -33,7 +33,7 @@ const FEATURES: [&str; 10] =
 const TALKS_TO_THE_OUTSIDE: [&str; 4] = ["routes.rs", "db.rs", "files.rs", "keep.rs"];
 
 /// Everything else under `src` is plumbing that may use the web, the database or the clock.
-const PLUMBING: [&str; 10] = ["ai", "auth", "config", "db", "error", "http", "lib", "main", "meta", "storage"];
+const PLUMBING: [&str; 11] = ["ai", "auth", "clock", "config", "db", "error", "http", "lib", "main", "meta", "storage"];
 
 #[test]
 fn no_file_is_longer_than_the_limit() {

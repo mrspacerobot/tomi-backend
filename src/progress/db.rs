@@ -2,6 +2,7 @@
 
 use crate::error::AppError;
 use crate::progress::received::{Dish, ReceivedEntry};
+use crate::progress::{CookEntry, StoredEntry};
 use jiff::Timestamp;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -14,6 +15,14 @@ const INSERT: &str = "
     on conflict (user_id, id) do nothing";
 
 const STORED_SHA256: &str = "select payload_sha256 from tomi.cook_entries where user_id = $1 and id = $2";
+
+/// Every entry of the cook, in no particular order: the rules give the same answer in any.
+const COOK_LOG: &str = "
+    select id, skill, level, outcome, weekly_goal,
+        (extract(epoch from cooked_at) * 1000000)::bigint as cooked_at_microseconds, time_zone
+    from tomi.cook_entries where user_id = $1";
+
+type LogRow = (Uuid, String, i16, String, i16, i64, String);
 
 /// An entry to keep for this cook, with its fingerprint and the time it arrived.
 pub struct EntryWrite<'a> {
@@ -48,4 +57,15 @@ fn dish_columns(dish: &Dish) -> (Option<&str>, Option<&str>, Option<&str>) {
         Dish::Recipe { recipe_id, graph_version } => (None, Some(recipe_id.as_str()), Some(graph_version.as_str())),
         Dish::Lesson { lesson_id } => (Some(lesson_id.as_str()), None, None),
     }
+}
+
+/// The cook's whole log, read fresh on every request: progress is never kept as a total.
+pub async fn cook_log(pool: &PgPool, user_id: Uuid) -> Result<Vec<CookEntry>, AppError> {
+    let rows: Vec<LogRow> = sqlx::query_as(COOK_LOG).bind(user_id).fetch_all(pool).await?;
+    let mut log = Vec::with_capacity(rows.len());
+    for (id, skill, level, outcome, weekly_goal, cooked_at_microseconds, time_zone) in rows {
+        let stored = StoredEntry { id, skill, level, outcome, weekly_goal, cooked_at_microseconds, time_zone };
+        log.push(stored.read()?);
+    }
+    Ok(log)
 }
