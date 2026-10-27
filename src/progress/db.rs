@@ -1,7 +1,7 @@
 //! Storing cook entries. The first accepted copy of an entry id is the one kept; nothing here ever overwrites it.
 
 use crate::error::AppError;
-use crate::progress::received::ReceivedEntry;
+use crate::progress::cook_entries::ReceivedEntry;
 use jiff::Timestamp;
 use sqlx::PgPool;
 use uuid::Uuid;

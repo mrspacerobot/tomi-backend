@@ -33,7 +33,7 @@ src/
   suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels by calling `progress`
   progress/     game.rs (every game number), entries/ (cook entries, finished cooks, counts), experience/ (XP and
                 rank), skills/ (served, open and granted levels), snapshot.rs (`ProgressSnapshot`: skills, focus,
-                mastered count), received/ (cook entries as the phone sends them, read and checked), routes.rs
+                mastered count), cook_entries/ (cook entries as the phone sends them, read and checked), routes.rs
                 (`POST /v1/cook-entries`) and db.rs (the stored cook log). Tests sit in each folder, builders in
                 fixtures.rs. The streak and quiz answers are planned (docs/progress.md)
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
