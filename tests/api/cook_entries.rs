@@ -7,9 +7,9 @@ use serde_json::{json, Value};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-mod batch;
 mod idempotency;
 mod problems;
+mod request;
 
 /// A recipe of the fixture graph that teaches eggs level 1, and only through its techniques.
 const RECIPE: &str = "recipe/soft-scrambled-eggs";
@@ -37,9 +37,9 @@ fn with(entry: &Value, field: &str, value: Value) -> Value {
     changed
 }
 
-/// A batch of entries, sent with the cook's calendar.
-fn batch(entries: &[Value]) -> Value {
-    json!({"calendar": {"timeZone": "Europe/Amsterdam", "firstWeekday": 2}, "entries": entries})
+/// One entry, sent with the cook's calendar.
+fn request(entry: &Value) -> Value {
+    json!({"calendar": {"timeZone": "Europe/Amsterdam", "firstWeekday": 2}, "entry": entry})
 }
 
 async fn send(app: &Router, token: Option<&str>, body: &Value) -> Reply {
@@ -47,11 +47,15 @@ async fn send(app: &Router, token: Option<&str>, body: &Value) -> Reply {
     call(app, Call { method: Method::POST, path: "/v1/cook-entries", token, body }).await
 }
 
-/// Sends a batch and returns its results, after checking the batch itself was read.
+/// Sends each entry separately and returns the results in order.
 async fn results(app: &Router, token: &str, entries: &[Value]) -> Vec<Value> {
-    let reply = send(app, Some(token), &batch(entries)).await;
-    assert_eq!(reply.status, axum::http::StatusCode::OK, "{}", reply.body);
-    reply.body["results"].as_array().unwrap().clone()
+    let mut results = Vec::new();
+    for entry in entries {
+        let reply = send(app, Some(token), &request(entry)).await;
+        assert_eq!(reply.status, axum::http::StatusCode::OK, "{}", reply.body);
+        results.push(reply.body["result"].clone());
+    }
+    results
 }
 
 /// Sends one entry and returns its result.

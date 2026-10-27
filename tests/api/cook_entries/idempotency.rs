@@ -4,7 +4,7 @@ use super::*;
 use serde_json::json;
 
 #[sqlx::test(migrations = "./migrations")]
-async fn the_same_batch_twice_is_accepted_then_a_duplicate_and_stored_once(pool: PgPool) {
+async fn the_same_entries_twice_are_accepted_then_duplicates_and_stored_once(pool: PgPool) {
     let (app, cook) = (server(pool.clone()), new_cook());
     let entries = [entry(), entry()];
     let first = results(&app, &cook, &entries).await;
@@ -60,7 +60,7 @@ async fn stored_row(pool: &PgPool) -> Value {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn copies_inside_one_batch_count_once_and_a_different_copy_is_a_conflict(pool: PgPool) {
+async fn repeated_entries_count_once_and_a_different_copy_is_a_conflict(pool: PgPool) {
     let (app, cook) = (server(pool.clone()), new_cook());
     let sent = entry();
     let changed = with(&sent, "weeklyGoal", json!(4));

@@ -1,7 +1,7 @@
 //! `POST /v1/cook-entries`: the cooks in the phone's outbox in, what became of each out.
 
 use super::db::{self as store, EntryWrite};
-use super::{id_of, BatchFile, EntryBatch, EntryChecks, EntryResult, EntryStatus, ReceivedEntry};
+use super::{id_of, CheckedRequest, EntryChecks, EntryRequest, EntryResult, EntryStatus, ReceivedEntry};
 use crate::error::AppError;
 use crate::http::{json_body, Caller};
 use crate::AppState;
@@ -18,12 +18,11 @@ pub fn router() -> Router<AppState> {
 }
 
 #[derive(Serialize)]
-struct EntriesResponse {
-    /// One answer per entry, in the order the entries were sent.
-    results: Vec<EntryResult>,
+struct EntryResponse {
+    result: EntryResult,
 }
 
-/// The cook, the server and the moment the batch arrived, shared by every entry of it.
+/// The cook, the server and the moment the entry arrived.
 struct Receipt<'a> {
     state: &'a AppState,
     user_id: Uuid,
@@ -32,17 +31,14 @@ struct Receipt<'a> {
 
 async fn receive(
     caller: Caller,
-    body: Result<Json<BatchFile>, JsonRejection>,
-) -> Result<Json<EntriesResponse>, AppError> {
+    body: Result<Json<EntryRequest>, JsonRejection>,
+) -> Result<Json<EntryResponse>, AppError> {
     let Caller { state, user_id } = caller;
-    let batch = EntryBatch::parse(json_body(body)?).map_err(AppError::Invalid)?;
+    let request = CheckedRequest::parse(json_body(body)?).map_err(AppError::Invalid)?;
     let checks = EntryChecks { received_at: Timestamp::now(), graph: state.graph.as_deref() };
     let receipt = Receipt { state: &state, user_id, checks };
-    let mut results = Vec::with_capacity(batch.entries.len());
-    for raw in &batch.entries {
-        results.push(answer(&receipt, raw).await?);
-    }
-    Ok(Json(EntriesResponse { results }))
+    let result = answer(&receipt, &request.entry).await?;
+    Ok(Json(EntryResponse { result }))
 }
 
 async fn answer(receipt: &Receipt<'_>, raw: &Value) -> Result<EntryResult, AppError> {

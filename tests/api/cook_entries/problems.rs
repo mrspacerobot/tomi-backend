@@ -83,7 +83,7 @@ async fn an_entry_carrying_a_quiz_result_xp_or_a_total_is_rejected_as_an_unknown
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn an_entry_that_cannot_be_read_is_rejected_and_the_rest_of_the_batch_is_stored(pool: PgPool) {
+async fn an_unreadable_entry_is_rejected_and_a_later_valid_entry_is_stored(pool: PgPool) {
     let (app, cook) = (server(pool.clone()), new_cook());
     let unreadable = [
         with(&entry(), "dish", json!({"graphVersion": FIXTURE_GRAPH})),

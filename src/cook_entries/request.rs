@@ -1,19 +1,15 @@
-//! A batch of cook entries from the phone's outbox, with the cook's calendar, read once at the edge.
+//! One cook entry from the phone with the cook's calendar, read at the edge.
 
 use super::zone::known_zone;
 use serde::Deserialize;
 use serde_json::Value;
 
-/// More than this in one request is refused as a whole; the phone sends its outbox in parts.
-pub const MAX_ENTRIES_PER_BATCH: usize = 100;
-
-/// The request as sent. Each entry stays raw here, so one bad entry is answered on its own and never refuses the
-/// others.
+/// The request as sent. The entry stays raw so it can receive a specific result.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct BatchFile {
+pub struct EntryRequest {
     calendar: CalendarFile,
-    entries: Vec<Value>,
+    entry: Value,
 }
 
 #[derive(Deserialize)]
@@ -31,20 +27,17 @@ pub struct RequestCalendar {
     pub first_weekday: u8,
 }
 
-/// A batch that may be answered entry by entry.
-pub struct EntryBatch {
+/// A request with a checked calendar.
+pub struct CheckedRequest {
     pub calendar: RequestCalendar,
-    pub entries: Vec<Value>,
+    pub entry: Value,
 }
 
-impl EntryBatch {
-    /// The batch, or why it is refused as a whole, as the problems of an `invalid_request`.
-    pub fn parse(file: BatchFile) -> Result<EntryBatch, Vec<String>> {
-        if file.entries.len() > MAX_ENTRIES_PER_BATCH {
-            return Err(vec![format!("entries: at most {MAX_ENTRIES_PER_BATCH} in one batch")]);
-        }
+impl CheckedRequest {
+    /// The request, or why it is refused as an `invalid_request`.
+    pub fn parse(file: EntryRequest) -> Result<CheckedRequest, Vec<String>> {
         let calendar = RequestCalendar::parse(file.calendar)?;
-        Ok(EntryBatch { calendar, entries: file.entries })
+        Ok(CheckedRequest { calendar, entry: file.entry })
     }
 }
 

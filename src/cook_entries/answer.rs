@@ -1,11 +1,10 @@
-//! The answer for each cook entry of a batch: stored now, already stored, conflicting, or rejected.
+//! The answer for one cook entry: stored now, already stored, conflicting, or rejected.
 
 use super::problems::EntryProblem;
 use serde::Serialize;
 use uuid::Uuid;
 
-/// One entry's answer, in the place of the entry in the batch. The id is none only when the entry had no
-/// readable id.
+/// One entry's answer. The id is none only when the entry had no readable id.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct EntryResult {
     pub id: Option<Uuid>,

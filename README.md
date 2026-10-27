@@ -17,7 +17,7 @@ profile, then the AI functions (fridge scan and tonight's suggestions).
 | `POST /v1/ingredients/resolve` | yes | Typed text to ingredients: `exact`, `ambiguous` (the cook chooses) or `none` |
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
 | `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, a safe graph recipe and up to two alternatives out |
-| `POST /v1/cook-entries` | yes | The phone's unsent cooks in (at most 100, with the cook's calendar), one `accepted`, `duplicate`, `conflict` or `rejected` per entry out, in the order sent. The entry id is the idempotency key. Example: [`docs/examples/cook-entries.json`](docs/examples/cook-entries.json). The progress snapshot joins the answer with `GET /v1/progress` |
+| `POST /v1/cook-entries` | yes | One unsent cook and the cook's calendar in, one `accepted`, `duplicate`, `conflict` or `rejected` result out. The entry id is the idempotency key. Example: [`docs/examples/cook-entries.json`](docs/examples/cook-entries.json). The progress snapshot joins the answer with `GET /v1/progress` |
 
 Planned, not built yet (contract in [`docs/progress.md`](docs/progress.md)):
 
