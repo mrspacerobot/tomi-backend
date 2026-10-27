@@ -170,6 +170,8 @@ the whole first course.
 Errors always look like
 `{"error": {"code": "...", "message": "...", "details": {...}}}`.
 
+The shared calendar in `src/kernel/calendar.rs` validates IANA zones and finds local week boundaries; progress owns the streak rules.
+
 ## The cooking graph
 
 The `cooking-graph` repository builds a versioned, checksummed artifact (`./release` there). This repository
@@ -256,3 +258,4 @@ unrecognised ids remain plain labels for the cook to confirm or skip.
 - **The Docker image was not built here** (no Docker daemon in the session
   that wrote it). The binary and all tests were.
 - Next slices: the cook log, progress and the server-run quiz ([`docs/progress.md`](docs/progress.md)), then active recipe, ratings and leaderboard.
+

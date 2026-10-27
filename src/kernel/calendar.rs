@@ -29,7 +29,7 @@ impl CookCalendar {
     /// Reads a zone such as `Europe/Amsterdam` and a first weekday in Foundation's numbering,
     /// 1 for Sunday to 7 for Saturday.
     pub fn parse(time_zone: &str, first_weekday: i64) -> Result<Self, ParseCalendarError> {
-        let Ok(time_zone) = TimeZone::get(time_zone) else {
+        let Some(time_zone) = known_zone(time_zone) else {
             return Err(ParseCalendarError::UnknownTimeZone);
         };
         let first_weekday = weekday_from_sunday_one(first_weekday)?;
@@ -80,4 +80,11 @@ fn weekday_from_sunday_one(number: i64) -> Result<Weekday, ParseCalendarError> {
         Ok(weekday) => Ok(weekday),
         Err(_) => Err(ParseCalendarError::FirstWeekdayOutOfRange),
     }
+}
+
+/// A named IANA time zone, or none for offsets and names the database does not know.
+pub fn known_zone(name: &str) -> Option<TimeZone> {
+    let zone = TimeZone::get(name).ok()?;
+    zone.iana_name()?;
+    Some(zone)
 }
