@@ -17,7 +17,7 @@ profile, then the AI functions (fridge scan and tonight's suggestions).
 | `POST /v1/ingredients/resolve` | yes | Typed text to ingredients: `exact`, `ambiguous` (the cook chooses) or `none` |
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
 | `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, a safe graph recipe and up to two alternatives out |
-| `POST /v1/cook-entries` | yes | One unsent cook and the cook's calendar in, one `accepted`, `duplicate`, `conflict` or `rejected` result out. The entry id is the idempotency key. Example: [`docs/examples/cook-entries.json`](docs/examples/cook-entries.json). The progress snapshot joins the answer with `GET /v1/progress` |
+| `POST /v1/cook-entries` | yes | One unsent cook and the cook's calendar in, one `accepted`, `duplicate`, `conflict` or `rejected` result out. The entry id is the idempotency key. Example: [`docs/examples/cook-entries.json`](docs/examples/cook-entries.json). The answer carries the progress snapshot also available through `GET /v1/progress` |
 | `GET /v1/progress?timeZone=<IANA>&firstWeekday=<1-7>` | yes | The progress snapshot (XP, rank, weekly streak, skills and levels, focus), computed from the stored cook log on every request in the request's calendar. Example: [`docs/examples/progress.json`](docs/examples/progress.json) |
 
 Planned, not built yet (contract in [`docs/progress.md`](docs/progress.md)):
@@ -200,8 +200,8 @@ See `docs/cloud-run-deployment.md` for the deployment identity, secrets and roll
 one folder per feature (`src/profile`, `src/scans`, `src/suggestions` and so on), with HTTP handlers in
 `routes.rs`, storage in `db.rs` and pure rules alongside them, shared HTTP pieces in `src/http.rs`, API tests as one
 binary in `tests/api`. `src/recipe` holds the recipe adaptation rules. `src/cook_entries` owns the cook log. `src/progress` holds the progress rules
-ported from the app (XP, rank, weekly streak, open levels, served and mastered skills) and the stored cook log
-behind `POST /v1/cook-entries`, and the progress snapshot of `GET /v1/progress`. Suggestion and recipe
+ported from the app (XP, rank, weekly streak, open levels, served and mastered skills) and serves the progress
+snapshot of `GET /v1/progress`. Suggestion and recipe
 response types use the same names as the frontend: `Suggestion`, `SuggestionsRequest`,
 `SuggestionsResponse`, `AdaptedRecipe`, `AdaptedIngredient` and `RecipeChanges`.
 
