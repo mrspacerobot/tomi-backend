@@ -2,8 +2,8 @@
 
 use super::{CookEntry, Outcome};
 use crate::cook_entries::{EntryOutcome, StoredEntry};
+use crate::kernel::calendar::known_zone;
 use crate::kernel::ids::SavedId;
-use jiff::tz::TimeZone;
 use jiff::Timestamp;
 
 /// A stored row the rules cannot read. Only a row this server did not write can be one, so progress refuses it
@@ -20,7 +20,7 @@ impl StoredEntry {
             level: u8::try_from(self.level).map_err(|_| UnreadableStoredEntry)?,
             outcome: self.read_outcome()?,
             cooked_at: Timestamp::from_microsecond(self.cooked_at_microseconds).map_err(|_| UnreadableStoredEntry)?,
-            time_zone: TimeZone::get(&self.time_zone).map_err(|_| UnreadableStoredEntry)?,
+            time_zone: known_zone(&self.time_zone).ok_or(UnreadableStoredEntry)?,
             weekly_goal: u8::try_from(self.weekly_goal).map_err(|_| UnreadableStoredEntry)?,
         })
     }
