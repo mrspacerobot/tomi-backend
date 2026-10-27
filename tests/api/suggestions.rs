@@ -6,6 +6,8 @@ use serde_json::{json, Value};
 use sqlx::PgPool;
 use std::sync::Arc;
 
+mod levels;
+
 pub const OMELETTE: &str = "recipe/spinach-and-cheese-omelette";
 const PAN_SAUCE: &str = "recipe/seared-chicken-thighs-with-lemon-butter-pan-sauce";
 

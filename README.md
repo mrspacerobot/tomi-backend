@@ -160,8 +160,12 @@ Recipes are offered only at skill levels the cook has reached. This server owns
 the cook log and every progress rule (owner's decision of 26 October 2026,
 [`docs/progress.md`](docs/progress.md)); the app holds none. The cook log is
 stored (`tomi.cook_entries`, one row per cook per entry id, each with its own
-IANA time zone), but suggestions do not read it yet, so for now only the
-onboarding answer counts: "comfortable" opens the whole first course.
+IANA time zone), and suggestions follow it: every request reads the signed-in
+cook's own entries and opens levels from their finished cooks and their
+onboarding answer ("comfortable" opens the whole first course). Two finished
+cooks of a level open the next one; a stopped-early cook, and another cook's
+entries, open nothing. Progress only decides which levels are offered, never
+which foods are allowed.
 
 Errors always look like
 `{"error": {"code": "...", "message": "...", "details": {...}}}`.
@@ -239,8 +243,6 @@ unrecognised ids remain plain labels for the cook to confirm or skip.
 
 ## Not built yet, and doubts
 
-- **Progress counts no cooks yet,** because the server has no cook log. New cooks see recipes at
-  their first open level, and "comfortable" opens the first course.
 - **Serving sizes are not scaled:** the graph supplies source amounts, but the API does not adapt
   them to the cook's saved serving count.
 - **Ids are checked for shape, not existence.** The spec wants an

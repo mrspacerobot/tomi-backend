@@ -30,7 +30,7 @@ src/
                 one root file and one folder per feature
   profile/      routes.rs (HTTP handlers), db.rs (queries), the pure rules, and their tests
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
-  suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels by calling `progress`
+  suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; reads the cook log and calls `progress`
   cook_entries/ the cook log: request parsing and validation, routes.rs and db.rs
   progress/     game, entries, experience, skills, streak and snapshot rules, and the snapshot route
   quiz/         routes, storage, pick validation and recorded first answers
