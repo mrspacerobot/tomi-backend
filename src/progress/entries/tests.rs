@@ -5,7 +5,10 @@
 use crate::progress::fixtures::{
     complete_per_level, cook, cooks, cooks_per_level, stopped_before_the_end, with_the_quiz_wrong, TestLog,
 };
-use crate::progress::{earned_xp, open_levels, CookCounts, CookEntry, Rank, SkillStatus};
+use crate::progress::{
+    earned_xp, open_levels, CookCounts, CookEntry, Outcome, QuizAnswers, Rank, SkillStatus, StoredEntry,
+    UnreadableStoredEntry,
+};
 
 #[test]
 fn cooks_stopped_early_do_not_count() {
@@ -125,11 +128,12 @@ fn a_finished_cook_earns_fifty_or_sixty_with_the_quiz_passed() {
     assert_eq!(earned_xp(&[cook("knife", 1)]), 60);
 }
 
-fn stored_row() -> crate::progress::StoredEntry {
-    crate::progress::StoredEntry {
+fn stored_row() -> StoredEntry {
+    StoredEntry {
         id: uuid::Uuid::new_v4(),
         skill: "eggs".to_string(),
         level: 2,
+        recipe_id: None,
         outcome: "finished".to_string(),
         weekly_goal: 4,
         cooked_at_microseconds: 1_792_521_720_000_000,
@@ -138,27 +142,27 @@ fn stored_row() -> crate::progress::StoredEntry {
 }
 
 #[test]
-fn a_stored_row_reads_back_as_the_cook_it_was_with_no_quiz_bonus_until_answers_are_recorded() {
+fn a_stored_row_with_no_recorded_answers_reads_back_as_the_cook_it_was_with_no_quiz_bonus() {
     let row = stored_row();
-    let entry = row.read().unwrap();
+    let entry = row.read(&QuizAnswers::default()).unwrap();
     assert_eq!((entry.id, entry.skill.as_str(), entry.level, entry.weekly_goal), (row.id, "eggs", 2, 4));
-    assert_eq!(entry.outcome, crate::progress::Outcome::Finished { quiz_passed: false });
+    assert_eq!(entry.outcome, Outcome::Finished { quiz_passed: false });
     assert_eq!(entry.cooked_at, jiff::Timestamp::from_second(1_792_521_720).unwrap());
     assert_eq!(entry.time_zone.iana_name(), Some("Asia/Tokyo"));
-    let stopped = crate::progress::StoredEntry { outcome: "stoppedEarly".to_string(), ..stored_row() };
-    assert_eq!(stopped.read().unwrap().outcome, crate::progress::Outcome::StoppedEarly);
+    let stopped = StoredEntry { outcome: "stoppedEarly".to_string(), ..stored_row() };
+    assert_eq!(stopped.read(&QuizAnswers::default()).unwrap().outcome, Outcome::StoppedEarly);
 }
 
 #[test]
 fn a_stored_row_the_rules_cannot_read_is_refused_never_left_out() {
     let unreadable = [
-        crate::progress::StoredEntry { skill: "Not an id".to_string(), ..stored_row() },
-        crate::progress::StoredEntry { level: 300, ..stored_row() },
-        crate::progress::StoredEntry { outcome: "abandoned".to_string(), ..stored_row() },
-        crate::progress::StoredEntry { weekly_goal: -1, ..stored_row() },
-        crate::progress::StoredEntry { time_zone: "Mars/Olympus_Mons".to_string(), ..stored_row() },
+        StoredEntry { skill: "Not an id".to_string(), ..stored_row() },
+        StoredEntry { level: 300, ..stored_row() },
+        StoredEntry { outcome: "abandoned".to_string(), ..stored_row() },
+        StoredEntry { weekly_goal: -1, ..stored_row() },
+        StoredEntry { time_zone: "Mars/Olympus_Mons".to_string(), ..stored_row() },
     ];
     for row in unreadable {
-        assert_eq!(row.read(), Err(crate::progress::UnreadableStoredEntry), "{row:?}");
+        assert_eq!(row.read(&QuizAnswers::default()), Err(UnreadableStoredEntry), "{row:?}");
     }
 }

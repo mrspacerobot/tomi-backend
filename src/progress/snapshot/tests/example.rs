@@ -7,8 +7,8 @@ use crate::progress::CookEntry;
 use jiff::civil::Date;
 use serde_json::Value;
 
-/// A finished cook in Amsterdam at 7 pm. No quiz is passed: the quiz result is derived from recorded answers, which
-/// come with mrspacerobot/tomi-backend#44.
+/// A finished cook in Amsterdam at 7 pm. No quiz is passed: the example's cooks are lessons of the old development
+/// logs, which name no recipe and so have no quiz of their own.
 fn cooked(skill: &str, level: u8, day: Date) -> CookEntry {
     with_the_quiz_wrong(&made_at(&cook(skill, level), &local("Europe/Amsterdam", day, 19)))
 }

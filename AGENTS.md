@@ -36,8 +36,9 @@ src/
                 streak), snapshot.rs and snapshot/ (`ProgressSnapshot`, the answer of `GET /v1/progress`), received/
                 (cook entries as the phone sends them, read and checked), routes.rs (`POST /v1/cook-entries`,
                 `GET /v1/progress`) and db.rs (the stored cook log). Tests sit in each folder, builders in
-                fixtures.rs.
-  quiz/         routes.rs, db.rs, and pick.rs: checks a quiz pick against the pinned graph and keeps first answers
+                fixtures.rs. entries/quiz.rs derives each cook's quiz result from its recorded first answers
+  quiz/         routes.rs, db.rs, pick.rs (checks a quiz pick against the pinned graph and keeps first answers) and
+                recorded.rs (a first answer as `progress` reads it, through `quiz::first_answers`)
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
@@ -155,7 +156,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 ## The adapted recipe
 
 - **Teaching is optional graph content, never inferred.** Suggestions carry `teaching` as described in `docs/teaching.md`. Its primary technique is the first sorted actual recipe technique matched to the offered skill level, including graph variants. Missing or malformed introductions leave teaching unavailable without hiding the checked recipe; missing or malformed quizzes are unavailable independently. Text, answers and tiers come unchanged from the pinned graph. Question IDs are scoped by technique. Production requires recipe, technique, introduction and offered questions to be reviewed or higher; a draft graph keeps its explicit testing status.
-- **The quiz is run by this server, and correct answers never leave it.** Quiz questions are sent with their choices, without their answer or explanation (teaching schema 1). Each pick is checked here (`POST /v1/quiz-answers`, the `quiz` feature) and answered right or wrong, with the explanation only once right; a refusal never names the answer. The first answer to each question is the score and is stored; later picks only teach and are never stored. A cook's quiz result is derived here from those first answers, never sent by the app.
+- **The quiz is run by this server, and correct answers never leave it.** Quiz questions are sent with their choices, without their answer or explanation (teaching schema 1). Each pick is checked here (`POST /v1/quiz-answers`, the `quiz` feature) and answered right or wrong, with the explanation only once right; a refusal never names the answer. The first answer to each question is the score and is stored; later picks only teach and are never stored. A cook's quiz result is derived here from those first answers, on every progress request, and never sent by the app or stored: a finished cook passed when every question of its quiz has a right first answer for the entry's own recipe (`progress::QuizAnswers`, docs/progress.md).
 - **Changed recipes need reviewed teaching compatibility.** Until the graph carries compatibility evidence, any applied substitution or omission makes teaching unavailable. A food-safe swap is not proof that the instructions or quiz remain applicable. Teaching schema 1 supplies content for introduction/preparation; graph-native sessions, resume, timers and completion are separate contracts.
 
 

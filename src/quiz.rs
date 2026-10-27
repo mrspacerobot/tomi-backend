@@ -6,8 +6,11 @@
 
 mod db;
 mod pick;
+mod recorded;
 mod routes;
 #[cfg(test)]
 mod tests;
 
+pub use db::first_answers;
+pub use recorded::RecordedAnswer;
 pub use routes::router;

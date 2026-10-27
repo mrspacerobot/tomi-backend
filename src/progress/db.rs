@@ -2,7 +2,7 @@
 
 use crate::error::AppError;
 use crate::progress::received::{Dish, ReceivedEntry};
-use crate::progress::{CookEntry, StoredEntry};
+use crate::progress::{CookEntry, QuizAnswers, StoredEntry};
 use jiff::Timestamp;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -18,11 +18,11 @@ const STORED_SHA256: &str = "select payload_sha256 from tomi.cook_entries where 
 
 /// Every entry of the cook, in no particular order: the rules give the same answer in any.
 const COOK_LOG: &str = "
-    select id, skill, level, outcome, weekly_goal,
+    select id, skill, level, recipe_id, outcome, weekly_goal,
         (extract(epoch from cooked_at) * 1000000)::bigint as cooked_at_microseconds, time_zone
     from tomi.cook_entries where user_id = $1";
 
-type LogRow = (Uuid, String, i16, String, i16, i64, String);
+type LogRow = (Uuid, String, i16, Option<String>, String, i16, i64, String);
 
 /// An entry to keep for this cook, with its fingerprint and the time it arrived.
 pub struct EntryWrite<'a> {
@@ -59,13 +59,16 @@ fn dish_columns(dish: &Dish) -> (Option<&str>, Option<&str>, Option<&str>) {
     }
 }
 
-/// The cook's whole log, read fresh on every request: progress is never kept as a total.
+/// The cook's whole log, read fresh on every request with the cook's recorded quiz answers: progress and the quiz
+/// result are never kept.
 pub async fn cook_log(pool: &PgPool, user_id: Uuid) -> Result<Vec<CookEntry>, AppError> {
+    let answers = QuizAnswers::new(crate::quiz::first_answers(pool, user_id).await?);
     let rows: Vec<LogRow> = sqlx::query_as(COOK_LOG).bind(user_id).fetch_all(pool).await?;
     let mut log = Vec::with_capacity(rows.len());
-    for (id, skill, level, outcome, weekly_goal, cooked_at_microseconds, time_zone) in rows {
-        let stored = StoredEntry { id, skill, level, outcome, weekly_goal, cooked_at_microseconds, time_zone };
-        log.push(stored.read()?);
+    for (id, skill, level, recipe_id, outcome, weekly_goal, cooked_at_microseconds, time_zone) in rows {
+        let stored =
+            StoredEntry { id, skill, level, recipe_id, outcome, weekly_goal, cooked_at_microseconds, time_zone };
+        log.push(stored.read(&answers)?);
     }
     Ok(log)
 }

@@ -7,8 +7,8 @@ computes or predicts XP or rank. The quiz is run here: the phone gets questions 
 told right or wrong. Correct answers never leave the server.
 
 **Status: in progress.** `POST /v1/cook-entries` stores the cook log (#38) and answers with the progress
-snapshot, which `GET /v1/progress` also serves (#40). `POST /v1/quiz-answers` keeps each first answer (#43). The
-other routes are planned. This document is the contract the following pull requests implement, and each of them
+snapshot, which `GET /v1/progress` also serves (#40). `POST /v1/quiz-answers` keeps each first answer (#43), and
+progress derives each cook's quiz result from them (#44). The other routes are planned. This document is the contract the following pull requests implement, and each of them
 keeps it current:
 
 | Issue | Delivers |
@@ -202,8 +202,9 @@ types and an API test reads back after posting its log; the app copies it verbat
   order, and `null` when everything is mastered.
 - `counted.finishedCooks` counts finished cooks, each entry id once; `ignoredUnknownSkillOrLevel` counts those of a
   skill or level the catalog does not know, which earn XP and count for the streak but open nothing.
-- **No quiz bonus yet.** Every finished cook earns 50 XP until the quiz result is derived from the recorded answers
-  (#44); the seam is `progress::StoredEntry::read`, which reads every finished cook as `quiz_passed: false`.
+- **The quiz bonus is derived, never sent.** A finished cook earns 50 XP, and 60 when it passed its quiz, judged from
+  the first answers recorded under its entry id (see "How a cook's quiz result is derived"). The example's cooks
+  are lessons of the old development logs, which have no quiz, so each earns 50.
 - `skills` is in catalog order and keyed by the skill ids `GET /v1/options` sends. `status` is `locked`, `served`
   or `mastered`. `experience: comfortable` grants the first course, shown as `granted`, with no XP.
 - `schemaVersion` is the shape; an added field does not change it. `rulesVersion` is `progress::game::RULES_VERSION`.
@@ -279,6 +280,20 @@ A cook **passed the quiz** when its entry is `finished`, its answers are for the
 question of that quiz has a recorded first answer, and every first answer is right. It then earns the quiz bonus
 from `progress::game`. A wrong first answer stays wrong after a right retry, an unanswered question means no bonus,
 and answers with no entry earn nothing.
+
+- Built in #44. The rule is `progress::QuizAnswers::passed`, a pure function of the entry's id and recipe and the
+  cook's recorded first answers. `progress::StoredEntry::read` applies it to every stored cook, so the snapshot of
+  `GET /v1/progress` and the one in the cook-entries answer both show it.
+- The answers are read fresh on every request, with the cook log, through `quiz::first_answers` (the `quiz`
+  feature's own query). Nothing derived is stored: not the result, not the bonus.
+- The quiz is every question the first answers were kept with (`quiz_question_ids`), so a quiz that changed between
+  two answers still needs all of its questions answered. A cook with no recorded answer has not passed.
+- "The same recipe" is the entry's `dish.recipeId`. An entry of an old development lesson names no recipe, so it has
+  no quiz and never earns the bonus. The graph version is not compared: the answers were checked against the graph
+  pinned when they arrived, and the entry may be sent after a graph update.
+- Arrival order never matters: progress is computed on demand, so answers recorded before or after the entry, and an
+  entry sent days later from the outbox, give the same result. Answers belong to one account: another cook's
+  answers under the same entry id count for nothing here.
 
 ## `GET /v1/options` additions
 

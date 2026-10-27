@@ -27,7 +27,7 @@ pub use received::{
 };
 pub use routes::router;
 
-pub use entries::{finished_cooks, CookCounts, CookEntry, Outcome, StoredEntry, UnreadableStoredEntry};
+pub use entries::{finished_cooks, CookCounts, CookEntry, Outcome, QuizAnswers, StoredEntry, UnreadableStoredEntry};
 pub use experience::{earned_xp, xp_for, Rank, RankTitle};
 pub use skills::{
     granted_skills, open_levels, CatalogProgress, LevelProgress, OpenLevels, ProgressRules, SkillProgress, SkillStatus,

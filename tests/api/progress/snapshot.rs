@@ -33,7 +33,7 @@ async fn a_cook_who_posts_entries_reads_their_xp_rank_streak_and_skills(pool: Pg
     let reply = read_progress(&app, Some(&cook), AMSTERDAM).await;
     assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
     let progress = &reply.body;
-    assert_eq!(progress["xp"], 350, "seven finished cooks of 50 XP; the quiz bonus waits for #44");
+    assert_eq!(progress["xp"], 350, "seven finished lesson cooks of 50 XP: a lesson entry has no quiz");
     assert_eq!(progress["rank"], json!({"id": "commis", "name": "Commis", "tier": 1, "startsAt": 150, "nextAt": 400}));
     assert_eq!((&progress["streak"]["weeks"], &progress["streak"]["daysThisWeek"]), (&json!(2), &json!(1)));
     assert_eq!(

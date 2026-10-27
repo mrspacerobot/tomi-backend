@@ -1,6 +1,7 @@
 //! Keeping each question's first answer, once per cook, Supabase account and question.
 
 use super::pick::{Checked, FirstAnswer, Pick};
+use super::RecordedAnswer;
 use crate::error::AppError;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -15,6 +16,12 @@ const INSERT_FIRST: &str = "
 const READ_FIRST: &str = "
     select recipe_id, graph_version, choice from tomi.quiz_answers
     where user_id = $1 and entry_id = $2 and question_id = $3";
+
+/// Every first answer of the cook, in no particular order: the quiz result reads the same in any.
+const ALL_FIRST: &str = "
+    select entry_id, question_id, recipe_id, correct, quiz_question_ids from tomi.quiz_answers where user_id = $1";
+
+type AnswerRow = (Uuid, String, String, bool, Vec<String>);
 
 /// A checked pick of one cook, to keep when it is the first answer to its question.
 pub struct Answered<'a> {
@@ -45,4 +52,14 @@ async fn read_first(pool: &PgPool, answered: &Answered<'_>) -> Result<FirstAnswe
     let row: (String, String, i32) = query.bind(&answered.pick.question_id).fetch_one(pool).await?;
     let (recipe_id, graph_version, choice) = row;
     Ok(FirstAnswer { recipe_id, graph_version, choice })
+}
+
+/// Every first answer the cook has recorded, for every cook entry, read fresh so the quiz result is never stored.
+pub async fn first_answers(pool: &PgPool, user_id: Uuid) -> Result<Vec<RecordedAnswer>, AppError> {
+    let rows: Vec<AnswerRow> = sqlx::query_as(ALL_FIRST).bind(user_id).fetch_all(pool).await?;
+    let mut answers = Vec::with_capacity(rows.len());
+    for (entry_id, question_id, recipe_id, correct, quiz_question_ids) in rows {
+        answers.push(RecordedAnswer { entry_id, question_id, recipe_id, correct, quiz_question_ids });
+    }
+    Ok(answers)
 }

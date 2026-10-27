@@ -15,6 +15,7 @@ mod answers;
 mod batch;
 mod idempotency;
 mod problems;
+mod quiz;
 mod snapshot;
 
 /// A recipe of the fixture graph that teaches eggs level 1, and only through its techniques.
