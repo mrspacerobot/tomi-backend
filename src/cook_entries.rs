@@ -3,10 +3,12 @@
 
 mod answer;
 mod batch;
+mod db;
 mod dish;
 mod entry;
 mod fields;
 mod problems;
+mod routes;
 mod zone;
 
 #[cfg(test)]
@@ -17,3 +19,5 @@ pub use batch::{BatchFile, EntryBatch, RequestCalendar, MAX_ENTRIES_PER_BATCH};
 pub use dish::Dish;
 pub use entry::{id_of, EntryChecks, EntryOutcome, ReceivedEntry, ENTRY_SCHEMA_VERSION};
 pub use problems::EntryProblem;
+
+pub use routes::router;

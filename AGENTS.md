@@ -26,16 +26,15 @@ Report honestly: if a check fails or you skipped a step, say so.
 
 ```
 src/
-  profile.rs  scans.rs  suggestions.rs  progress.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs
+  cook_entries.rs  profile.rs  scans.rs  suggestions.rs  progress.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs
                 one root file and one folder per feature
   profile/      routes.rs (HTTP handlers), db.rs (queries), the pure rules, and their tests
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
   suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels by calling `progress`
-  progress/     game.rs (every game number), entries/ (cook entries, finished cooks, counts), experience/ (XP and
-                rank), skills/ (served, open and granted levels), snapshot.rs (`ProgressSnapshot`: skills, focus,
-                mastered count), cook_entries/ (cook entries as the phone sends them, read and checked), routes.rs
-                (`POST /v1/cook-entries`) and db.rs (the stored cook log). Tests sit in each folder, builders in
-                fixtures.rs. The streak and quiz answers are planned (docs/progress.md)
+  cook_entries/ the cook log: request parsing and validation, routes.rs and db.rs
+  progress/     game.rs (game numbers), entries/ (finished cooks and counts), experience/ (XP and rank),
+                skills/ (levels and status), snapshot.rs and tests. The streak and quiz answers are planned
+                (docs/progress.md)
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
