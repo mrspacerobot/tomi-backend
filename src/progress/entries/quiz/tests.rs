@@ -14,7 +14,7 @@ fn finished_cook() -> StoredEntry {
         id: Uuid::new_v4(),
         skill: "eggs".to_string(),
         level: 1,
-        recipe_id: Some(RECIPE.to_string()),
+        recipe_id: RECIPE.to_string(),
         outcome: "finished".to_string(),
         weekly_goal: 3,
         cooked_at_microseconds: 1_792_521_720_000_000,
@@ -82,10 +82,8 @@ fn a_stopped_early_cook_earns_nothing_whatever_its_answers() {
 
 #[test]
 fn answers_for_another_recipe_than_the_entrys_earn_no_bonus() {
-    let other_recipe = StoredEntry { recipe_id: Some("recipe/french-omelette".to_string()), ..finished_cook() };
+    let other_recipe = StoredEntry { recipe_id: "recipe/french-omelette".to_string(), ..finished_cook() };
     assert_eq!(xp(std::slice::from_ref(&other_recipe), all_right(&other_recipe)), 50);
-    let lesson = StoredEntry { recipe_id: None, ..finished_cook() };
-    assert_eq!(xp(std::slice::from_ref(&lesson), all_right(&lesson)), 50, "a lesson entry names no recipe");
     let cook = finished_cook();
     let mut answers = all_right(&cook);
     answers[2].recipe_id = "recipe/french-omelette".to_string();

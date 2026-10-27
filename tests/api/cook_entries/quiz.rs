@@ -38,8 +38,8 @@ fn id_of(entry: &Value) -> Uuid {
 
 /// Posts the entry and returns the XP of the snapshot in the cook-entries answer.
 async fn post_and_read_xp(app: &Router, cook: &str, entry: &Value) -> Value {
-    let reply = send(app, Some(cook), &batch(std::slice::from_ref(entry))).await;
-    assert_eq!(reply.body["results"][0]["status"], "accepted", "{}", reply.body);
+    let reply = send(app, Some(cook), &request(entry)).await;
+    assert_eq!(reply.body["result"]["status"], "accepted", "{}", reply.body);
     reply.body["progress"]["xp"].clone()
 }
 

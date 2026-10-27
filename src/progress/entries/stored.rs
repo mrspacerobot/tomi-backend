@@ -1,26 +1,10 @@
-//! A cook entry as the cook log stores it, read back into what the rules need, with its derived quiz result.
+//! A cook entry as the cook log stores it, read back into what the rules need.
 
 use super::{CookEntry, Outcome, QuizAnswers};
+use crate::cook_entries::{EntryOutcome, StoredEntry};
 use crate::kernel::ids::SavedId;
-use crate::progress::EntryOutcome;
 use jiff::tz::TimeZone;
 use jiff::Timestamp;
-use uuid::Uuid;
-
-/// One row of the cook log, column by column.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StoredEntry {
-    pub id: Uuid,
-    pub skill: String,
-    pub level: i16,
-    /// The graph recipe cooked, or none for a lesson of the old development logs.
-    pub recipe_id: Option<String>,
-    pub outcome: String,
-    pub weekly_goal: i16,
-    /// The instant the cook was made, in microseconds since 1970 in UTC, as the database keeps it.
-    pub cooked_at_microseconds: i64,
-    pub time_zone: String,
-}
 
 /// A stored row the rules cannot read. Only a row this server did not write can be one, so progress refuses it
 /// rather than leave a cook out.
@@ -29,7 +13,6 @@ pub struct StoredEntry {
 pub struct UnreadableStoredEntry;
 
 impl StoredEntry {
-    /// The cook, with the quiz result derived from the cook's recorded first answers.
     pub fn read(&self, answers: &QuizAnswers) -> Result<CookEntry, UnreadableStoredEntry> {
         Ok(CookEntry {
             id: self.id,
@@ -42,11 +25,10 @@ impl StoredEntry {
         })
     }
 
-    /// The quiz result is derived from the answers recorded under the entry's id, never sent by the phone.
+    /// The quiz result comes from the first answers recorded under this entry.
     fn read_outcome(&self, answers: &QuizAnswers) -> Result<Outcome, UnreadableStoredEntry> {
         if self.outcome == EntryOutcome::Finished.as_str() {
-            let quiz_passed = answers.passed(self.id, self.recipe_id.as_deref());
-            return Ok(Outcome::Finished { quiz_passed });
+            return Ok(Outcome::Finished { quiz_passed: answers.passed(self.id, &self.recipe_id) });
         }
         if self.outcome == EntryOutcome::StoppedEarly.as_str() {
             return Ok(Outcome::StoppedEarly);

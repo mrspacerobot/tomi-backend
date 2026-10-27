@@ -4,9 +4,9 @@ use super::*;
 use axum::http::StatusCode;
 use serde_json::json;
 
-/// A finished cook of an old development lesson at 6 pm UTC, evening in Amsterdam, with the default weekly goal.
+/// A finished cook of a graph recipe at 6 pm UTC, evening in Amsterdam, with the default weekly goal.
 fn cooked(skill: &str, level: u8, day: &str) -> Value {
-    let entry = with(&entry(), "dish", json!({"lessonId": "a-development-lesson"}));
+    let entry = with(&entry(), "dish", json!({"recipeId": "recipe/example", "graphVersion": "older"}));
     let entry = with(&with(&entry, "skill", json!(skill)), "level", json!(level));
     with(&entry, "cookedAt", json!(format!("2026-10-{day}T18:00:00Z")))
 }
@@ -47,22 +47,25 @@ async fn a_cook_who_posts_entries_reads_their_xp_rank_streak_and_skills(pool: Pg
 #[sqlx::test(migrations = "./migrations")]
 async fn the_same_snapshot_comes_back_from_get_progress_and_from_the_cook_entries_answer(pool: PgPool) {
     let (app, cook) = (server_at_request_time(pool), new_cook());
-    let posted = send(&app, Some(&cook), &batch(&documented_log())).await;
+    let log = documented_log();
+    results(&app, &cook, &log[..log.len() - 1]).await;
+    let posted = send(&app, Some(&cook), &request(&log[log.len() - 1])).await;
     assert_eq!(posted.status, StatusCode::OK, "{}", posted.body);
     let read = read_progress(&app, Some(&cook), AMSTERDAM).await;
     assert_eq!(posted.body["progress"], read.body);
 
-    let again = send(&app, Some(&cook), &batch(&documented_log()[..2])).await;
-    assert_eq!(again.body["results"][0]["status"], "accepted", "each cooked() has a new id");
+    results(&app, &cook, &documented_log()[..1]).await;
+    let again = send(&app, Some(&cook), &request(&documented_log()[1])).await;
+    assert_eq!(again.body["result"]["status"], "accepted", "each cooked() has a new id");
     let read_again = read_progress(&app, Some(&cook), AMSTERDAM).await;
     assert_eq!(again.body["progress"], read_again.body);
     assert_eq!(read_again.body["xp"], 450);
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn the_cook_entries_answer_is_computed_in_the_batchs_calendar(pool: PgPool) {
+async fn the_cook_entry_answer_is_computed_in_the_requests_calendar(pool: PgPool) {
     let (app, cook) = (server_at_request_time(pool), new_cook());
-    let sunday_first = json!({"calendar": {"timeZone": "America/New_York", "firstWeekday": 1}, "entries": []});
+    let sunday_first = json!({"calendar": {"timeZone": "America/New_York", "firstWeekday": 1}, "entry": entry()});
     let posted = send(&app, Some(&cook), &sunday_first).await;
     let read = read_progress(&app, Some(&cook), "timeZone=America/New_York&firstWeekday=1").await;
     assert_eq!(posted.body["progress"]["calendar"], json!({"timeZone": "America/New_York", "firstWeekday": 1}));

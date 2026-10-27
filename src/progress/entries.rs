@@ -1,5 +1,5 @@
 //! The cook entries as the rules read them: any list, in any order, possibly with copies, and the
-//! finished cooks they count per skill and level, with the quiz result derived from the recorded first answers.
+//! finished cooks they count per skill and level.
 
 mod counts;
 mod entry;
@@ -9,7 +9,8 @@ mod stored;
 #[cfg(test)]
 mod tests;
 
+pub use crate::cook_entries::StoredEntry;
 pub use counts::CookCounts;
 pub use entry::{finished_cooks, CookEntry, Outcome};
 pub use quiz::QuizAnswers;
-pub use stored::{StoredEntry, UnreadableStoredEntry};
+pub use stored::UnreadableStoredEntry;

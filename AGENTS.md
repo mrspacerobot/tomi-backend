@@ -26,23 +26,18 @@ Report honestly: if a check fails or you skipped a step, say so.
 
 ```
 src/
-  profile.rs  scans.rs  suggestions.rs  progress.rs  quiz.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs
+  profile.rs  scans.rs  suggestions.rs  progress.rs  recipe.rs  options.rs  ingredients.rs  library.rs  graph.rs
                 one root file and one folder per feature
   profile/      routes.rs (HTTP handlers), db.rs (queries), the pure rules, and their tests
   scans/        routes.rs, db.rs, keep.rs (storage step), fridge.rs and photo.rs (rules)
   suggestions/  routes.rs, suggestion.rs (the API answer) and ranking; opens levels by calling `progress`
-  progress/     game.rs (every game number), entries/ (cook entries, finished cooks, counts), experience/ (XP and
-                rank), skills/ (served, open and granted levels), streak/ (the cook's calendar and the weekly
-                streak), snapshot.rs and snapshot/ (`ProgressSnapshot`, the answer of `GET /v1/progress`), received/
-                (cook entries as the phone sends them, read and checked), routes.rs (`POST /v1/cook-entries`,
-                `GET /v1/progress`) and db.rs (the stored cook log). Tests sit in each folder, builders in
-                fixtures.rs. entries/quiz.rs derives each cook's quiz result from its recorded first answers
-  quiz/         routes.rs, db.rs, pick.rs (checks a quiz pick against the pinned graph and keeps first answers) and
-                recorded.rs (a first answer as `progress` reads it, through `quiz::first_answers`)
+  cook_entries/ the cook log: request parsing and validation, routes.rs and db.rs
+  progress/     game, entries, experience, skills, streak and snapshot rules, and the snapshot route
+  quiz/         routes, storage, pick validation and recorded first answers
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
-  kernel/       the vocabulary several features share: ids, language, display names
+  kernel/       the vocabulary several features share: ids, language, display names and calendar
   meta/         health and bootstrap routes
   http.rs       the shared HTTP pieces (CurrentUser, CookLanguage) and the router that merges every feature
   ai/           the model behind one interface: Gemini, and a fake in tests
@@ -140,6 +135,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 - **Fail closed.** An unknown diet or avoid id is kept, never dropped. A missing or unreadable fact, an incompatible version or a withdrawn lesson is a refusal, never an empty restriction or a guess.
 - **A restriction is never weakened silently.** Removing a diet or an avoid item needs `allowWeakerRestrictions: true`, which the app sends only after the cook confirmed it on screen. Two copies that disagree are read with the strictest restrictions of both.
 - **This server owns the cook log, every progress rule and the quiz,** per Supabase account (the owner's decision of 26 October 2026, contract in `docs/progress.md`). XP, rank, weekly streak, levels, unlocks, mastery, grants and focus are decided here, in the `progress` feature. The phone keeps an outbox of unsent cook entries and shows the last snapshot this server sent; it never computes or predicts XP or rank. The word is "cook entry", never "event".
+- **Send one cook entry per request. Each entry names a graph recipe and its graph version.**
 - **The cook log is the source of truth.** XP, rank, streak and mastery are computed from it on demand. A stored total is a bug. XP, totals and quiz results are never accepted from the app: an entry with such a field is refused as unknown.
 - **No result depends on arrival order.** The same entry id twice counts once. The first accepted copy of an entry id wins; a later copy with a different body is answered `conflict`, changes nothing and is logged with the id and the code only.
 - **Week and day arithmetic uses the cook's calendar,** with `jiff` and its bundled time zone database (approved by the owner on 26 October 2026), never the server's clock or seven times 24 hours. Each cook entry stores its own IANA time zone. A past week is judged by each entry's own zone; the week in progress uses the time zone and first weekday sent on the request.
@@ -156,7 +152,7 @@ Rust's formatter spreads a struct literal or a long call over several lines, so 
 ## The adapted recipe
 
 - **Teaching is optional graph content, never inferred.** Suggestions carry `teaching` as described in `docs/teaching.md`. Its primary technique is the first sorted actual recipe technique matched to the offered skill level, including graph variants. Missing or malformed introductions leave teaching unavailable without hiding the checked recipe; missing or malformed quizzes are unavailable independently. Text, answers and tiers come unchanged from the pinned graph. Question IDs are scoped by technique. Production requires recipe, technique, introduction and offered questions to be reviewed or higher; a draft graph keeps its explicit testing status.
-- **The quiz is run by this server, and correct answers never leave it.** Quiz questions are sent with their choices, without their answer or explanation (teaching schema 1). Each pick is checked here (`POST /v1/quiz-answers`, the `quiz` feature) and answered right or wrong, with the explanation only once right; a refusal never names the answer. The first answer to each question is the score and is stored; later picks only teach and are never stored. A cook's quiz result is derived here from those first answers, on every progress request, and never sent by the app or stored: a finished cook passed when every question of its quiz has a right first answer for the entry's own recipe (`progress::QuizAnswers`, docs/progress.md).
+- **The quiz is run by this server, and correct answers never leave it.** Quiz questions are sent with their choices, without their answer or explanation (teaching schema 2, mrspacerobot/tomi-backend#42; schema 1 still sends them until then). Each pick is checked here (`POST /v1/quiz-answers`) and answered right or wrong, with the explanation only once right. The first answer to each question is the score; later picks only teach. A cook's quiz result is derived here from those first answers, never sent by the app.
 - **Changed recipes need reviewed teaching compatibility.** Until the graph carries compatibility evidence, any applied substitution or omission makes teaching unavailable. A food-safe swap is not proof that the instructions or quiz remain applicable. Teaching schema 1 supplies content for introduction/preparation; graph-native sessions, resume, timers and completion are separate contracts.
 
 

@@ -3,7 +3,7 @@
 use super::dish::Dish;
 use super::entry::{EntryChecks, EntryOutcome, ReceivedEntry, ENTRY_SCHEMA_VERSION};
 use super::problems::EntryProblem;
-use super::zone::known_zone;
+use crate::kernel::calendar::known_zone;
 use crate::kernel::ids::SavedId;
 use crate::progress::game::{COOKED_IN_FUTURE_TOLERANCE, WEEKLY_GOAL_MAXIMUM, WEEKLY_GOAL_MINIMUM};
 use jiff::Timestamp;
@@ -60,7 +60,7 @@ impl Fields {
             schema_version: ENTRY_SCHEMA_VERSION,
             id: self.id,
             cooked_at: self.cooked_at,
-            time_zone: known_zone(&self.time_zone)?,
+            time_zone: known_zone(&self.time_zone)?.iana_name()?.to_string(),
             skill: self.skill()?,
             level: self.level()?,
             weekly_goal: self.weekly_goal()?,

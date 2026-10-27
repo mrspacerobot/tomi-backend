@@ -68,13 +68,12 @@ released.
 ## `POST /v1/cook-entries`
 
 The phone sends the cooks in its outbox, possibly late and possibly twice. The phone makes a UUID for each cook when
-cooking begins; that id is the idempotency key, so a retried batch is always safe.
+cooking begins; that id is the idempotency key, so a retried request is always safe.
 
 ```json
 {
   "calendar": { "timeZone": "Europe/Amsterdam", "firstWeekday": 2 },
-  "entries": [
-    {
+  "entry": {
       "schemaVersion": 1,
       "id": "4e2c2a0e-7e6b-4c7a-9c2b-6e0a3d1f9a11",
       "cookedAt": "2026-10-26T18:42:00Z",
@@ -84,14 +83,11 @@ cooking begins; that id is the idempotency key, so a retried batch is always saf
       "level": 1,
       "outcome": "finished",
       "weeklyGoal": 3
-    }
-  ]
+  }
 }
 ```
 
-- At most 100 entries per batch.
-- `dish` is exactly one of `recipeId` with `graphVersion`, for a graph recipe, or `lessonId`, for the old
-  development logs already on phones.
+- `dish` contains `recipeId` and `graphVersion` for the graph recipe cooked.
 - `outcome` is `finished` or `stoppedEarly`.
 - `weeklyGoal` is the goal when the cook was made, so raising the goal later never judges a past week again.
 - **No `quizCorrect`, no XP and no totals.** Unknown fields, in the entry or its `dish`, are refused per entry as
@@ -101,17 +97,13 @@ cooking begins; that id is the idempotency key, so a retried batch is always saf
 - Two copies are the same body when they say the same thing: the instant is compared in UTC and the zone by its
   canonical name, so `2026-10-26T19:42:00+01:00` and `2026-10-26T18:42:00Z` are one cook.
 
-The answer is `200` whenever the batch itself could be read, with one result per entry, in the order the entries
-were sent, and the snapshot after the batch, computed in the batch's `calendar` at the moment the batch arrived
-([`docs/examples/cook-entries.json`](examples/cook-entries.json) is a request and its full answer, checked by a
-test):
+The answer is `200` whenever the request could be read, with the result for the entry and the snapshot computed at the time it arrived
+( [`docs/examples/cook-entries.json`](examples/cook-entries.json)
+is a request and its full answer, checked by a test):
 
 ```json
 {
-  "results": [
-    { "id": "4e2c2a0e-7e6b-4c7a-9c2b-6e0a3d1f9a11", "status": "accepted" },
-    { "id": "9b1f0c4d-2a3e-4f5b-8c6d-7e8f9a0b1c2d", "status": "rejected", "problems": ["cooked_in_future"] }
-  ],
+  "result": { "id": "4e2c2a0e-7e6b-4c7a-9c2b-6e0a3d1f9a11", "status": "accepted" },
   "progress": { "schemaVersion": 1 }
 }
 ```
@@ -131,7 +123,7 @@ Problem codes of a rejected entry, listed in this order when an entry has severa
 |---|---|
 | `unsupported_schema_version` | `schemaVersion` is missing or not one this server reads. Nothing else of the entry is read |
 | `unknown_field` | The entry or its `dish` has a field schema 1 does not have, such as `quizCorrect`, `xp` or a total |
-| `unreadable_entry` | A field is missing or of the wrong type, `cookedAt` is not an RFC 3339 instant, `outcome` is another word, or `dish` is not exactly one kind |
+| `unreadable_entry` | A field is missing or of the wrong type, `cookedAt` is not an RFC 3339 instant, `outcome` is another word, or `dish` lacks a recipe id or graph version |
 | `invalid_skill_id` | The skill is not a well-formed id |
 | `level_out_of_range` | The level is not a valid level number |
 | `weekly_goal_out_of_range` | The goal is outside the game's weekly goal range |
@@ -139,16 +131,15 @@ Problem codes of a rejected entry, listed in this order when an entry has severa
 | `invalid_time_zone` | The entry's `timeZone` is not a known IANA zone |
 | `recipe_does_not_teach_level` | The entry's `graphVersion` is the pinned graph, that graph knows the recipe, and its levels do not include this skill and level. A cook of another graph version is not judged by this one |
 
-An entry without a readable `id` is answered in its place with `"id": null` and `unreadable_entry`, so one bad entry
-never blocks the rest of the outbox. The conflict log line holds the entry id and `"code": "conflict"`, never what the
+An entry without a readable `id` is answered with `"id": null` and `unreadable_entry`. The conflict log line holds the entry id and `"code": "conflict"`, never what the
 entry says.
 
 A skill or level the catalog does not know is **accepted**: it is ignored for mastery, still earns XP and counts for
 the streak, so a newer catalog can recognise it later.
 
-Batch errors: `401` and `403` as for every route (a deleted account is `403 account_deleted`); `422 invalid_request`
-for an unreadable body, an unknown top-level field, more than 100 entries or a bad `calendar` (a missing or unknown
-`timeZone`, or a `firstWeekday` outside 1 to 7). Nothing of a refused batch is stored. The phone keeps its entries on any batch error and tries again later; it never drops them.
+Request errors: `401` and `403` as for every route (a deleted account is `403 account_deleted`); `422 invalid_request`
+for an unreadable body, an unknown top-level field, a missing entry or a bad `calendar` (a missing or unknown
+`timeZone`, or a `firstWeekday` outside 1 to 7). Nothing of a refused request is stored. The phone keeps the entry on a request error and tries again later; it never drops it.
 
 ## `GET /v1/progress?timeZone=Europe/Amsterdam&firstWeekday=2`
 
@@ -204,7 +195,7 @@ types and an API test reads back after posting its log; the app copies it verbat
   skill or level the catalog does not know, which earn XP and count for the streak but open nothing.
 - **The quiz bonus is derived, never sent.** A finished cook earns 50 XP, and 60 when it passed its quiz, judged from
   the first answers recorded under its entry id (see "How a cook's quiz result is derived"). The example's cooks
-  are lessons of the old development logs, which have no quiz, so each earns 50.
+  have no recorded quiz answers, so each earns 50.
 - `skills` is in catalog order and keyed by the skill ids `GET /v1/options` sends. `status` is `locked`, `served`
   or `mastered`. `experience: comfortable` grants the first course, shown as `granted`, with no XP.
 - `schemaVersion` is the shape; an added field does not change it. `rulesVersion` is `progress::game::RULES_VERSION`.
@@ -288,8 +279,7 @@ and answers with no entry earn nothing.
   feature's own query). Nothing derived is stored: not the result, not the bonus.
 - The quiz is every question the first answers were kept with (`quiz_question_ids`), so a quiz that changed between
   two answers still needs all of its questions answered. A cook with no recorded answer has not passed.
-- "The same recipe" is the entry's `dish.recipeId`. An entry of an old development lesson names no recipe, so it has
-  no quiz and never earns the bonus. The graph version is not compared: the answers were checked against the graph
+- "The same recipe" is the entry's `dish.recipeId`. The graph version is not compared: the answers were checked against the graph
   pinned when they arrived, and the entry may be sent after a graph update.
 - Arrival order never matters: progress is computed on demand, so answers recorded before or after the entry, and an
   entry sent days later from the outbox, give the same result. Answers belong to one account: another cook's

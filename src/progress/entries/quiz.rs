@@ -23,12 +23,8 @@ impl QuizAnswers {
     }
 
     /// Whether the cook entry with this id, of this recipe, passed its quiz: it has first answers, all for its own
-    /// recipe, every question of the quiz has one, and every one is right. A lesson entry names no recipe, so no
-    /// quiz of its own.
-    pub fn passed(&self, entry_id: Uuid, recipe_id: Option<&str>) -> bool {
-        let Some(recipe_id) = recipe_id else {
-            return false;
-        };
+    /// recipe, every question of the quiz has one, and every one is right.
+    pub fn passed(&self, entry_id: Uuid, recipe_id: &str) -> bool {
         let Some(answers) = self.by_entry.get(&entry_id) else {
             return false;
         };

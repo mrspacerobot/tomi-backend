@@ -1,7 +1,7 @@
 //! Finished cooks grouped into the cook's calendar weeks, each found by the day it starts on.
 
-use super::calendar::day_in_zone;
 use super::CookCalendar;
+use crate::kernel::calendar::day_in_zone;
 use crate::progress::game::clamped_weekly_goal;
 use crate::progress::{finished_cooks, CookEntry};
 use jiff::civil::Date;

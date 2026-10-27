@@ -133,7 +133,7 @@ fn stored_row() -> StoredEntry {
         id: uuid::Uuid::new_v4(),
         skill: "eggs".to_string(),
         level: 2,
-        recipe_id: None,
+        recipe_id: "recipe/example".to_string(),
         outcome: "finished".to_string(),
         weekly_goal: 4,
         cooked_at_microseconds: 1_792_521_720_000_000,

@@ -6,7 +6,6 @@
 //! counts each cook on its day in that zone; the week in progress counts it on its day in the zone
 //! the request names.
 
-mod calendar;
 mod rules;
 mod standing;
 mod weeks;
@@ -14,6 +13,6 @@ mod weeks;
 #[cfg(test)]
 mod tests;
 
-pub use calendar::{CookCalendar, ParseCalendarError, WeekBounds};
+pub use crate::kernel::calendar::{CookCalendar, ParseCalendarError, WeekBounds};
 pub use rules::StreakRules;
 pub use standing::Streak;
