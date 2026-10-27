@@ -1,6 +1,6 @@
 //! One cook entry from the phone with the cook's calendar, read at the edge.
 
-use crate::progress::{CookCalendar, ParseCalendarError};
+use crate::kernel::calendar::CookCalendar;
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -34,13 +34,5 @@ impl CheckedRequest {
 }
 
 fn parse_calendar(file: &CalendarFile) -> Result<CookCalendar, Vec<String>> {
-    match CookCalendar::parse(&file.time_zone, file.first_weekday) {
-        Ok(calendar) => Ok(calendar),
-        Err(ParseCalendarError::UnknownTimeZone) => {
-            Err(vec!["calendar.timeZone: not a known IANA time zone".to_string()])
-        }
-        Err(ParseCalendarError::FirstWeekdayOutOfRange) => {
-            Err(vec!["calendar.firstWeekday: from 1 (Sunday) to 7 (Saturday)".to_string()])
-        }
-    }
+    CookCalendar::parse(&file.time_zone, file.first_weekday).map_err(|error| vec![error.problem("calendar.")])
 }

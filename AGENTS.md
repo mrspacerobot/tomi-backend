@@ -36,7 +36,7 @@ src/
   recipe/       graph recipe adaptation: ingredients, steps, amounts and safety checks
   library/      the reviewed library: its rules, and files.rs (reads it from disk)
   graph/        the graph artifact: its rules, and files.rs (reads it from disk)
-  kernel/       the vocabulary several features share: ids, language, display names
+  kernel/       the vocabulary several features share: ids, language, display names and calendar
   meta/         health and bootstrap routes
   http.rs       the shared HTTP pieces (CurrentUser, CookLanguage) and the router that merges every feature
   ai/           the model behind one interface: Gemini, and a fake in tests

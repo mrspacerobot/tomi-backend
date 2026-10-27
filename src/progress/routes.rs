@@ -1,6 +1,6 @@
 //! Progress snapshots computed from the stored cook log.
 
-use super::{CookCalendar, ParseCalendarError, ProgressAnswers, ProgressSnapshot, SnapshotInputs};
+use super::{CookCalendar, ProgressAnswers, ProgressSnapshot, SnapshotInputs};
 use crate::error::AppError;
 use crate::http::{Caller, CookLanguage};
 use crate::kernel::language::Language;
@@ -46,17 +46,8 @@ async fn progress(
 
 fn calendar_of(query: Result<Query<CalendarQuery>, QueryRejection>) -> Result<CookCalendar, AppError> {
     let Query(query) = query.map_err(|rejection| AppError::Invalid(vec![rejection.body_text()]))?;
-    match CookCalendar::parse(&query.time_zone, query.first_weekday) {
-        Ok(calendar) => Ok(calendar),
-        Err(ParseCalendarError::UnknownTimeZone) => Err(invalid("timeZone: not a known IANA time zone")),
-        Err(ParseCalendarError::FirstWeekdayOutOfRange) => {
-            Err(invalid("firstWeekday: from 1 (Sunday) to 7 (Saturday)"))
-        }
-    }
-}
-
-fn invalid(problem: &str) -> AppError {
-    AppError::Invalid(vec![problem.to_string()])
+    CookCalendar::parse(&query.time_zone, query.first_weekday)
+        .map_err(|error| AppError::Invalid(vec![error.problem("")]))
 }
 
 /// The snapshot of the cook's stored log, with their profile answers, as of the request.

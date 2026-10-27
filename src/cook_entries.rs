@@ -9,7 +9,6 @@ mod problems;
 mod request;
 mod routes;
 mod stored;
-mod zone;
 
 #[cfg(test)]
 mod tests;

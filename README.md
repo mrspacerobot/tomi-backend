@@ -171,6 +171,8 @@ onboarding answer counts: "comfortable" opens the whole first course.
 Errors always look like
 `{"error": {"code": "...", "message": "...", "details": {...}}}`.
 
+The shared calendar in `src/kernel/calendar.rs` validates IANA zones and finds local week boundaries; progress owns the streak rules.
+
 ## The cooking graph
 
 The `cooking-graph` repository builds a versioned, checksummed artifact (`./release` there). This repository
