@@ -1,21 +1,12 @@
-//! The answer for one cook entry: stored now, already stored, conflicting, or rejected.
+//! The outcome of submitting a cook entry.
 
 use super::problems::EntryProblem;
 use serde::Serialize;
-use uuid::Uuid;
-
-/// One entry's answer. The id is none only when the entry had no readable id.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct EntryResult {
-    pub id: Option<Uuid>,
-    #[serde(flatten)]
-    pub status: EntryStatus,
-}
 
 /// What became of an entry. Only a rejected entry has problems, and it always has at least one.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "status", rename_all = "camelCase")]
-pub enum EntryStatus {
+pub enum SubmissionOutcome {
     /// Stored now.
     Accepted,
     /// The same id with the same body was already stored.
@@ -26,12 +17,12 @@ pub enum EntryStatus {
     Rejected { problems: Vec<EntryProblem> },
 }
 
-impl EntryStatus {
+impl SubmissionOutcome {
     /// What a copy of an entry already stored is: a duplicate when it says the same, a conflict otherwise.
-    pub fn of_copy(stored_sha256: &str, sent_sha256: &str) -> EntryStatus {
+    pub fn of_copy(stored_sha256: &str, sent_sha256: &str) -> SubmissionOutcome {
         if stored_sha256 == sent_sha256 {
-            return EntryStatus::Duplicate;
+            return SubmissionOutcome::Duplicate;
         }
-        EntryStatus::Conflict
+        SubmissionOutcome::Conflict
     }
 }

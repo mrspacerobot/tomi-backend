@@ -1,6 +1,6 @@
 //! Tests of reading one received cook entry: its time limit, its fingerprint and its dish.
 
-use super::{EntryChecks, EntryOutcome, EntryProblem, EntryStatus, ReceivedEntry};
+use super::{CookOutcome, EntryChecks, EntryProblem, SubmissionOutcome, ValidatedCookEntry};
 use jiff::Timestamp;
 use serde_json::{json, Value};
 
@@ -22,23 +22,23 @@ fn received_at(text: &str) -> EntryChecks<'static> {
     EntryChecks { received_at: text.parse::<Timestamp>().unwrap(), graph: None }
 }
 
-fn read(raw: &Value) -> Result<ReceivedEntry, Vec<EntryProblem>> {
-    ReceivedEntry::read(raw, &received_at("2026-10-26T18:42:00Z"))
+fn read(raw: &Value) -> Result<ValidatedCookEntry, Vec<EntryProblem>> {
+    ValidatedCookEntry::read(raw, &received_at("2026-10-26T18:42:00Z"))
 }
 
 #[test]
 fn a_cook_up_to_the_tolerance_after_its_arrival_is_accepted_and_one_second_more_is_not() {
     let arrival = received_at("2026-10-26T18:32:00Z");
-    assert!(ReceivedEntry::read(&sent(), &arrival).is_ok());
+    assert!(ValidatedCookEntry::read(&sent(), &arrival).is_ok());
     let later = with("cookedAt", json!("2026-10-26T18:42:01Z"));
-    assert_eq!(ReceivedEntry::read(&later, &arrival), Err(vec![EntryProblem::CookedInFuture]));
+    assert_eq!(ValidatedCookEntry::read(&later, &arrival), Err(vec![EntryProblem::CookedInFuture]));
 }
 
 #[test]
 fn a_read_entry_keeps_what_was_sent() {
     let entry = read(&sent()).unwrap();
     assert_eq!(entry.skill.as_str(), "eggs");
-    assert_eq!((entry.level, entry.weekly_goal, entry.outcome), (1, 3, EntryOutcome::Finished));
+    assert_eq!((entry.level, entry.weekly_goal, entry.outcome), (1, 3, CookOutcome::Finished));
     assert_eq!(entry.time_zone, "Europe/Amsterdam");
 }
 
@@ -67,8 +67,8 @@ fn the_fingerprint_changes_with_any_field() {
 
 #[test]
 fn a_copy_is_a_duplicate_only_when_its_fingerprint_matches() {
-    assert_eq!(EntryStatus::of_copy("same", "same"), EntryStatus::Duplicate);
-    assert_eq!(EntryStatus::of_copy("first", "second"), EntryStatus::Conflict);
+    assert_eq!(SubmissionOutcome::of_copy("same", "same"), SubmissionOutcome::Duplicate);
+    assert_eq!(SubmissionOutcome::of_copy("first", "second"), SubmissionOutcome::Conflict);
 }
 
 #[test]

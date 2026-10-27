@@ -1,6 +1,6 @@
 //! Storing cook entries. The first accepted copy of an entry id is the one kept; nothing here ever overwrites it.
 
-use super::ReceivedEntry;
+use super::ValidatedCookEntry;
 use crate::error::AppError;
 use jiff::Timestamp;
 use sqlx::PgPool;
@@ -18,7 +18,7 @@ const STORED_SHA256: &str = "select payload_sha256 from tomi.cook_entries where 
 /// An entry to keep for this cook, with its fingerprint and the time it arrived.
 pub struct EntryWrite<'a> {
     pub user_id: Uuid,
-    pub entry: &'a ReceivedEntry,
+    pub entry: &'a ValidatedCookEntry,
     pub payload_sha256: &'a str,
     pub received_at: Timestamp,
 }
