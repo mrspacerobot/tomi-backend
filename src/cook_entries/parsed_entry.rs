@@ -1,7 +1,7 @@
 //! The rules a readable cook entry must keep before it is stored, each with its own problem code.
 
 use super::dish::Dish;
-use super::entry::{EntryChecks, EntryOutcome, ReceivedEntry, ENTRY_SCHEMA_VERSION};
+use super::entry::{CookOutcome, EntryChecks, ValidatedCookEntry, ENTRY_SCHEMA_VERSION};
 use super::problems::EntryProblem;
 use crate::kernel::calendar::known_zone;
 use crate::kernel::ids::SavedId;
@@ -10,20 +10,20 @@ use jiff::Timestamp;
 use uuid::Uuid;
 
 /// An entry whose fields all have the right shape, before their values are checked.
-pub struct Fields {
+pub struct ParsedEntry {
     pub id: Uuid,
     pub cooked_at: Timestamp,
     pub time_zone: String,
     pub dish: Dish,
     pub skill: String,
     pub level: i64,
-    pub outcome: EntryOutcome,
+    pub outcome: CookOutcome,
     pub weekly_goal: i64,
 }
 
-impl Fields {
+impl ParsedEntry {
     /// The entry to store, or every rule it breaks, in the order of the problem codes.
-    pub fn checked(self, checks: &EntryChecks) -> Result<ReceivedEntry, Vec<EntryProblem>> {
+    pub fn checked(self, checks: &EntryChecks) -> Result<ValidatedCookEntry, Vec<EntryProblem>> {
         let problems = self.problems(checks);
         if !problems.is_empty() {
             return Err(problems);
@@ -55,8 +55,8 @@ impl Fields {
         self.dish.may_teach(graph, (skill.as_str(), level))
     }
 
-    fn into_entry(self) -> Option<ReceivedEntry> {
-        Some(ReceivedEntry {
+    fn into_entry(self) -> Option<ValidatedCookEntry> {
+        Some(ValidatedCookEntry {
             schema_version: ENTRY_SCHEMA_VERSION,
             id: self.id,
             cooked_at: self.cooked_at,

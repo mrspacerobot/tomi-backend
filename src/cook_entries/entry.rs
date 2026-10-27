@@ -1,7 +1,7 @@
 //! One cook entry as the phone sends it, read once into a type that cannot hold a bad value.
 
-use super::dish::{Dish, DishFile};
-use super::fields::Fields;
+use super::dish::{Dish, DishInput};
+use super::parsed_entry::ParsedEntry;
 use super::problems::EntryProblem;
 use crate::graph::{sha256_hex, Graph};
 use crate::kernel::ids::SavedId;
@@ -17,7 +17,7 @@ pub const ENTRY_SCHEMA_VERSION: u16 = 1;
 /// A cook entry that may be stored. The time zone is the canonical IANA name of a zone the database knows.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ReceivedEntry {
+pub struct ValidatedCookEntry {
     pub schema_version: u16,
     pub id: Uuid,
     pub cooked_at: Timestamp,
@@ -25,24 +25,24 @@ pub struct ReceivedEntry {
     pub dish: Dish,
     pub skill: SavedId,
     pub level: u8,
-    pub outcome: EntryOutcome,
+    pub outcome: CookOutcome,
     pub weekly_goal: u8,
 }
 
 /// How the cook ended, as the phone says it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum EntryOutcome {
+pub enum CookOutcome {
     Finished,
     StoppedEarly,
 }
 
-impl EntryOutcome {
+impl CookOutcome {
     /// The stored word, the same as the JSON one.
     pub fn as_str(self) -> &'static str {
         match self {
-            EntryOutcome::Finished => "finished",
-            EntryOutcome::StoppedEarly => "stoppedEarly",
+            CookOutcome::Finished => "finished",
+            CookOutcome::StoppedEarly => "stoppedEarly",
         }
     }
 }
@@ -57,14 +57,14 @@ pub struct EntryChecks<'a> {
 /// is refused.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct EntryFile {
+struct CookEntryInput {
     id: Uuid,
     cooked_at: String,
     time_zone: String,
-    dish: DishFile,
+    dish: DishInput,
     skill: String,
     level: i64,
-    outcome: EntryOutcome,
+    outcome: CookOutcome,
     weekly_goal: i64,
     /// Read and checked before the rest; named here only so it is not taken for an unknown field.
     #[serde(rename = "schemaVersion")]
@@ -79,16 +79,16 @@ pub fn id_of(raw: &Value) -> Option<Uuid> {
     Uuid::parse_str(text).ok()
 }
 
-impl ReceivedEntry {
+impl ValidatedCookEntry {
     /// Reads an entry, or names every problem that keeps it from being stored. An unknown schema version is
     /// refused before anything else in the entry is read.
-    pub fn read(raw: &Value, checks: &EntryChecks) -> Result<ReceivedEntry, Vec<EntryProblem>> {
+    pub fn read(raw: &Value, checks: &EntryChecks) -> Result<ValidatedCookEntry, Vec<EntryProblem>> {
         let version = raw.get("schemaVersion").and_then(Value::as_u64);
         if version != Some(u64::from(ENTRY_SCHEMA_VERSION)) {
             return Err(vec![EntryProblem::UnsupportedSchemaVersion]);
         }
         match readable(raw) {
-            Ok(fields) => fields.checked(checks),
+            Ok(entry) => entry.checked(checks),
             Err(problem) => Err(vec![problem]),
         }
     }
@@ -101,9 +101,9 @@ impl ReceivedEntry {
     }
 }
 
-/// The entry's fields with their shapes checked, or why it cannot be read at all.
-fn readable(raw: &Value) -> Result<Fields, EntryProblem> {
-    let Ok(file) = serde_json::from_value::<EntryFile>(raw.clone()) else {
+/// The entry with its shapes checked, or why it cannot be read at all.
+fn readable(raw: &Value) -> Result<ParsedEntry, EntryProblem> {
+    let Ok(file) = serde_json::from_value::<CookEntryInput>(raw.clone()) else {
         return Err(EntryProblem::UnreadableEntry);
     };
     if !file.unknown.is_empty() {
@@ -115,5 +115,5 @@ fn readable(raw: &Value) -> Result<Fields, EntryProblem> {
     };
     let (id, time_zone, skill, outcome) = (file.id, file.time_zone, file.skill, file.outcome);
     let (level, weekly_goal) = (file.level, file.weekly_goal);
-    Ok(Fields { id, cooked_at, time_zone, dish, skill, level, outcome, weekly_goal })
+    Ok(ParsedEntry { id, cooked_at, time_zone, dish, skill, level, outcome, weekly_goal })
 }

@@ -20,7 +20,7 @@ pub struct Dish {
 /// The dish as sent, before both identifiers are checked.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DishFile {
+pub struct DishInput {
     recipe_id: Option<String>,
     graph_version: Option<String>,
     #[serde(flatten)]
@@ -28,7 +28,7 @@ pub struct DishFile {
 }
 
 impl Dish {
-    pub fn parse(file: DishFile) -> Result<Dish, EntryProblem> {
+    pub fn parse(file: DishInput) -> Result<Dish, EntryProblem> {
         if !file.unknown.is_empty() {
             return Err(EntryProblem::UnknownField);
         }
