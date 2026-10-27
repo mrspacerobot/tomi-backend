@@ -81,8 +81,7 @@ cooking begins; that id is the idempotency key, so a retried batch is always saf
 ```
 
 - At most 100 entries per batch.
-- `dish` is exactly one of `recipeId` with `graphVersion`, for a graph recipe, or `lessonId`, for the old
-  development logs already on phones.
+- `dish` contains `recipeId` and `graphVersion` for the graph recipe cooked.
 - `outcome` is `finished` or `stoppedEarly`.
 - `weeklyGoal` is the goal when the cook was made, so raising the goal later never judges a past week again.
 - **No `quizCorrect`, no XP and no totals.** Unknown fields, in the entry or its `dish`, are refused per entry as
@@ -121,7 +120,7 @@ Problem codes of a rejected entry, listed in this order when an entry has severa
 |---|---|
 | `unsupported_schema_version` | `schemaVersion` is missing or not one this server reads. Nothing else of the entry is read |
 | `unknown_field` | The entry or its `dish` has a field schema 1 does not have, such as `quizCorrect`, `xp` or a total |
-| `unreadable_entry` | A field is missing or of the wrong type, `cookedAt` is not an RFC 3339 instant, `outcome` is another word, or `dish` is not exactly one kind |
+| `unreadable_entry` | A field is missing or of the wrong type, `cookedAt` is not an RFC 3339 instant, `outcome` is another word, or `dish` lacks a recipe id or graph version |
 | `invalid_skill_id` | The skill is not a well-formed id |
 | `level_out_of_range` | The level is not a valid level number |
 | `weekly_goal_out_of_range` | The goal is outside the game's weekly goal range |

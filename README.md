@@ -163,7 +163,8 @@ swaps read `{removed, added}`, as in the app's `AppliedSwap`.
 
 Recipes are offered only at skill levels the cook has reached. This server owns
 the cook log and every progress rule (owner's decision of 26 October 2026,
-[`docs/progress.md`](docs/progress.md)); the app holds none. The cook log is
+[`docs/progress.md`](docs/progress.md)); the app holds none. Each cook entry names a graph recipe and its graph version.
+The cook log is
 stored (`tomi.cook_entries`, one row per cook per entry id, each with its own
 IANA time zone), but suggestions do not read it yet, so for now only the
 onboarding answer counts: "comfortable" opens the whole first course.

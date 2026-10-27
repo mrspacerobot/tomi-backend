@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 fn sent() -> Value {
     json!({
         "schemaVersion": 1, "id": "4e2c2a0e-7e6b-4c7a-9c2b-6e0a3d1f9a11", "cookedAt": "2026-10-26T18:42:00Z",
-        "timeZone": "Europe/Amsterdam", "dish": {"lessonId": "eggs-scrambled-1"}, "skill": "eggs", "level": 1,
+        "timeZone": "Europe/Amsterdam", "dish": {"recipeId": "recipe/omelette", "graphVersion": "2026.10.20"}, "skill": "eggs", "level": 1,
         "outcome": "finished", "weeklyGoal": 3,
     })
 }
@@ -57,7 +57,7 @@ fn the_fingerprint_changes_with_any_field() {
         with("level", json!(2)),
         with("weeklyGoal", json!(4)),
         with("timeZone", json!("Asia/Tokyo")),
-        with("dish", json!({"lessonId": "eggs-scrambled-2"})),
+        with("dish", json!({"recipeId": "recipe/other", "graphVersion": "2026.10.20"})),
         with("cookedAt", json!("2026-10-26T18:41:00Z")),
     ];
     for changed in changes {
@@ -72,13 +72,12 @@ fn a_copy_is_a_duplicate_only_when_its_fingerprint_matches() {
 }
 
 #[test]
-fn a_dish_must_be_exactly_one_recipe_with_its_graph_version_or_one_lesson() {
+fn a_dish_requires_a_recipe_and_its_graph_version() {
     let unreadable = [
         json!({}),
         json!({"recipeId": "recipe/omelette"}),
         json!({"graphVersion": "2026.10.20"}),
-        json!({"lessonId": "a", "recipeId": "recipe/omelette", "graphVersion": "2026.10.20"}),
-        json!({"lessonId": ""}),
+        json!({"recipeId": "", "graphVersion": "2026.10.20"}),
     ];
     for dish in unreadable {
         assert_eq!(read(&with("dish", dish.clone())), Err(vec![EntryProblem::UnreadableEntry]), "{dish}");
