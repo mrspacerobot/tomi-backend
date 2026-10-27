@@ -49,6 +49,12 @@ it until the cook answers. Only a person edits it. Every ingredient must be one 
 knows, or the server does not start. Anything else a cook has, they type. Only salt, pepper
 and the two oils are assumed for now; the owner has not yet confirmed that.
 
+`catalog.released.json` lists every released skill id with its level numbers.
+A test fails when the catalog differs from it, and when a released skill or level
+is gone or renumbered, because cook entries keep them forever. Add a new skill or
+level to it in the same pull request, by a person, and never remove or renumber
+one.
+
 `avoid-items.released.json` lists every avoid item the library ends up with, by id,
 with the facts it rules out. A test fails when the real list differs from it, and
 when a released item is gone or rules out less, so a graph update that adds or changes

@@ -13,7 +13,7 @@ profile, then the AI functions (fridge scan and tonight's suggestions).
 | `GET /v1/bootstrap` | no | API versions, minimum app version, and the graph version and channel (`graphArtifactVersion`, `graphChannel`). Library and safety versions are `null`: none is published yet. Both graph fields are `null` while `graph.lock` pins no graph |
 | `GET /v1/profile` | yes | The cook's profile and its version. A new cook gets the defaults at version 0 |
 | `PATCH /v1/profile` | yes | Changes fields of the profile. See below |
-| `GET /v1/options` | no | Every list the app offers (diets, things to avoid, cuisines, equipment, experience, units, ingredients, the skill menu) with names in the cook's language |
+| `GET /v1/options` | no | Every list the app offers (diets, things to avoid, cuisines, equipment, experience, units, ingredients, the skill menu) with names in the cook's language, and the weekly goal range and default (`game.weeklyGoal`, from `progress::game`) |
 | `POST /v1/ingredients/resolve` | yes | Typed text to ingredients: `exact`, `ambiguous` (the cook chooses) or `none` |
 | `POST /v1/scans` | yes | A fridge photo (`image/jpeg` or `image/png`, up to 10 MB) in, what the model saw out |
 | `POST /v1/lessons/suggest` | yes | Confirmed ingredients in, a safe graph recipe and up to two alternatives out |
@@ -26,8 +26,6 @@ Planned, not built yet (contract in [`docs/progress.md`](docs/progress.md)):
 | `GET /v1/progress` | yes | The progress snapshot (XP, rank, weekly streak, skills and levels) for the calendar on the request |
 | `POST /v1/quiz-answers` | yes | One quiz pick in, right or wrong out; correct answers never leave the server |
 
-`GET /v1/options` will also carry the weekly goal range and default (`game.weeklyGoal`).
-
 Sign-in is Supabase Auth. The app sends the Supabase access token as
 `Authorization: Bearer <token>`. The API checks the signature, issuer,
 audience and expiry, refuses anonymous sessions, and creates its own user
@@ -39,7 +37,7 @@ The fields and their JSON names are those of Tomi's `SavedProfile`:
 `diet`, `avoid`, `cuisinesLoved`, `cuisinesToTry`, `cuisinesNever`,
 `cupboardStaples`, `cupboardAnswered`, `equipment`, `experience` (`never`, `basics`,
 `comfortable`), `servings`, `units` (`metric`, `cups`), `weeklyGoal` (1 to
-7), `focusSkill` and `onboardingDone`. Ids are Tomi's own, such as `nuts`,
+7, the game range `GET /v1/options` sends), `focusSkill` and `onboardingDone`. Ids are Tomi's own, such as `nuts`,
 `vegetarian` or `olive-oil`.
 
 `cupboardAnswered` is false until the cook has answered the cupboard question: until then the

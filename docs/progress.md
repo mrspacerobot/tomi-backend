@@ -6,8 +6,9 @@ thin client: it keeps an outbox of unsent cook entries, shows the last progress 
 computes or predicts XP or rank. The quiz is run here: the phone gets questions and choices, sends each pick, and is
 told right or wrong. Correct answers never leave the server.
 
-**Status: planned.** None of these routes exists yet. This document is the contract the following pull requests
-implement, and each of them keeps it current:
+**Status: planned.** None of these routes exists yet; only `game.weeklyGoal` in `GET /v1/options` and the pinned
+released catalog (#39) are built. This document is the contract the following pull requests implement, and each of
+them keeps it current:
 
 | Issue | Delivers |
 |---|---|
@@ -34,6 +35,8 @@ released.
   cooks to complete a level (2), the tolerance for a cook in the future (10 minutes), and `RULES_VERSION`, which
   changes whenever a game number or rule does.
 - **The skill catalog is `library/catalog.json`** here, the canonical reviewed copy (`library/SOURCE.md`).
+  `library/catalog.released.json` lists every released skill id with its level numbers; a test fails when the
+  catalog differs from it, and when a released skill or level is gone or renumbered.
 - **Arrival order never matters.** The same entry id twice counts once. The first accepted copy of an entry id wins;
   a later copy with a different body is answered `conflict`, changes nothing, and is logged with the id and the code
   only. Quiz answers recorded before or after their entry give the same result.
@@ -219,4 +222,5 @@ and answers with no entry earn nothing.
 "game": { "weeklyGoal": { "minimum": 1, "maximum": 7, "default": 3 } }
 ```
 
-Read from `progress::game`, never typed twice. `PATCH /v1/profile` checks `weeklyGoal` against the same values.
+Read from `progress::game`, never typed twice. `PATCH /v1/profile` checks `weeklyGoal` against the same values and
+refuses one outside them with `422 invalid_request`. A new cook's goal is the default. Built (#39).

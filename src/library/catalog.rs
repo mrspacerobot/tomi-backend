@@ -4,6 +4,9 @@ use super::LocalizedText;
 use crate::kernel::ids::SavedId;
 use serde::Deserialize;
 
+#[cfg(test)]
+mod tests;
+
 const SCHEMA_VERSION: i64 = 1;
 
 #[derive(Deserialize)]
