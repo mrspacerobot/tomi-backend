@@ -59,6 +59,7 @@ pub fn server_with(pool: PgPool, mut setup: Setup) -> Router {
     let state = AppState {
         db: pool,
         verifier: Arc::new(setup.verifier),
+        supabase_url: PROJECT.into(),
         min_app_version: "1.2.0".into(),
         library: Arc::new(setup.library),
         graph: setup.graph.map(Arc::new),

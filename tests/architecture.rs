@@ -26,8 +26,9 @@ const FORBIDDEN_IN_RULES: [&str; 12] = [
 ];
 
 /// The features whose files are pure rules, except the ones in `TALKS_TO_THE_OUTSIDE`.
-const FEATURES: [&str; 12] = [
+const FEATURES: [&str; 13] = [
     "cook_entries",
+    "dish_photos",
     "graph",
     "ingredients",
     "kernel",

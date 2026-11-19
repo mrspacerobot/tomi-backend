@@ -66,13 +66,13 @@ async fn database(config: &Config) -> Result<PgPool, String> {
 }
 
 fn state(config: &Config, pool: PgPool) -> Result<AppState, String> {
-    let verifier = verifier(config)?;
     let mut library = library(&config.library_dir)?;
     let graph = graph::files::start(GRAPH_LOCK, &config.graph)?;
     agree(&mut library, graph.as_ref())?;
     Ok(AppState {
         db: pool,
-        verifier: Arc::new(verifier),
+        verifier: Arc::new(verifier(config)?),
+        supabase_url: config.supabase_url.clone(),
         min_app_version: config.min_app_version.clone(),
         library: Arc::new(library),
         graph: graph.map(Arc::new),
