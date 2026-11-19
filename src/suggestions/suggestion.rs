@@ -1,6 +1,7 @@
 //! A graph recipe with its original content and the graph's safe plan.
 
 use super::{AppliedSwap, Candidate};
+use crate::dish_photos::DishPhotos;
 use crate::graph::Graph;
 use crate::kernel::ids::SavedId;
 use crate::kernel::language::Language;
@@ -18,17 +19,25 @@ use std::collections::BTreeSet;
 pub struct Suggestion {
     pub recipe_id: String,
     pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub photo_url: Option<String>,
     pub source_recipe: Value,
     /// The recipe written for this cook, in code, and checked again against their restrictions.
     pub recipe: AdaptedRecipe,
     pub changes: RecipeChanges,
-    pub skill: SuggestionSkill,
-    pub level: NamedLevel,
+    #[serde(flatten)]
+    pub taught_level: TaughtLevel,
     pub safe_plan: SafePlan,
     pub reason: Option<String>,
     pub checked: CheckedRestrictions,
     /// Optional graph teaching; an unavailable introduction does not hide the checked recipe.
     pub teaching: Option<super::teaching::Teaching>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TaughtLevel {
+    pub skill: SuggestionSkill,
+    pub level: NamedLevel,
 }
 
 #[derive(Debug, Serialize)]
@@ -75,6 +84,7 @@ pub struct CheckedRestrictions {
 
 /// What every offer of one answer shares.
 pub struct SuggestionContext<'a> {
+    pub dish_photos: &'a DishPhotos,
     pub graph: &'a Graph,
     pub profile: &'a Profile,
     pub language: &'a Language,
@@ -82,18 +92,18 @@ pub struct SuggestionContext<'a> {
 
 impl Suggestion {
     pub fn new(candidate: Candidate, reason: Option<String>, context: &SuggestionContext) -> Option<Self> {
-        let (skill, level) = suggestion_skill_and_level(&candidate, context)?;
+        let taught_level = taught_level(&candidate, context)?;
         let (recipe, changes) = recipe::adaptation(&candidate, context.graph, context.language)?;
         Some(Suggestion {
             teaching: super::teaching::for_candidate(&candidate, context.graph, context.language),
             safe_plan: safe_plan(&candidate, context.graph, context.language)?,
             title: localized(&candidate.title, context.language),
+            photo_url: context.dish_photos.url(&candidate.recipe_id, &candidate.recipe),
             recipe_id: candidate.recipe_id,
             source_recipe: candidate.source_recipe,
             recipe,
             changes,
-            skill,
-            level,
+            taught_level,
             reason,
             checked: CheckedRestrictions { diet: context.profile.diet.clone(), avoid: context.profile.avoid.clone() },
         })
@@ -101,18 +111,15 @@ impl Suggestion {
 }
 
 /// The skill and level the recipe teaches, named for the cook.
-fn suggestion_skill_and_level(
-    candidate: &Candidate,
-    context: &SuggestionContext,
-) -> Option<(SuggestionSkill, NamedLevel)> {
+fn taught_level(candidate: &Candidate, context: &SuggestionContext) -> Option<TaughtLevel> {
     let skill = context.graph.program.skill(candidate.skill.as_str())?;
     let level = context.graph.program.level(candidate.skill.as_str(), candidate.level)?;
     let skill_name = localized(skill.name.as_ref()?, context.language);
     let level_name = localized(level.name.as_ref()?, context.language);
-    Some((
-        SuggestionSkill { id: candidate.skill.to_string(), name: skill_name },
-        NamedLevel { number: candidate.level, name: level_name },
-    ))
+    Some(TaughtLevel {
+        skill: SuggestionSkill { id: candidate.skill.to_string(), name: skill_name },
+        level: NamedLevel { number: candidate.level, name: level_name },
+    })
 }
 
 fn safe_plan(candidate: &Candidate, graph: &Graph, language: &Language) -> Option<SafePlan> {

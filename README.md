@@ -79,6 +79,10 @@ falls back to typing. Without a graph it is `503 graph_unavailable`.
 
 ### Tonight's suggestions
 
+An optional `photoUrl` points to the approved, published Supabase dish photo
+that matches the cook's adapted recipe. See the [publishing contract](docs/dish-photos.md).
+
+
 Each suggestion can also carry optional graph teaching content for its offered technique: the introduction and
 validated quiz questions, with explicit content tiers and the graph identity. Missing teaching leaves the recipe
 browsable. Substitutions and omissions make teaching unavailable until their compatibility has been reviewed.

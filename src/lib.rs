@@ -6,6 +6,7 @@ pub mod clock;
 pub mod config;
 pub mod cook_entries;
 pub mod db;
+pub mod dish_photos;
 pub mod error;
 pub mod graph;
 pub mod http;
@@ -47,6 +48,7 @@ const REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 pub struct AppState {
     pub db: PgPool,
     pub verifier: Arc<Verifier>,
+    pub supabase_url: String,
     pub min_app_version: String,
     pub library: Arc<Library>,
     /// The pinned cooking graph, or none when this build pins none.
