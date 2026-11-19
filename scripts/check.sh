@@ -7,6 +7,7 @@ cd "$(dirname "$0")/.."
 export DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/postgres}"
 ./scripts/tests/bump-graph.sh
 ./scripts/tests/deploy.sh
+python3 scripts/tests/photos.py
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test

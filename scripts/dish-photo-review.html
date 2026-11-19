@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tomi dish photo review</title>
+<style>
+  :root {
+    color-scheme: light;
+    color: #301b2d;
+    background: #fcf3e8;
+    font: 1rem/1.5 system-ui, sans-serif;
+    --plum: #3c2037;
+    --muted: #675063;
+    --line: #dfcbbf;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  header { background: var(--plum); color: #fff7ed; }
+  .intro, main { max-width: 78rem; margin: auto; padding: 1.6rem clamp(1rem, 4vw, 2.5rem); }
+  h1, h2 { font-family: Georgia, serif; line-height: 1.1; margin: 0; }
+  h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+  h2 { font-size: 1.5rem; }
+  p { margin: .65rem 0 0; }
+  .bar { display: flex; flex-wrap: wrap; gap: .8rem 1.4rem; align-items: end; margin-bottom: 1.25rem; }
+  label { display: block; }
+  input, select, button { font: inherit; }
+  input[type=text], select, button {
+    min-height: 2.7rem; border: 1px solid var(--line); border-radius: .5rem; padding: .45rem .7rem;
+    color: inherit; background: #fffdf9; max-width: 100%;
+  }
+  button { background: var(--plum); color: white; border-color: var(--plum); cursor: pointer; }
+  button:disabled { background: #e7dbd8; color: #5b4e51; border-color: transparent; cursor: default; }
+  #counts { color: var(--muted); margin: 0 0 .35rem; }
+  #cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1.25rem; }
+  article { min-width: 0; background: #fffdf9; border: 1px solid var(--line); border-radius: 1rem; overflow: hidden; }
+  .photo { display: block; background: var(--plum); }
+  .photo:focus-visible { outline-offset: -4px; outline-color: #fff5e6; }
+  img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+  .details { padding: 1rem; overflow-wrap: anywhere; }
+  .foods { margin: .65rem 0 1rem; color: var(--muted); }
+  fieldset { display: flex; flex-wrap: wrap; gap: .4rem .65rem; margin: 0; padding: .5rem 0 0; border: 0; }
+  legend { font-weight: 650; }
+  .choice { cursor: pointer; display: flex; align-items: center; gap: .3rem; padding-block: .25rem; }
+  input[type=radio] { margin: 0; accent-color: var(--plum); width: 1.05rem; height: 1.05rem; }
+</style>
+</head>
+<body>
+<header>
+  <div class="intro">
+    <h1>Dish photo review</h1>
+    <p>Check each plate against its ingredient list. Reject photos with extra foods or anything you can’t identify. Download your decisions when you’re ready to send them back.</p>
+  </div>
+</header>
+<main>
+  <div class="bar">
+    <label for="reviewer">Your name<br><input id="reviewer" type="text" autocomplete="name"></label>
+    <label for="filter">Show<br><select id="filter">
+      <option value="">All photos</option>
+      <option value="pending">To review</option>
+      <option value="approve">Approved</option>
+      <option value="reject">Rejected</option>
+    </select></label>
+    <button id="download" type="button" disabled>Download decisions</button>
+    <p id="counts" role="status"></p>
+  </div>
+  <section id="cards" aria-label="Dish photos"></section>
+  <p id="empty" hidden>No photos match this view.</p>
+  <noscript>Enable JavaScript to review photos on this page.</noscript>
+</main>
+<script id="review-data" type="application/json">__PHOTO_REVIEW_DATA__</script>
+<script>
+  const data = JSON.parse(document.querySelector("#review-data").textContent);
+  const cards = document.querySelector("#cards");
+  const reviewer = document.querySelector("#reviewer");
+  const filter = document.querySelector("#filter");
+  const download = document.querySelector("#download");
+  const counts = document.querySelector("#counts");
+  const empty = document.querySelector("#empty");
+  const storageKey = "tomi-dish-review:" + location.pathname;
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(storageKey)) || {}; } catch {}
+  reviewer.value = typeof saved.reviewer === "string" ? saved.reviewer : "";
+  const choices = [["pending", "To review"], ["approve", "Approve"], ["reject", "Reject"]];
+
+  function foodName(id) {
+    return id.split("/").pop().replaceAll("-", " ");
+  }
+
+  function buildCard(photo, index) {
+    const card = document.createElement("article");
+    const link = document.createElement("a");
+    link.className = "photo";
+    link.href = photo.file;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.setAttribute("aria-label", "Open full-size photo of " + photo.title);
+    const image = document.createElement("img");
+    image.alt = photo.title;
+    image.loading = "lazy";
+    link.append(image);
+    const details = document.createElement("div");
+    details.className = "details";
+    const title = document.createElement("h2");
+    title.textContent = photo.title;
+    const foods = document.createElement("p");
+    foods.className = "foods";
+    foods.textContent = photo.shows.map(foodName).join(", ");
+    const group = document.createElement("fieldset");
+    group.disabled = true;
+    const imageStatus = document.createElement("p");
+    imageStatus.textContent = "Photo could not load. Open the page from the extracted folder with its photos.";
+    imageStatus.hidden = true;
+    image.addEventListener("load", () => { group.disabled = false; });
+    image.addEventListener("error", () => { imageStatus.hidden = false; });
+    image.src = photo.file;
+    const legend = document.createElement("legend");
+    legend.textContent = "Decision";
+    group.append(legend);
+    const key = JSON.stringify([photo.recipe, photo.file, photo.recipeFingerprint, photo.shows]);
+    const original = saved.decisions?.[key];
+    let decision = choices.some(([value]) => value === original) ? original : "pending";
+    for (const [value, text] of choices) {
+      const label = document.createElement("label");
+      label.className = "choice";
+      const control = document.createElement("input");
+      control.type = "radio";
+      control.name = "photo-" + index;
+      control.value = value;
+      control.checked = value === decision;
+      control.addEventListener("change", () => { decision = value; update(); });
+      label.append(control, text);
+      group.append(label);
+    }
+    details.append(title, foods, imageStatus, group);
+    card.append(link, details);
+    cards.append(card);
+    return { photo, card, key, get decision() { return decision; } };
+  }
+
+  const entries = data.map(buildCard);
+
+  function update() {
+    const approved = entries.filter(entry => entry.decision === "approve").length;
+    const rejected = entries.filter(entry => entry.decision === "reject").length;
+    counts.textContent = `${entries.length - approved - rejected} to review · ${approved} approved · ${rejected} rejected`;
+    for (const entry of entries) {
+      entry.card.hidden = Boolean(filter.value && entry.decision !== filter.value);
+    }
+    empty.hidden = entries.some(entry => !entry.card.hidden);
+    download.disabled = !(reviewer.value.trim() && approved + rejected);
+    try {
+      const decisions = Object.fromEntries(entries.map(entry => [entry.key, entry.decision]));
+      localStorage.setItem(storageKey, JSON.stringify({ reviewer: reviewer.value, decisions }));
+    } catch {}
+  }
+
+  reviewer.addEventListener("input", update);
+  filter.addEventListener("change", update);
+  download.addEventListener("click", () => {
+    const decisions = entries.filter(entry => entry.decision !== "pending").map(({ photo, decision }) => {
+      const { title, ... reviewed } = photo;
+      return { ...reviewed, decision };
+    });
+    const json = JSON.stringify({ reviewer: reviewer.value.trim(), decisions }, null, 2) + "\n";
+    const downloadUrl = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = downloadUrl;
+    anchor.download = "dish-photo-decisions.json";
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+  });
+  update();
+</script>
+</body>
+</html>

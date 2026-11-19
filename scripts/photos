@@ -6,7 +6,6 @@ import base64
 import datetime
 import fcntl
 import hashlib
-import html
 import json
 import os
 from pathlib import Path
@@ -16,6 +15,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "dish-photos/manifest.json"
@@ -140,42 +140,99 @@ def fresh_records(work, status):
             if recipe not in unavailable and record["status"] == status]
 
 
-def review_page(records):
-    cards = []
+REVIEW_FIELDS = ("recipe", "file", "recipeFingerprint", "shows")
+
+
+def review_reference(record):
+    return {field: record[field] for field in REVIEW_FIELDS}
+
+
+def review_page(records, bundle=False):
+    photos = []
     for record in records:
         verified_local(record)
-        recipe = html.escape(record["recipe"])
-        shows = "".join(f"<li>{html.escape(food)}</li>" for food in record["shows"])
-        cards.append(f'<article><img src="{record["file"]}" alt=""><h2>{recipe}</h2><ul>{shows}</ul></article>')
-    LOCAL.mkdir(parents=True, exist_ok=True)
+        title = record["recipe"].rsplit("/", 1)[-1].replace("-", " ").capitalize()
+        photos.append({**review_reference(record), "title": title})
+    template = (ROOT / "scripts/dish-photo-review.html").read_text(encoding="utf-8")
+    data = json.dumps(photos).replace("<", "\\u003c")
     page = LOCAL / "review.html"
-    page.write_text(
-        '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">'
-        '<title>Dish photo review</title><style>body{font:1rem system-ui;margin:2rem;background:#fff4e5;'
-        'color:#291c29}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));'
-        'gap:1.5rem}article{background:white;border-radius:.75rem;padding:1rem;overflow-wrap:anywhere}'
-        'img{width:100%;border-radius:.5rem}h2{font-size:1rem}</style><h1>Dish photo review</h1>'
-        '<p>Check the plate against the listed foods. Reject uncertain plates or extra foods.</p><main>'
-        + "".join(cards) + '</main></html>\n', encoding="utf-8",
-    )
+    page.write_text(template.replace("__PHOTO_REVIEW_DATA__", data), encoding="utf-8")
     print(page)
+    if bundle:
+        bundle_path = LOCAL / "dish-photo-review.zip"
+        with zipfile.ZipFile(bundle_path, "w") as archive:
+            archive.write(page, page.name)
+            for filename in sorted({photo["file"] for photo in photos}):
+                archive.write(LOCAL / filename, filename)
+        print(bundle_path)
+
+
+def checked_decision(entry, records):
+    if not isinstance(entry, dict) or set(entry) != {*REVIEW_FIELDS, "decision"}:
+        raise ValueError("each decision must identify its recipe, image, fingerprint and foods")
+    recipe = entry["recipe"]
+    if not isinstance(recipe, str) or entry["decision"] not in ("approve", "reject"):
+        raise ValueError("each decision needs a recipe and must approve or reject it")
+    record = records.get(recipe)
+    if not record or review_reference(entry) != review_reference(record):
+        raise ValueError(f"the reviewed photo or ingredient list has changed for {recipe}")
+    return recipe, record
+
+
+def review_update(record, verdict, reviewer):
+    status = "approved" if verdict == "approve" else "rejected"
+    if record["status"] == status and (verdict == "reject" or record["approvedBy"] == reviewer):
+        return None
+    if record["status"] != "generated":
+        raise ValueError(f"the photo for {record['recipe']} already has a different review decision")
+    if verdict == "reject":
+        return {**record, "status": status}
+    if not reviewer:
+        raise ValueError("approvals need a reviewer name")
+    verified_local(record)
+    return {**record, "status": status, "approvedBy": reviewer, "approvedOn": datetime.date.today().isoformat()}
+
+
+def apply_review(work, review_file):
+    if not isinstance(review_file, dict) or set(review_file) != {"reviewer", "decisions"}:
+        raise ValueError("the review file must contain a reviewer and decisions")
+    reviewer = review_file["reviewer"]
+    decisions = review_file["decisions"]
+    if not isinstance(reviewer, str) or not isinstance(decisions, list) or not decisions:
+        raise ValueError("the review file needs a reviewer name and at least one decision")
+    all_records = work["records"]
+    unavailable = {dish["recipe"] for dish in work["stale"]} | set(work["orphaned"])
+    fresh = {key: record for key, record in all_records.items() if key not in unavailable}
+    seen = set()
+    updates = {}
+    for entry in decisions:
+        recipe, record = checked_decision(entry, fresh)
+        if recipe in seen:
+            raise ValueError(f"duplicate review decision for {recipe}")
+        seen.add(recipe)
+        update = review_update(record, entry["decision"], reviewer.strip())
+        if update:
+            updates[recipe] = update
+    if updates:
+        if any(record["status"] == "approved" for record in updates.values()):
+            inventory("validate")
+        save({**all_records, **updates})
+    print(f"Applied {len(updates)} review decisions.")
 
 
 def review(work, args):
-    records = fresh_records(work, "generated")
-    if not args.recipe:
-        review_page(records)
+    if args.apply:
+        apply_review(work, json.loads(args.apply.read_text(encoding="utf-8")))
         return
-    record = next((record for record in records if record["recipe"] == args.recipe), None)
+    photos = fresh_records(work, "generated")
+    if not args.recipe:
+        review_page(photos, args.bundle)
+        return
+    record = next((photo for photo in photos if photo["recipe"] == args.recipe), None)
     if not record:
         raise ValueError("the recipe has no fresh generated photo")
-    if args.decision == "approve":
-        verified_local(record)
-        inventory("validate")
-        record.update(status="approved", approvedBy=args.reviewer.strip(), approvedOn=datetime.date.today().isoformat())
-    else:
-        record.update(status="rejected")
-    save(work["records"])
+    entry = {**review_reference(record), "decision": args.decision}
+    apply_review(work, {"reviewer": args.reviewer or "", "decisions": [entry]})
 
 
 def public_object(root, file):
@@ -235,6 +292,8 @@ def arguments():
     decision = review_parser.add_mutually_exclusive_group()
     decision.add_argument("--approve", dest="approval")
     decision.add_argument("--reject", dest="rejection")
+    decision.add_argument("--apply", type=Path, metavar="DECISIONS")
+    decision.add_argument("--bundle", action="store_true")
     review_parser.add_argument("--reviewer")
     upload_parser = commands.add_parser("upload")
     upload_parser.add_argument("--project-url", required=True)

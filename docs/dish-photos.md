@@ -18,13 +18,16 @@ Supabase `dish-photos` bucket.
    image per command. Set `--limit` explicitly for a batch. To use a WebP from
    another generator, supply `--from-webp <path> --source-model <name>` and
    `--prompt-file <path>` with the recipe ID.
-3. Run `./scripts/photos review` and open the local page it prints. Confirm
-   the plate matches the graph recipe and the `shows` list accounts for every
-   food depicted. Generated records start with all source food lines,
-   including preparations and foods in sauces. Keep any food whose presence is uncertain.
-   Reject a plate with extra or ambiguous food. Record the owner decision
-   with `./scripts/photos review --approve recipe/<id> --reviewer <name>` or
-   `./scripts/photos review --reject recipe/<id>`.
+3. Run `./scripts/photos review` and open the page it prints. Use `--bundle`
+   to hand the reviewer a ZIP containing the page and its photos. They can
+   extract it and open `review.html` on their own computer. The reviewer checks
+   each photo against its food list, including preparations and sauces, and
+   rejects plates containing extra or uncertain foods. They enter their name,
+   choose a decision on each plate, then download the decisions file. Apply
+   it with `./scripts/photos review --apply <decisions.json>`. Import refuses
+   the whole file if a decision refers to a photo, food list, or recipe that
+   has changed. An individual decision can also be entered with
+   `--approve recipe/<id> --reviewer <name>` or `--reject recipe/<id>`.
 4. Run `./scripts/photos upload --project-url https://<project-ref>.supabase.co`
    using the Keychain entry in [Supabase setup](supabase-setup.md#dish-photos).
    Upload before deploying the approved record. Commit the manifest only.
