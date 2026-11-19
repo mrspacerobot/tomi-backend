@@ -143,3 +143,11 @@ fn graph_vectors_every_recipe_is_written_as_the_reference_writes_it() {
     let (graph, vectors) = load();
     check_step_text_cases(&graph, &vectors.step_text_cases);
 }
+
+#[test]
+#[ignore = "needs the pinned graph: run scripts/fetch-graph.sh first"]
+fn graph_vectors_the_dish_photo_manifest_references_the_pinned_graph() {
+    use tomi_api::dish_photos::{Manifest, SHIPPED};
+    let (graph, _) = load();
+    Manifest::parse(SHIPPED).unwrap().validate(&graph).unwrap();
+}

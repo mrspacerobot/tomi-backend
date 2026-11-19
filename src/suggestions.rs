@@ -83,7 +83,7 @@ pub fn candidates(library: &Library, graph: &Graph, tonight: &Tonight) -> Vec<Ca
 /// The recipe for this cook, when their level, cuisines and kitchen allow it and it can be adapted for them.
 fn candidate(recipe: (&str, &crate::graph::serving::ServedRecipe), kitchen: &plan::Kitchen) -> Option<Candidate> {
     let (recipe_id, recipe) = recipe;
-    if !is_dish(&recipe.makes) {
+    if !crate::graph::serving::is_dish(&recipe.makes) {
         return None;
     }
     let (skill, level) = eligible_level(kitchen.graph, recipe, kitchen.tonight)?;
@@ -95,10 +95,6 @@ fn candidate(recipe: (&str, &crate::graph::serving::ServedRecipe), kitchen: &pla
     let title = serde_json::from_value::<LocalizedText>(source.get("names")?.clone()).ok()?;
     let source = plan::RecipeSource { id: recipe_id.to_string(), value: source.clone(), title, skill, level };
     plan::cook(&source, kitchen)
-}
-
-fn is_dish(makes: &str) -> bool {
-    makes.starts_with("dish/")
 }
 
 fn eligible_level(

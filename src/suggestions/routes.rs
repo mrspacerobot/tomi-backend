@@ -7,7 +7,6 @@ use crate::error::AppError;
 use crate::graph::Graph;
 use crate::http::{json_body, Caller, CookLanguage};
 use crate::kernel::ids::SavedId;
-use crate::kernel::language::Language;
 use crate::profile::{read as read_profile, Profile};
 use crate::progress::{open_levels, CookCounts, OpenLevels, QuizAnswers};
 use crate::scans::{self, Confirmation};
@@ -66,7 +65,8 @@ async fn suggest(
     let open = cook_open_levels(&state, user_id, &profile).await?;
     let input = CandidateInput { request: &request, profile: &profile, open: &open };
     let by_overlap = candidates(&state, graph, input);
-    Ok(Json(response(graph, by_overlap, Answer { profile: &profile, language: &language })))
+    let context = SuggestionContext { graph, profile: &profile, language: &language, dish_photos: &state.dish_photos };
+    Ok(Json(response(by_overlap, &context)))
 }
 
 fn validate_size(request: &SuggestionsRequest) -> Result<(), AppError> {
@@ -132,19 +132,12 @@ fn available(state: &AppState, request: &SuggestionsRequest, profile: &Profile) 
     request.ingredients.iter().cloned().chain(at_home).collect()
 }
 
-/// How the answer was made, and for whom.
-struct Answer<'a> {
-    profile: &'a Profile,
-    language: &'a Language,
-}
-
-fn response(graph: &Graph, order: Vec<Candidate>, answer: Answer) -> SuggestionsResponse {
-    let context = SuggestionContext { graph, profile: answer.profile, language: answer.language };
-    let to_suggestion = |candidate: Candidate| Suggestion::new(candidate, None, &context);
+fn response(order: Vec<Candidate>, context: &SuggestionContext) -> SuggestionsResponse {
+    let to_suggestion = |candidate: Candidate| Suggestion::new(candidate, None, context);
     let mut suggestions = order.into_iter().filter_map(to_suggestion).take(MAX_SUGGESTIONS);
     SuggestionsResponse {
-        graph_version: graph.version.clone(),
-        graph_channel: graph.channel.as_str(),
+        graph_version: context.graph.version.clone(),
+        graph_channel: context.graph.channel.as_str(),
         ranked_by: "overlap",
         special: suggestions.next(),
         alternatives: suggestions.collect(),

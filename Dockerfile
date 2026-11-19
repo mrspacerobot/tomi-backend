@@ -3,6 +3,7 @@ FROM rust:1.97-slim-bookworm AS build
 WORKDIR /app
 COPY Cargo.toml Cargo.lock graph.lock ./
 COPY src ./src
+COPY dish-photos/manifest.json ./dish-photos/manifest.json
 COPY migrations ./migrations
 RUN cargo build --release --locked
 

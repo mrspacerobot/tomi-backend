@@ -59,8 +59,8 @@ fn a_cook_without_restrictions_is_offered_graph_recipes() {
 
 #[test]
 fn preparations_are_not_recommended_as_tonight_dishes() {
-    assert!(!super::is_dish("preparation/alioli"));
-    assert!(super::is_dish("dish/cold-poached-salmon"));
+    assert!(!crate::graph::serving::is_dish("preparation/alioli"));
+    assert!(crate::graph::serving::is_dish("dish/cold-poached-salmon"));
 }
 
 #[test]

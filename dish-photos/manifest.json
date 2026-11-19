@@ -1,0 +1,20 @@
+[
+  {
+    "recipe": "recipe/seared-chicken-thighs-with-lemon-butter-pan-sauce",
+    "shows": [
+      "ingredient/butter",
+      "ingredient/chicken-thigh",
+      "ingredient/garlic",
+      "ingredient/lemon",
+      "ingredient/salt",
+      "ingredient/spinach",
+      "ingredient/sunflower-oil",
+      "ingredient/white-wine"
+    ],
+    "recipeFingerprint": "1077112d7e4b30bf349ca711117b38e4dd1673d96afe3ce940c447a9151ac94f",
+    "file": "468c65d090bc3f17310a88f0f40808909a9cf4c0f7951218818edac339133d6b.webp",
+    "model": "Codex built-in image generation (snapshot undisclosed)",
+    "prompt": "Real editorial food photograph for the Tomi Cooking Show menu. Square crop, understated white ceramic plate nearly filling frame, natural texture, elevated three-quarter camera, soft warm spotlight, dark plum backdrop. Show a pair of deeply golden seared skin-on chicken thighs only, with a small side of plain wilted spinach, and a thin glossy white-wine, cold-butter, minced garlic and lemon pan sauce spooned around the chicken. The chicken is cooked in sunflower oil with salt. Use precisely these ingredients: chicken thighs, salt, sunflower oil, minced garlic, white wine, butter, lemon and spinach. No cream, pepper flecks, herbs, extra garnishes, extra foods, props, utensils, hands, logos or text.",
+    "status": "generated"
+  }
+]

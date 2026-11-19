@@ -30,3 +30,6 @@ gha-creds-*.json
 # The graph artifact is fetched or built by scripts/fetch-graph.sh, never committed.
 graph/*
 !graph/.gitkeep
+
+# Local dish-photo images and review page
+/dish-photos/local/
