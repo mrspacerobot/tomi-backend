@@ -1,5 +1,29 @@
 [
   {
+    "recipe": "recipe/aloo-gobi",
+    "shows": [
+      "ingredient/amchur",
+      "ingredient/cauliflower",
+      "ingredient/coriander-leaf",
+      "ingredient/cumin",
+      "ingredient/ginger",
+      "ingredient/green-chilli",
+      "ingredient/oil",
+      "ingredient/onion",
+      "ingredient/potato",
+      "ingredient/red-chilli-powder",
+      "ingredient/salt",
+      "ingredient/tomato",
+      "ingredient/turmeric",
+      "preparation/garam-masala"
+    ],
+    "recipeFingerprint": "7af53811460273559fdcfc4db19630ae902662249ed2587d1d111b5a8d799048",
+    "file": "35400bf320491bb6f1e34300888cb16e0355715dbdd984c880d53eeba0163312.webp",
+    "model": "Codex built-in image generation (snapshot undisclosed)",
+    "prompt": "Square realistic editorial food photograph for Tomi's warm cooking-show menu, understated white ceramic plate centered nearly filling the frame, three-quarter overhead view, soft amber spotlight, dark plum table backdrop, natural texture. One serving. No props, utensils, text, hands, logos, separate side dish or extra garnish. A modest portion of dry, golden aloo gobi, recognizable large potato pieces and cauliflower florets, with finely diced onion, chopped tomato, minced ginger, thin green chilli, oil, cumin, turmeric, red chili powder, amchur, garam masala, salt and a little chopped fresh coriander. No rice, bread, bright red sauce or lemon.",
+    "status": "generated"
+  },
+  {
     "recipe": "recipe/seared-chicken-thighs-with-lemon-butter-pan-sauce",
     "shows": [
       "ingredient/butter",
@@ -15,6 +39,42 @@
     "file": "468c65d090bc3f17310a88f0f40808909a9cf4c0f7951218818edac339133d6b.webp",
     "model": "Codex built-in image generation (snapshot undisclosed)",
     "prompt": "Real editorial food photograph for the Tomi Cooking Show menu. Square crop, understated white ceramic plate nearly filling frame, natural texture, elevated three-quarter camera, soft warm spotlight, dark plum backdrop. Show a pair of deeply golden seared skin-on chicken thighs only, with a small side of plain wilted spinach, and a thin glossy white-wine, cold-butter, minced garlic and lemon pan sauce spooned around the chicken. The chicken is cooked in sunflower oil with salt. Use precisely these ingredients: chicken thighs, salt, sunflower oil, minced garlic, white wine, butter, lemon and spinach. No cream, pepper flecks, herbs, extra garnishes, extra foods, props, utensils, hands, logos or text.",
-    "status": "generated"
+    "status": "generated",
+    "approvedBy": null,
+    "approvedOn": null
+  },
+  {
+    "recipe": "recipe/soft-scrambled-eggs",
+    "shows": [
+      "ingredient/butter",
+      "ingredient/cream",
+      "ingredient/egg",
+      "ingredient/salt"
+    ],
+    "recipeFingerprint": "22c72c4d23af269efdda9b2f703a00004c91f79142bd87262cfba284a064427a",
+    "file": "825ff4e6c8629bab51b4a37ca89189b96cef5793577e106ad21438fc25f40d3e.webp",
+    "model": "Codex built-in image generation (snapshot undisclosed)",
+    "prompt": "Square realistic editorial food photograph for Tomi's warm cooking-show menu, understated white ceramic plate centered nearly filling the frame, three-quarter overhead view, soft amber spotlight, dark plum table backdrop, natural texture. One serving. No props, utensils, text, hands, logos, separate side dish or extra garnish. Soft scrambled eggs with broad, delicate pale golden custardy folds cooked with butter, cream and salt. Only those four ingredients including the eggs. The plate holds nothing else. No pepper or herbs.",
+    "status": "generated",
+    "approvedBy": null,
+    "approvedOn": null
+  },
+  {
+    "recipe": "recipe/spinach-and-cheese-omelette",
+    "shows": [
+      "ingredient/black-pepper",
+      "ingredient/butter",
+      "ingredient/egg",
+      "ingredient/salt",
+      "ingredient/spinach",
+      "ingredient/vegetarian-hard-cheese"
+    ],
+    "recipeFingerprint": "0ffdab5852ed3eff71b44e1f97435259a5019acf966b3613380e65562c864805",
+    "file": "29eaa020760f4671c8cfcc658c3806ae6a76d5ac249ae03467734ee3418e375d.webp",
+    "model": "Codex built-in image generation (snapshot undisclosed)",
+    "prompt": "Square realistic editorial food photograph for Tomi's warm cooking-show menu, understated white ceramic plate centered nearly filling the frame, three-quarter overhead view, soft amber spotlight, dark plum table backdrop, natural texture. One serving. No props, utensils, text, hands, logos, separate side dish or extra garnish. Single tender French-style rolled omelette, a little wilted spinach and melted grated vegetarian hard cheese visible at the open end, with the egg cooked in butter and seasoned with salt and a little black pepper. No separate cheese on top, no extra sauce or garnish.",
+    "status": "generated",
+    "approvedBy": null,
+    "approvedOn": null
   }
 ]
