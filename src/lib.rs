@@ -6,6 +6,7 @@ pub mod clock;
 pub mod config;
 pub mod cook_entries;
 pub mod db;
+pub mod dish_photos;
 pub mod error;
 pub mod graph;
 pub mod http;
@@ -52,6 +53,7 @@ pub struct AppState {
     /// The pinned cooking graph, or none when this build pins none.
     pub graph: Option<Arc<Graph>>,
     pub ai: Arc<dyn Ai>,
+    pub dish_photos: Arc<dish_photos::DishPhotos>,
     pub photos: Arc<dyn PhotoStore>,
     /// What time it is. Routes read it once per request and pass it into the rules.
     pub clock: Arc<dyn Clock>,

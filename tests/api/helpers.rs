@@ -12,6 +12,7 @@ use tomi_api::ai::Ai;
 use tomi_api::auth::Verifier;
 use tomi_api::clock::{Clock, SystemClock};
 use tomi_api::config::GraphConfig;
+use tomi_api::dish_photos::DishPhotos;
 use tomi_api::graph::{files, Graph};
 use tomi_api::library::Library;
 use tomi_api::storage::PhotoStore;
@@ -29,6 +30,7 @@ const SECRET: &str = "test-only-shared-secret-not-used-anywhere-else";
 pub struct Setup {
     pub verifier: Verifier,
     pub ai: Arc<dyn Ai>,
+    pub dish_photos: DishPhotos,
     pub photos: Arc<dyn PhotoStore>,
     pub library: Library,
     pub graph: Option<Graph>,
@@ -40,6 +42,7 @@ impl Default for Setup {
         Setup {
             verifier: Verifier::new(PROJECT, Some(SECRET)).unwrap(),
             ai: Arc::new(FakeAi::default()),
+            dish_photos: DishPhotos::default(),
             photos: Arc::new(FakeStore::default()),
             library: shipped_library(),
             graph: Some(fixture_graph()),
@@ -63,6 +66,7 @@ pub fn server_with(pool: PgPool, mut setup: Setup) -> Router {
         library: Arc::new(setup.library),
         graph: setup.graph.map(Arc::new),
         ai: setup.ai,
+        dish_photos: Arc::new(setup.dish_photos),
         photos: setup.photos,
         clock: setup.clock,
     };

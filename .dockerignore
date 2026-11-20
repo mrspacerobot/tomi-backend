@@ -2,3 +2,5 @@ target
 .git
 .env
 gha-creds-*.json
+
+dish-photos/local

@@ -180,3 +180,8 @@ impl ServedSwap {
         }
     }
 }
+
+/// Whether the recipe makes a plated dish.
+pub(crate) fn is_dish(makes: &str) -> bool {
+    makes.starts_with("dish/")
+}

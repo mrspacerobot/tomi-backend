@@ -10,7 +10,7 @@ use tomi_api::clock::SystemClock;
 use tomi_api::config::{AiConfig, Config, PhotoConfig};
 use tomi_api::library::Library;
 use tomi_api::storage::{NoStore, PhotoStore, SupabaseStore};
-use tomi_api::{app, db, graph, library, AppState};
+use tomi_api::{app, db, dish_photos, graph, library, AppState};
 use tracing_subscriber::EnvFilter;
 
 /// The graph this build is pinned to, written by `scripts/fetch-graph.sh`.
@@ -75,11 +75,30 @@ fn state(config: &Config, pool: PgPool) -> Result<AppState, String> {
         verifier: Arc::new(verifier),
         min_app_version: config.min_app_version.clone(),
         library: Arc::new(library),
+        dish_photos: Arc::new(published_photos(graph.as_ref(), &config.supabase_url)),
         graph: graph.map(Arc::new),
         ai: ai(&config.ai)?,
         photos: photos(config.supabase_url.as_str(), &config.photos)?,
         clock: Arc::new(SystemClock),
     })
+}
+
+fn published_photos(graph: Option<&graph::Graph>, project_url: &str) -> dish_photos::DishPhotos {
+    let Some(graph) = graph else {
+        return dish_photos::DishPhotos::default();
+    };
+    match dish_photos::Manifest::parse(dish_photos::SHIPPED) {
+        Ok(manifest) => manifest.for_serving(graph, project_url),
+        Err(_) => {
+            log_unreadable_photo_manifest();
+            dish_photos::DishPhotos::default()
+        }
+    }
+}
+
+#[expect(clippy::cognitive_complexity, reason = "tracing's macro expands into branches no reader sees")]
+fn log_unreadable_photo_manifest() {
+    tracing::warn!("dish photo manifest unreadable; dish photos disabled");
 }
 
 fn verifier(config: &Config) -> Result<Verifier, String> {

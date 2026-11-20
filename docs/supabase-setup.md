@@ -170,3 +170,16 @@ every cook's token itself.
 - Account recovery, and what happens to a cook who signs in with a second
   method.
 - Backups, which the free plan does not include.
+
+## Dish photos
+
+Create a separate public Storage bucket named `dish-photos`. Allow the `image/webp`
+MIME type. Leave object writes restricted to the operator's service credential,
+with no client write policy. Keep the scan bucket private.
+
+Save the Supabase secret key as a macOS Keychain generic password with service
+name `tomi-dish-photos`. Run `./scripts/photos upload --project-url https://<project-ref>.supabase.co`
+after review. The command verifies SHA-256, uploads without overwriting, and
+checks that the uploaded bytes are publicly readable. The API constructs public
+URLs from its configured Supabase origin and needs only the manifest to serve
+them. See [the dish photo workflow](dish-photos.md) for the order of operations.

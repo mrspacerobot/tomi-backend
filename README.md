@@ -79,6 +79,8 @@ falls back to typing. Without a graph it is `503 graph_unavailable`.
 
 ### Tonight's suggestions
 
+Suggestions may include `photoUrl` for a reviewed dish photo whose source recipe is current and whose depicted foods all appear in the adapted recipe. See [the dish photo workflow](docs/dish-photos.md).
+
 Each suggestion can also carry optional graph teaching content for its offered technique: the introduction and
 validated quiz questions, with explicit content tiers and the graph identity. Missing teaching leaves the recipe
 browsable. Substitutions and omissions make teaching unavailable until their compatibility has been reviewed.

@@ -1,0 +1,333 @@
+#!/usr/bin/env python3
+"""Plan, generate, review and publish the pinned graph's dish photos."""
+
+import argparse
+import base64
+import datetime
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+import zipfile
+
+ROOT = Path(__file__).resolve().parent.parent
+MANIFEST = ROOT / "dish-photos/manifest.json"
+LOCAL = ROOT / "dish-photos/local"
+MODEL = "gpt-image-2.5-sunburst-2026-09-08"
+STYLE = (
+    "Real editorial food photograph for a warm, playful cooking show. One simply plated dish centered "
+    "in a square frame, seen from a slightly elevated three-quarter angle, with soft warm spotlight, "
+    "dark plum backdrop and natural texture. Let the plate nearly fill the frame. No props, utensils, "
+    "hands, people, text or logos. Use only the listed foods, with no extra garnish, sauces or side dishes."
+)
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, response, code, message, headers, new_url):
+        return None
+
+
+def request(url, *, data=None, headers=None):
+    opener = urllib.request.build_opener(NoRedirect)
+    with opener.open(urllib.request.Request(url, data=data, headers=headers or {}), timeout=300) as response:
+        return response.read()
+
+
+def inventory(mode="plan"):
+    result = subprocess.run(
+        ["cargo", "run", "--locked", "--quiet", "--example", "dish-photo-plan", "--", mode],
+        cwd=ROOT, check=True, stdout=subprocess.PIPE, text=True,
+    )
+    return json.loads(result.stdout) if mode == "plan" else None
+
+
+def save(records):
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=MANIFEST.parent, delete=False) as output:
+        temporary = Path(output.name)
+        try:
+            json.dump([records[key] for key in sorted(records)], output, ensure_ascii=False, indent=2)
+            output.write("\n")
+            output.close()
+            temporary.chmod(0o644)
+            temporary.replace(MANIFEST)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def plan(work):
+    for category in ("missing", "stale", "orphaned"):
+        rows = work[category]
+        print(f"{category} ({len(rows)})")
+        for row in rows:
+            print(f"  {row['recipe'] if isinstance(row, dict) else row}")
+
+
+def image_prompt(dish):
+    source = dish["source"]
+    shows = sorted({line["thing"] for line in source["ingredients"]})
+    recipe = {key: source[key] for key in ("ingredients", "steps", "yields")}
+    title = source["names"]["en"]
+    prompt = f"{STYLE}\nDish: {title}\nSource recipe: {json.dumps(recipe, ensure_ascii=False)}"
+    if not shows:
+        raise ValueError(f"{dish['recipe']} has no ingredient ids to review")
+    return prompt, shows
+
+
+def image_bytes(prompt, key):
+    body = json.dumps({
+        "model": MODEL, "prompt": prompt, "size": "1024x1024", "output_format": "webp",
+        "output_compression": 85,
+    }).encode()
+    response = request("https://api.openai.com/v1/images/generations", data=body, headers={
+        "Authorization": f"Bearer {key}", "Content-Type": "application/json",
+    })
+    return base64.b64decode(json.loads(response)["data"][0]["b64_json"], validate=True)
+
+
+def webp_name(data):
+    if data[:4] != b"RIFF" or data[8:12] != b"WEBP":
+        raise ValueError("expected a WebP image")
+    return hashlib.sha256(data).hexdigest() + ".webp"
+
+
+def generate(work, args):
+    pending = work["missing"] + work["stale"]
+    selected = [dish for dish in pending if not args.recipe or dish["recipe"] == args.recipe][:args.limit]
+    if not selected:
+        print("No missing or stale dishes match.")
+        return
+    key = None if args.from_webp else os.environ.get("OPENAI_API_KEY")
+    if not args.from_webp and not key:
+        raise ValueError("set OPENAI_API_KEY for the image generator")
+    LOCAL.mkdir(parents=True, exist_ok=True)
+    for dish in selected:
+        prompt, shows = image_prompt(dish)
+        if args.from_webp:
+            prompt = args.prompt_file.read_text(encoding="utf-8").strip()
+            if not prompt:
+                raise ValueError("the prompt file is empty")
+            data = args.from_webp.read_bytes()
+        else:
+            data = image_bytes(prompt, key)
+        file = webp_name(data)
+        (LOCAL / file).write_bytes(data)
+        recipe = dish["recipe"]
+        work["records"][recipe] = {
+            "recipe": recipe, "shows": shows, "recipeFingerprint": dish["recipeFingerprint"],
+            "file": file, "model": args.source_model or MODEL, "prompt": prompt, "status": "generated",
+        }
+        save(work["records"])
+        print(f"{recipe}  {file}", flush=True)
+
+
+def verified_local(record):
+    data = (LOCAL / record["file"]).read_bytes()
+    if webp_name(data) != record["file"]:
+        raise ValueError(f"image hash differs from the manifest for {record['recipe']}")
+    return data
+
+
+def fresh_records(work, status):
+    unavailable = {dish["recipe"] for dish in work["stale"]} | set(work["orphaned"])
+    return [record for recipe, record in work["records"].items()
+            if recipe not in unavailable and record["status"] == status]
+
+
+REVIEW_FIELDS = ("recipe", "file", "recipeFingerprint", "shows")
+
+
+def review_reference(record):
+    return {field: record[field] for field in REVIEW_FIELDS}
+
+
+def review_page(records, bundle=False):
+    photos = []
+    for record in records:
+        verified_local(record)
+        title = record["recipe"].rsplit("/", 1)[-1].replace("-", " ").capitalize()
+        photos.append({**review_reference(record), "title": title})
+    template = (ROOT / "scripts/dish-photo-review.html").read_text(encoding="utf-8")
+    data = json.dumps(photos).replace("<", "\\u003c")
+    page = LOCAL / "review.html"
+    page.write_text(template.replace("__PHOTO_REVIEW_DATA__", data), encoding="utf-8")
+    print(page)
+    if bundle:
+        bundle_path = LOCAL / "dish-photo-review.zip"
+        with zipfile.ZipFile(bundle_path, "w") as archive:
+            archive.write(page, page.name)
+            for filename in sorted({photo["file"] for photo in photos}):
+                archive.write(LOCAL / filename, filename)
+        print(bundle_path)
+
+
+def checked_decision(entry, records):
+    if not isinstance(entry, dict) or set(entry) != {*REVIEW_FIELDS, "decision"}:
+        raise ValueError("each decision must identify its recipe, image, fingerprint and foods")
+    recipe = entry["recipe"]
+    if not isinstance(recipe, str) or entry["decision"] not in ("approve", "reject"):
+        raise ValueError("each decision needs a recipe and must approve or reject it")
+    record = records.get(recipe)
+    if not record or review_reference(entry) != review_reference(record):
+        raise ValueError(f"the reviewed photo or ingredient list has changed for {recipe}")
+    return recipe, record
+
+
+def review_update(record, verdict, reviewer):
+    status = "approved" if verdict == "approve" else "rejected"
+    if record["status"] == status and (verdict == "reject" or record["approvedBy"] == reviewer):
+        return None
+    if record["status"] != "generated":
+        raise ValueError(f"the photo for {record['recipe']} already has a different review decision")
+    if verdict == "reject":
+        return {**record, "status": status}
+    if not reviewer:
+        raise ValueError("approvals need a reviewer name")
+    verified_local(record)
+    return {**record, "status": status, "approvedBy": reviewer, "approvedOn": datetime.date.today().isoformat()}
+
+
+def apply_review(work, review_file):
+    if not isinstance(review_file, dict) or set(review_file) != {"reviewer", "decisions"}:
+        raise ValueError("the review file must contain a reviewer and decisions")
+    reviewer = review_file["reviewer"]
+    decisions = review_file["decisions"]
+    if not isinstance(reviewer, str) or not isinstance(decisions, list) or not decisions:
+        raise ValueError("the review file needs a reviewer name and at least one decision")
+    all_records = work["records"]
+    unavailable = {dish["recipe"] for dish in work["stale"]} | set(work["orphaned"])
+    fresh = {key: record for key, record in all_records.items() if key not in unavailable}
+    seen = set()
+    updates = {}
+    for entry in decisions:
+        recipe, record = checked_decision(entry, fresh)
+        if recipe in seen:
+            raise ValueError(f"duplicate review decision for {recipe}")
+        seen.add(recipe)
+        update = review_update(record, entry["decision"], reviewer.strip())
+        if update:
+            updates[recipe] = update
+    if updates:
+        if any(record["status"] == "approved" for record in updates.values()):
+            inventory("validate")
+        save({**all_records, **updates})
+    print(f"Applied {len(updates)} review decisions.")
+
+
+def review(work, args):
+    if args.apply:
+        apply_review(work, json.loads(args.apply.read_text(encoding="utf-8")))
+        return
+    photos = fresh_records(work, "generated")
+    if not args.recipe:
+        review_page(photos, args.bundle)
+        return
+    record = next((photo for photo in photos if photo["recipe"] == args.recipe), None)
+    if not record:
+        raise ValueError("the recipe has no fresh generated photo")
+    entry = {**review_reference(record), "decision": args.decision}
+    apply_review(work, {"reviewer": args.reviewer or "", "decisions": [entry]})
+
+
+def public_object(root, file):
+    return f"{root}/storage/v1/object/public/dish-photos/{file}"
+
+
+def is_uploaded(root, record):
+    try:
+        data = request(public_object(root, record["file"]))
+    except urllib.error.HTTPError as error:
+        if error.code in (400, 404):
+            return False
+        raise
+    if webp_name(data) != record["file"]:
+        raise ValueError(f"public image hash differs for {record['recipe']}")
+    return True
+
+
+def upload(work, args):
+    inventory("validate")
+    records = fresh_records(work, "approved")
+    if not records:
+        print("No fresh approved photos to upload.")
+        return
+    root = args.project_url.rstrip("/")
+    project = urllib.parse.urlsplit(root)
+    if (project.scheme != "https" or not project.hostname or project.username is not None
+            or project.path or project.query or project.fragment):
+        raise ValueError("provide the HTTPS Supabase project origin")
+    key = subprocess.check_output(
+        ["security", "find-generic-password", "-s", args.keychain_service, "-w"], text=True,
+    ).strip()
+    headers = {"apikey": key, "Content-Type": "image/webp", "x-upsert": "false", "cache-control": "31536000"}
+    if not key.startswith("sb_secret_"):
+        headers["Authorization"] = f"Bearer {key}"
+    for record in records:
+        if not is_uploaded(root, record):
+            data = verified_local(record)
+            url = f"{root}/storage/v1/object/dish-photos/{record['file']}"
+            request(url, data=data, headers=headers)
+            if not is_uploaded(root, record):
+                raise ValueError(f"uploaded photo is not publicly readable for {record['recipe']}")
+        print(public_object(root, record["file"]))
+
+
+def arguments():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("plan")
+    generate_parser = commands.add_parser("generate")
+    generate_parser.add_argument("--recipe")
+    generate_parser.add_argument("--limit", type=int, default=1)
+    generate_parser.add_argument("--from-webp", type=Path)
+    generate_parser.add_argument("--source-model")
+    generate_parser.add_argument("--prompt-file", type=Path)
+    review_parser = commands.add_parser("review")
+    decision = review_parser.add_mutually_exclusive_group()
+    decision.add_argument("--approve", dest="approval")
+    decision.add_argument("--reject", dest="rejection")
+    decision.add_argument("--apply", type=Path, metavar="DECISIONS")
+    decision.add_argument("--bundle", action="store_true")
+    review_parser.add_argument("--reviewer")
+    upload_parser = commands.add_parser("upload")
+    upload_parser.add_argument("--project-url", required=True)
+    upload_parser.add_argument("--keychain-service", default="tomi-dish-photos")
+    args = parser.parse_args()
+    if args.command == "generate":
+        if args.limit < 1:
+            parser.error("--limit must be positive")
+        if args.from_webp and not (args.recipe and args.source_model and args.prompt_file):
+            parser.error("--from-webp requires --recipe, --source-model and --prompt-file")
+        if not args.from_webp and (args.source_model or args.prompt_file):
+            parser.error("--source-model and --prompt-file are for --from-webp")
+    if args.command == "review":
+        args.recipe = args.approval or args.rejection
+        args.decision = "approve" if args.approval else "reject"
+        if args.approval and (not args.reviewer or not args.reviewer.strip()):
+            parser.error("--approve requires --reviewer")
+    return args
+
+
+def main():
+    args = arguments()
+    if args.command == "plan":
+        plan(inventory())
+        return
+    LOCAL.mkdir(parents=True, exist_ok=True)
+    with (LOCAL / ".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        work = inventory()
+        {"generate": generate, "review": review, "upload": upload}[args.command](work, args)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
+        sys.exit(str(error))
